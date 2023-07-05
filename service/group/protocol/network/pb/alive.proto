@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package network.pb;
+
+message GroupAlive {
+    string group_id = 1;
+
+    uint64 lamportime = 2;
+}

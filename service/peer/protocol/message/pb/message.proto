@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package messge.pb;
+
+message Message {
+
+  enum Type {
+    TEXT = 0;
+    AUDIO = 1;
+    VIDEO = 2;
+    INVITE = 3; // 群成员邀请消息
+  }
+
+  string id = 1;
+
+  Type type = 2;
+
+  bytes payload = 3;
+
+  string sender_id = 4;
+
+  string receiver_id = 5;
+
+  int32 send_timestamp = 6;
+
+  uint64 lamport_time = 7;
+
+  bytes signature = 10;
+}

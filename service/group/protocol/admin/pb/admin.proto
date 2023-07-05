@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package admin.pb;
+
+message AdminLog {
+
+  // 日志类型
+  enum Type {
+    CREATE = 0; // 创建群
+    NAME = 1; // 设置群名
+    NOTICE = 2; // 设置群公告
+    MEMBER = 3; // 群成员操作
+    DISBAND = 4; // 解散群
+  }
+
+  // 群成员具体操作
+  enum Operate {
+    INVITE = 0; // 邀请
+    AGREE = 1; // 同意
+    REJECTED = 2; // 拒绝
+    APPLY = 3; // 申请
+    REMOVE = 4; // 移除
+  }
+
+  // 日志ID
+  string id = 1;
+
+  // 群组ID
+  string group_id = 2;
+
+  // 操作人
+  string peer_id = 3;
+
+  // 日志类型
+  Type type = 4;
+
+  // 成员ID
+  string member_id = 5;
+
+  // 成员操作
+  Operate operate = 6;
+
+  // 附带内容
+  bytes payload = 7;
+
+  // 时间戳
+  int32 timestamp = 8;
+
+  // lamport时间戳
+  uint64 lamportime = 9;
+
+  // 签名
+  bytes signature = 10;
+}

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package sync.pb;
+
+message SyncMessage {
+    // 同步步骤
+    enum Step {
+        TOTAL_LEN = 0; // 第一步，总摘要        <id1,id2,len>
+        RANGE_HASH = 1; // 第二步，区间hash     <id1, id2, hash>
+        RANGE_IDS = 2; // 第三步，区间msgid     <id1, id2, msgid...>
+        PUSH_MSG = 3; // 第四步，发送消息       <msg...>
+    }
+
+    string group_id = 1; // 组ID
+    Step step = 2; // 具体步骤
+    bytes payload = 3; // 具体内容
+}
+
+// 第一步，总摘要
+message DataTotalLen  {
+	string group_id = 1;
+	string head_id = 2;
+	string tail_id = 3;
+	int32 length = 4;
+}
+
+// 第二步，区间HASH
+message DataRangeHash  {
+	string group_id = 1;
+	string start_id = 2;
+	string end_id = 3;
+	bytes hash  = 4;
+}
+
+// 第三步，区间消息ID
+message DataRangeIDs  {
+	string group_id = 1;
+	string start_id = 2;
+	string end_id = 3;
+	repeated string ids = 4;
+}
+
+// 第四步，发送消息
+message DataPushMsgs  {
+	repeated bytes msgs = 1;
+}

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package network.pb;
+
+message GroupConnect {
+
+  enum State {
+    CONNECT = 0;
+    UNCONNECT = 1;
+  }
+
+  string group_id = 1;
+
+  string peer_id_a = 2;
+
+  string peer_id_b = 3;
+
+  State state = 6;
+  
+  uint64 lamportime = 10;
+}
+
+// 群路由信息
+message GroupRouting {
+
+  string group_id = 1;
+
+  repeated GroupConnect connects = 2;
+}
