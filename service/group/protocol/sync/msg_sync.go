@@ -10,13 +10,16 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore/query"
-	"github.com/jianbo-zh/dchat/datastore"
-	"github.com/jianbo-zh/dchat/host"
+	gevent "github.com/jianbo-zh/dchat/service/event"
+	"github.com/jianbo-zh/dchat/service/group/datastore"
 	msgpb "github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
 	"github.com/jianbo-zh/dchat/service/group/protocol/sync/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
 	"google.golang.org/protobuf/proto"
 )
@@ -63,7 +66,87 @@ func NewGroupSyncMsgService(h host.Host, ds datastore.GroupIface, eventBus event
 
 	h.SetStreamHandler(ID, msgsyncsvc.Handler)
 
+	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupPeerConnectChange)}, eventbus.Name("syncmsg"))
+	if err != nil {
+		log.Warnf("subscription failed. group admin server error: %v", err)
+
+	} else {
+		go msgsyncsvc.handleSubscribe(context.Background(), sub)
+	}
+
 	return &msgsyncsvc
+}
+
+func (syncsvc *GroupSyncMsgService) handleSubscribe(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				return
+			}
+			ev := e.(gevent.EvtGroupPeerConnectChange)
+			// 接收消息日志
+			// err := grp.datastore.LogAdminOperation(ctx, grp.host.ID(), datastore.GroupID(ev.MsgData.GroupId), ev.MsgData)
+			var peerID peer.ID
+			if syncsvc.host.ID().String() == ev.MsgData.PeerIdA {
+				peerID, _ = peer.Decode(ev.MsgData.PeerIdB)
+			} else {
+				peerID, _ = peer.Decode(ev.MsgData.PeerIdA)
+			}
+			err := syncsvc.sync(ctx, ev.MsgData.GroupId, peerID)
+			if err != nil {
+				log.Errorf("log admin operation error: %v", err)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (syncsvc *GroupSyncMsgService) sync(ctx context.Context, groupID string, peerID peer.ID) error {
+	stream, err := syncsvc.host.NewStream(ctx, peerID, ID)
+	if err != nil {
+		return nil
+	}
+
+	totalmsg, err := syncsvc.totalMsg(groupID)
+	if err != nil {
+		return err
+	}
+
+	pbtotalmsg := pb.DataTotalLen{
+		GroupId: groupID,
+		HeadId:  totalmsg.HeadId,
+		TailId:  totalmsg.TailId,
+		Length:  totalmsg.Length,
+	}
+
+	bs, err := proto.Marshal(&pbtotalmsg)
+	if err != nil {
+		return err
+	}
+
+	syncmsg := pb.SyncMessage{
+		GroupId: groupID,
+		Step:    pb.SyncMessage_TOTAL_LEN,
+		Payload: bs,
+	}
+
+	wb := pbio.NewDelimitedWriter(stream)
+	err = wb.WriteMsg(&syncmsg)
+	if err != nil {
+		return err
+	}
+
+	for {
+		// todo
+
+	}
+
+	return nil
 }
 
 func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {

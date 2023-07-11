@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jianbo-zh/dchat/datastore"
 	gevent "github.com/jianbo-zh/dchat/service/event"
+	"github.com/jianbo-zh/dchat/service/group/datastore"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"

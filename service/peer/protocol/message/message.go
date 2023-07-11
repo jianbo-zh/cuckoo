@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jianbo-zh/dchat/datastore"
+	"github.com/jianbo-zh/dchat/service/peer/datastore"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/host"

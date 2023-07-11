@@ -3,7 +3,7 @@ package group
 import (
 	"context"
 
-	"github.com/jianbo-zh/dchat/datastore"
+	"github.com/jianbo-zh/dchat/service/group/datastore"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

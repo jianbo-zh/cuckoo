@@ -10,7 +10,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/jianbo-zh/dchat/cmd/chat/config"
 	"github.com/jianbo-zh/dchat/cmd/chat/httpapi"
-	"github.com/jianbo-zh/dchat/datastore"
+	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service"
 	"github.com/libp2p/go-libp2p"
 	ddht "github.com/libp2p/go-libp2p-kad-dht/dual"

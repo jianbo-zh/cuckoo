@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jianbo-zh/dchat/datastore"
 	gevent "github.com/jianbo-zh/dchat/service/event"
+	"github.com/jianbo-zh/dchat/service/group/datastore"
 	networkpb "github.com/jianbo-zh/dchat/service/group/protocol/network/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/discovery"

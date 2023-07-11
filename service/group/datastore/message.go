@@ -84,14 +84,42 @@ func (gds *GroupDataStore) GetMessage(ctx context.Context, groupID GroupID, msgI
 }
 
 func (gds *GroupDataStore) PutMessage(ctx context.Context, groupID GroupID, msg *msgpb.GroupMsg) error {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "logs", msg.Id})
 
+	msgPrefix := []string{"dchat", "group", string(groupID), "message"}
+
+	key := ds.KeyWithNamespaces(append(msgPrefix, "logs", msg.Id))
 	bs, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	return gds.Put(ctx, key, bs)
+	batch, err := gds.Batch(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Put(ctx, key, bs); err != nil {
+		return err
+	}
+
+	headKey := ds.KeyWithNamespaces(append(msgPrefix, "head"))
+	head, err := gds.Get(ctx, headKey)
+	if err != nil && !errors.Is(err, ds.ErrNotFound) {
+		return err
+	}
+
+	if len(head) == 0 {
+		if err = batch.Put(ctx, headKey, []byte(msg.Id)); err != nil {
+			return err
+		}
+	}
+
+	tailKey := ds.KeyWithNamespaces(append(msgPrefix, "tail"))
+	if err = batch.Put(ctx, tailKey, []byte(msg.Id)); err != nil {
+		return err
+	}
+
+	return batch.Commit(ctx)
 }
 
 func (gds *GroupDataStore) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb.GroupMsg, error) {
@@ -119,4 +147,27 @@ func (gds *GroupDataStore) ListMessages(ctx context.Context, groupID GroupID) ([
 	}
 
 	return msgs, nil
+}
+
+func (gds *GroupDataStore) GetMessageHeadID(ctx context.Context, groupID GroupID) (string, error) {
+	headKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "head"})
+	head, err := gds.Get(ctx, headKey)
+	if err != nil && !errors.Is(err, ds.ErrNotFound) {
+		return "", err
+	}
+
+	return string(head), nil
+}
+func (gds *GroupDataStore) GetMessageTailID(ctx context.Context, groupID GroupID) (string, error) {
+	tailKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "tail"})
+	tail, err := gds.Get(ctx, tailKey)
+	if err != nil && !errors.Is(err, ds.ErrNotFound) {
+		return "", err
+	}
+
+	return string(tail), nil
+}
+
+func (gds *GroupDataStore) GetMessageLength(context.Context, GroupID) (int32, error) {
+	return 0, nil
 }

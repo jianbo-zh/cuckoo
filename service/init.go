@@ -1,8 +1,7 @@
 package service
 
 import (
-	ids "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/datastore"
+	ipfsds "github.com/ipfs/go-datastore"
 	groupsvc "github.com/jianbo-zh/dchat/service/group"
 	peersvc "github.com/jianbo-zh/dchat/service/peer"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -15,14 +14,14 @@ var topsvc *TopService
 
 type TopService struct {
 	host      host.Host
-	datastore ids.Batching
+	datastore ipfsds.Batching
 	eventBus  event.Bus
 
 	peerSvc  peersvc.PeerServiceIface
 	groupSvc groupsvc.GroupServiceIface
 }
 
-func Init(localhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ids.Batching) error {
+func Init(localhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching) error {
 
 	eventbus := eventbus.NewBus()
 
@@ -33,14 +32,14 @@ func Init(localhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ids.Batc
 	}
 
 	// 初始化群相关服务
-	gsvc, err := groupsvc.Init(localhost, rdiscvry, datastore.GroupWrap(ids), eventbus)
+	gsvc, err := groupsvc.Init(localhost, rdiscvry, ids, eventbus)
 	if err != nil {
 		return err
 	}
 	topsvc.groupSvc = gsvc
 
 	// 初始化Peer相关服务
-	psvc, err := peersvc.Init(localhost, datastore.PeerWrap(ids), eventbus)
+	psvc, err := peersvc.Init(localhost, ids, eventbus)
 	if err != nil {
 		return err
 	}

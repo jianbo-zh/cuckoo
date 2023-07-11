@@ -1,7 +1,8 @@
 package group
 
 import (
-	"github.com/jianbo-zh/dchat/datastore"
+	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/service/group/datastore"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin"
 	"github.com/jianbo-zh/dchat/service/group/protocol/network"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -27,17 +28,19 @@ func Get() GroupServiceIface {
 	return groupsvc
 }
 
-func Init(h host.Host, rdiscvry *drouting.RoutingDiscovery, ds datastore.GroupIface, ev event.Bus, opts ...Option) (*GroupService, error) {
+func Init(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ev event.Bus, opts ...Option) (*GroupService, error) {
+	groupDs := datastore.GroupWrap(ids)
+
 	groupsvc = &GroupService{
-		datastore: ds,
+		datastore: groupDs,
 	}
 
 	if err := groupsvc.Apply(opts...); err != nil {
 		return nil, err
 	}
 
-	groupsvc.adminSvc = admin.NewGroupAdminService(h, ds, ev)
-	groupsvc.networkSvc = network.NewGroupNetworkService(h, rdiscvry, ds, ev)
+	groupsvc.adminSvc = admin.NewGroupAdminService(h, groupDs, ev)
+	groupsvc.networkSvc = network.NewGroupNetworkService(h, rdiscvry, groupDs, ev)
 
 	if err := groupsvc.networkSvc.Start(); err != nil {
 		return nil, err

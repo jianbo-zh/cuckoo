@@ -4,7 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/jianbo-zh/dchat/datastore"
+	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/service/peer/datastore"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/msgsync"
@@ -32,9 +33,12 @@ func Get() PeerServiceIface {
 	return peersvc
 }
 
-func Init(h host.Host, ds datastore.PeerIface, ev event.Bus, opts ...Option) (*PeerService, error) {
+func Init(h host.Host, ids ipfsds.Batching, ev event.Bus, opts ...Option) (*PeerService, error) {
+
+	peerDs := datastore.PeerWrap(ids)
+
 	peersvc = &PeerService{
-		datastore: ds,
+		datastore: peerDs,
 	}
 
 	if err := peersvc.Apply(opts...); err != nil {
@@ -43,8 +47,8 @@ func Init(h host.Host, ds datastore.PeerIface, ev event.Bus, opts ...Option) (*P
 
 	// 注册协议
 	peersvc.pingSvc = ping.NewPingService(h)
-	peersvc.msgSvc = message.NewPeerMessageService(h, ds)
-	peersvc.msgSyncSvc = msgsync.NewPeerMsgSyncService(h, ds)
+	peersvc.msgSvc = message.NewPeerMessageService(h, peerDs)
+	peersvc.msgSyncSvc = msgsync.NewPeerMsgSyncService(h, peerDs)
 
 	return peersvc, nil
 }
