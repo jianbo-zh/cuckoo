@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package peermsg.pb;
+
+message Message {
+
+  // 消息类型
+  enum Type {
+    TEXT = 0; // 文本
+    AUDIO = 1; // 语音
+    VIDEO = 2; // 视频
+    INVITE = 3; // 群成员邀请
+  }
+
+  string id = 1;
+
+  Type type = 2;
+
+  bytes payload = 3;
+
+  bytes sender_id = 4;
+
+  bytes receiver_id = 5;
+
+  int64 timestamp = 6;
+
+  uint64 lamportime = 7;
+
+  bytes signature = 10;
+}

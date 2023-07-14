@@ -11,8 +11,7 @@ import (
 func Daemon(config Config) {
 	app := fiber.New()
 	app.Get("/api/test/*", handler.TestHandler())
-	app.Get("/api/sendmsg", handler.SendMsgHandler())
+	app.Get("/api/sendmsg/:peerid/:msgtxt", handler.SendMsgHandler())
 	app.Get("/api/getmsgs/:peerid", handler.GetMsgsHandler())
-	app.Get("/api/ping/:peerid", handler.PingHandler())
 	log.Fatal(app.Listen(fmt.Sprintf("%s:%d", config.Host, config.Port)))
 }

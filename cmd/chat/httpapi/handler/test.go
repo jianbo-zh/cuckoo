@@ -20,28 +20,15 @@ var TestHandler = func() fiber.Handler {
 var SendMsgHandler = func() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
-		peerID, _ := peer.Decode("12D3KooWNr9xsCWkavXGnyzfvSyuhTzva74x82zTieh6nHFJk7xf")
+		peerID, _ := peer.Decode(c.Params("peerid"))
+		msgtxt := c.Params("msgtxt")
 
-		err := peersvc.Get().SendTextMessage(context.Background(), peerID, "hello msg")
+		err := peersvc.Get().SendTextMessage(context.Background(), peerID, msgtxt)
 		if err != nil {
 			return err
 		}
 
 		return c.SendString("ok") // => ✋ register
-	}
-}
-
-var PingHandler = func() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-
-		peerID, _ := peer.Decode(c.Params("peerid"))
-
-		rtt, err := peersvc.Get().Ping(context.Background(), peerID)
-		if err != nil {
-			return err
-		}
-
-		return c.SendString(rtt.String()) // => ✋ register
 	}
 }
 
@@ -51,7 +38,7 @@ var GetMsgsHandler = func() fiber.Handler {
 
 		fmt.Println("peerID: ", peerID)
 
-		msgs, err := peersvc.Get().GetMessages(context.Background(), peerID)
+		msgs, err := peersvc.Get().GetMessages(context.Background(), peerID, 0, 10)
 		if err != nil {
 			return err
 		}
@@ -60,20 +47,7 @@ var GetMsgsHandler = func() fiber.Handler {
 			return c.SendString("nothing")
 		}
 
-		mss := make([]map[string]any, len(msgs))
-		for i, msg := range msgs {
-			mss[i] = map[string]any{
-				"id":             msg.GetId(),
-				"type":           msg.GetType(),
-				"data":           string(msg.GetPayload()),
-				"send_id":        msg.GetSenderId(),
-				"receive_id":     msg.GetReceiverId(),
-				"send_timestamp": msg.GetSendTimestamp(),
-				"lamport_time":   msg.GetLamportTime(),
-			}
-		}
-
-		msgJson, _ := json.Marshal(mss)
+		msgJson, _ := json.Marshal(msgs)
 
 		return c.SendString(string(msgJson))
 	}

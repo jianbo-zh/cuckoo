@@ -17,6 +17,7 @@ require (
 	github.com/multiformats/go-varint v0.0.7
 	github.com/spf13/cobra v1.7.0
 	github.com/urfave/cli/v2 v2.25.7
+	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1
 	google.golang.org/protobuf v1.31.0
 )
 
@@ -122,7 +123,6 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.48.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect

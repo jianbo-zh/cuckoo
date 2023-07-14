@@ -1,6 +1,6 @@
 package peer
 
-func (peer *PeerService) Apply(opts ...Option) error {
+func (peer *PeerSvc) Apply(opts ...Option) error {
 	for _, opt := range opts {
 		if opt == nil {
 			continue
@@ -12,10 +12,10 @@ func (peer *PeerService) Apply(opts ...Option) error {
 	return nil
 }
 
-type Option func(cfg *PeerService) error
+type Option func(cfg *PeerSvc) error
 
 func TestOption() Option {
-	return func(group *PeerService) error {
+	return func(group *PeerSvc) error {
 		return nil
 	}
 }

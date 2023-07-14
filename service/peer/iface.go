@@ -2,9 +2,7 @@ package peer
 
 import (
 	"context"
-	"time"
 
-	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -23,8 +21,26 @@ import (
 */
 
 type PeerServiceIface interface {
-	Ping(context.Context, peer.ID) (time.Duration, error)
-	GetMessages(context.Context, peer.ID) ([]*pb.Message, error)
+	GetMessages(context.Context, peer.ID, int, int) ([]PeerMessage, error)
 	SendTextMessage(context.Context, peer.ID, string) error
 	SendGroupInviteMessage(context.Context, peer.ID, string) error
+}
+
+type MsgType int
+
+const (
+	MsgTypeText MsgType = iota
+	MsgTypeAudio
+	MsgTypeVideo
+	MsgTypeInvite
+)
+
+type PeerMessage struct {
+	ID         string  `json:"id"`
+	Type       MsgType `json:"type"`
+	SenderID   peer.ID `json:"sender_id"`
+	ReceiverID peer.ID `json:"receiver_id"`
+	Payload    []byte  `json:"payload"`
+	Timestamp  int64   `json:"timestamp"`
+	Lamportime uint64  `json:"lamportime"`
 }
