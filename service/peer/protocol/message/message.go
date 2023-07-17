@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	sevent "github.com/jianbo-zh/dchat/service/event"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/ds"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -43,7 +43,7 @@ type PeerMessageSvc struct {
 	}
 }
 
-func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) *PeerMessageSvc {
+func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageSvc, error) {
 	var err error
 	msgsvc := PeerMessageSvc{
 		host: lhost,
@@ -53,28 +53,61 @@ func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus)
 	lhost.SetStreamHandler(ID, msgsvc.Handler)
 	lhost.SetStreamHandler(SYNC_ID, msgsvc.SyncHandler)
 
-	// 发送：离线消息
-	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&sevent.PushOfflineMessageEvt{}); err != nil {
-		log.Errorf("set pull deposit msg emitter error: %v", err)
+	// 触发器：发送离线消息
+	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&gevent.PushOfflineMessageEvt{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
-	// 获取：离线消息
-	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&sevent.PullOfflineMessageEvt{}); err != nil {
-		log.Errorf("set pull deposit msg emitter error: %v", err)
+	// 触发器：获取离线消息
+	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&gevent.PullOfflineMessageEvt{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
-	subs, err := lhost.EventBus().Subscribe([]any{new(event.EvtLocalAddressesUpdated)})
+	// 订阅同步Peer的消息
+	gsubs, err := eventBus.Subscribe([]any{new(gevent.EvtSyncPeers)})
 	if err != nil {
-		log.Errorf("subscribe error: %v", err)
+		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
 
 	} else {
-		go msgsvc.background(context.Background(), subs)
+		go msgsvc.handleAppSubs(context.Background(), gsubs)
 	}
 
-	return &msgsvc
+	// 订阅开始拉取离线消息事件
+	hsubs, err := lhost.EventBus().Subscribe([]any{new(event.EvtLocalAddressesUpdated)})
+	if err != nil {
+		return nil, fmt.Errorf("subscribe error: %v", err)
+
+	} else {
+		go msgsvc.handleHostSubs(context.Background(), hsubs)
+	}
+
+	return &msgsvc, nil
 }
 
-func (p *PeerMessageSvc) background(ctx context.Context, sub event.Subscription) {
+func (p *PeerMessageSvc) handleAppSubs(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				log.Warnf("subscribe out not ok")
+				return
+			}
+
+			if ev, ok := e.(gevent.EvtSyncPeers); ok {
+				for _, peerID := range ev.PeerIDs {
+					p.RunSync(peerID)
+				}
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (p *PeerMessageSvc) handleHostSubs(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -92,7 +125,7 @@ func (p *PeerMessageSvc) background(ctx context.Context, sub event.Subscription)
 
 			for _, curr := range ev.Current {
 				if isPublicAddr(curr.Address) {
-					p.emitters.evtPullOfflineMessage.Emit(sevent.PullOfflineMessageEvt{
+					p.emitters.evtPullOfflineMessage.Emit(gevent.PullOfflineMessageEvt{
 						HasMessage:  p.HasMessage,
 						SaveMessage: p.SaveMessage,
 					})
@@ -198,7 +231,7 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 		// // if not connect
 		// if errors.Is(err, network.ErrNoConn) {
 		// 	msgdata, _ := proto.Marshal(&pmsg)
-		// 	p.emitters.evtPushOfflineMessage.Emit(sevent.PushOfflineMessageEvt{
+		// 	p.emitters.evtPushOfflineMessage.Emit(gevent.PushOfflineMessageEvt{
 		// 		ToPeerID: peerID.String(),
 		// 		MsgID:    pmsg.Id,
 		// 		MsgData:  msgdata,

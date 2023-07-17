@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"time"
 
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -12,49 +13,103 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func (p *PeerMessageSvc) RunSync(peerID peer.ID) {
+	ctx := context.Background()
+	stream, err := p.host.NewStream(ctx, peerID, SYNC_ID)
+	if err != nil {
+		return
+	}
+	defer stream.Close()
+
+	summary, err := p.getMessageSummary(peerID)
+	if err != nil {
+		return
+	}
+
+	bs, err := proto.Marshal(summary)
+	if err != nil {
+		return
+	}
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err = wt.WriteMsg(&pb.PeerSyncMessage{
+		Type:    pb.PeerSyncMessage_SUMMARY,
+		Payload: bs,
+	}); err != nil {
+		return
+	}
+
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+
+	err = p.loopSync(peerID, stream, rd, wt)
+	if err != nil {
+		log.Errorf("loop sync error: %v", err)
+	}
+}
+
 func (p *PeerMessageSvc) SyncHandler(stream network.Stream) {
+
+	defer stream.Close()
 
 	peerID := stream.Conn().RemotePeer()
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	wt := pbio.NewDelimitedWriter(stream)
-	defer rd.Close()
+
+	// 后台同步处理
+	err := p.loopSync(peerID, stream, rd, wt)
+	if err != nil {
+		log.Errorf("loop sync error: %v", err)
+	}
+}
+
+func (p *PeerMessageSvc) loopSync(peerID peer.ID, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
 
 	var syncmsg pb.PeerSyncMessage
 
 	for {
 		syncmsg.Reset()
 
+		// 设置读取超时，
+		stream.SetReadDeadline(time.Now().Add(5 * StreamTimeout))
 		if err := rd.ReadMsg(&syncmsg); err != nil {
-			return
+			return err
 		}
+		stream.SetReadDeadline(time.Time{})
 
 		switch syncmsg.Type {
 		case pb.PeerSyncMessage_SUMMARY:
 			if err := p.handleSyncSummary(peerID, &syncmsg, wt); err != nil {
-				return
+				return err
 			}
 
 		case pb.PeerSyncMessage_RANGE_HASH:
 			if err := p.handleSyncRangeHash(peerID, &syncmsg, wt); err != nil {
-				return
+				return err
 			}
 
 		case pb.PeerSyncMessage_RANGE_IDS:
 			if err := p.handleSyncRangeIDs(peerID, &syncmsg, wt); err != nil {
-				return
+				return err
 			}
 
 		case pb.PeerSyncMessage_PUSH_MSG:
 			if err := p.handleSyncPushMsg(peerID, &syncmsg); err != nil {
-				return
+				return err
 			}
+
+		case pb.PeerSyncMessage_PULL_MSG:
+			if err := p.handleSyncPullMsg(peerID, &syncmsg, wt); err != nil {
+				return err
+			}
+
+		case pb.PeerSyncMessage_DONE:
+			return nil
 
 		default:
 			// no defined
 		}
 	}
-
 }
 
 func (p *PeerMessageSvc) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
@@ -69,16 +124,20 @@ func (p *PeerMessageSvc) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncM
 		return err
 	}
 
-	payload, err := proto.Marshal(summary2)
-	if err != nil {
-		return err
-	}
+	if !summary.IsEnd {
+		// 结束标记，避免无限循环
+		summary2.IsEnd = true
+		payload, err := proto.Marshal(summary2)
+		if err != nil {
+			return err
+		}
 
-	if err = wt.WriteMsg(&pb.PeerSyncMessage{
-		Type:    pb.PeerSyncMessage_SUMMARY,
-		Payload: payload,
-	}); err != nil {
-		return err
+		if err = wt.WriteMsg(&pb.PeerSyncMessage{
+			Type:    pb.PeerSyncMessage_SUMMARY,
+			Payload: payload,
+		}); err != nil {
+			return err
+		}
 	}
 
 	if summary2.TailId > summary.TailId {
@@ -149,24 +208,27 @@ func (p *PeerMessageSvc) handleSyncRangeHash(peerID peer.ID, syncmsg *pb.PeerSyn
 		log.Errorf("range hash error: %v", err)
 	}
 
-	if !bytes.Equal(hashmsg.Hash, hashBytes) {
-		// hash 不同，则消息不一致，则同步消息ID
-		hashids, err := p.getRangeIDs(peerID, hashmsg.StartId, hashmsg.EndId)
-		if err != nil {
-			return err
-		}
+	if bytes.Equal(hashmsg.Hash, hashBytes) {
+		// hash相同，不需要再同步了
+		return wt.WriteMsg(&pb.PeerSyncMessage{Type: pb.PeerSyncMessage_DONE})
+	}
 
-		bs, err := proto.Marshal(hashids)
-		if err != nil {
-			return err
-		}
+	// hash 不同，则消息不一致，则同步消息ID
+	hashids, err := p.getRangeIDs(peerID, hashmsg.StartId, hashmsg.EndId)
+	if err != nil {
+		return err
+	}
 
-		if err = wt.WriteMsg(&pb.PeerSyncMessage{
-			Type:    pb.PeerSyncMessage_RANGE_IDS,
-			Payload: bs,
-		}); err != nil {
-			return err
-		}
+	bs, err := proto.Marshal(hashids)
+	if err != nil {
+		return err
+	}
+
+	if err = wt.WriteMsg(&pb.PeerSyncMessage{
+		Type:    pb.PeerSyncMessage_RANGE_IDS,
+		Payload: bs,
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -184,14 +246,17 @@ func (p *PeerMessageSvc) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSync
 	}
 
 	// 比较不同点
-	var moreIDs []string
-	mapIds1 := make(map[string]struct{}, len(idmsg.Ids))
+	mapIds := make(map[string]struct{}, len(idmsg.Ids))
+	mapIds2 := make(map[string]struct{}, len(idmsg.Ids))
+
 	for _, id := range idmsg.Ids {
-		mapIds1[id] = struct{}{}
+		mapIds[id] = struct{}{}
 	}
 
+	var moreIDs []string
 	for _, id := range idmsg2.Ids {
-		if _, exists := mapIds1[id]; !exists {
+		mapIds2[id] = struct{}{}
+		if _, exists := mapIds[id]; !exists {
 			moreIDs = append(moreIDs, id)
 		}
 	}
@@ -217,6 +282,29 @@ func (p *PeerMessageSvc) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSync
 		}
 	}
 
+	var lessIDs []string
+	for _, id := range idmsg.Ids {
+		if _, exists := mapIds2[id]; !exists {
+			lessIDs = append(lessIDs, id)
+		}
+	}
+
+	if len(lessIDs) > 0 {
+		bs, err := proto.Marshal(&pb.DataPullMsg{
+			Ids: lessIDs,
+		})
+		if err != nil {
+			return err
+		}
+
+		if err = wt.WriteMsg(&pb.PeerSyncMessage{
+			Type:    pb.PeerSyncMessage_PULL_MSG,
+			Payload: bs,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -229,6 +317,34 @@ func (p *PeerMessageSvc) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyncM
 	if err := p.data.SaveMessage(context.Background(), peerID, &msg); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *PeerMessageSvc) handleSyncPullMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
+	var pullmsg pb.DataPullMsg
+	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
+		return err
+	}
+
+	msgs, err := p.data.GetMessagesByIDs(peerID, pullmsg.Ids)
+	if err != nil {
+		return err
+	}
+
+	for _, msg := range msgs {
+		bs, err := proto.Marshal(msg)
+		if err != nil {
+			return err
+		}
+
+		if err = wt.WriteMsg(&pb.PeerSyncMessage{
+			Type:    pb.PeerSyncMessage_PUSH_MSG,
+			Payload: bs,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

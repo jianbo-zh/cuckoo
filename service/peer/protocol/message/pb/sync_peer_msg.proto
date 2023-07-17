@@ -10,6 +10,8 @@ message PeerSyncMessage {
         RANGE_HASH = 1; // 第二步，区间hash     <id1, id2, hash>
         RANGE_IDS = 2; // 第三步，区间msgid     <id1, id2, msgid...>
         PUSH_MSG = 3; // 第四步，发送消息       <msg...>
+        PULL_MSG = 4; // 第五步，获取消息 <id1, id2 ...>
+        DONE = 5; // 同步完成
     }
 
     Type type = 1; // 具体步骤
@@ -21,6 +23,7 @@ message DataSummary  {
 	string head_id = 2;
 	string tail_id = 3;
 	int32  length = 4;
+    bool   is_end = 5;
 }
 
 // 第二步，区间HASH
@@ -35,4 +38,9 @@ message DataRangeIDs  {
 	string start_id = 1;
 	string end_id = 2;
 	repeated string ids = 3;
+}
+
+// 第五步，获取缺失消息
+message DataPullMsg {
+    repeated string ids = 1;
 }

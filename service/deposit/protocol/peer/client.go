@@ -9,9 +9,9 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/deposit/protocol/peer/ds"
 	"github.com/jianbo-zh/dchat/service/deposit/protocol/peer/pb"
-	gevent "github.com/jianbo-zh/dchat/service/event"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -46,13 +46,13 @@ func NewPeerDepositClient(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids 
 		log.Warnf("eventbus subscribe deposit event error: %v", err)
 
 	} else {
-		gcli.background(context.Background(), sub)
+		gcli.handleSubscribe(context.Background(), sub)
 	}
 
 	return gcli
 }
 
-func (pcli *PeerDepositClient) background(ctx context.Context, sub event.Subscription) {
+func (pcli *PeerDepositClient) handleSubscribe(ctx context.Context, sub event.Subscription) {
 
 	// 处理寄存Peer发现
 	peerChan, err := pcli.discv.FindPeers(ctx, rendezvous, discovery.Limit(10))

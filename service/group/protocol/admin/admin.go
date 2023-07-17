@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	gevent "github.com/jianbo-zh/dchat/service/event"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/group/datastore"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
 	logging "github.com/jianbo-zh/go-log"

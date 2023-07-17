@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package peermsg.pb;
+
+message PeerInfo {
+  bytes peer_id = 1;
+  string nickname = 2;
+  int64 add_ts = 3;
+  int64 access_ts = 4;
+}
+

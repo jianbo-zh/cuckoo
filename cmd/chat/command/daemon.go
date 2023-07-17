@@ -10,10 +10,12 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/jianbo-zh/dchat/cmd/chat/config"
 	"github.com/jianbo-zh/dchat/cmd/chat/httpapi"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service"
 	"github.com/libp2p/go-libp2p"
 	ddht "github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -21,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -73,8 +76,15 @@ func init() {
 				return err
 			}
 
+			ebus := eventbus.NewBus()
+
+			bootEmitter, err := ebus.Emitter(&gevent.EvtHostBootComplete{})
+			if err != nil {
+				return err
+			}
+
 			// 创建host节点
-			localnode, rdiscvry, err := startLocalNode(context.Background(), conf)
+			localnode, rdiscvry, err := startLocalNode(context.Background(), conf, bootEmitter)
 			if err != nil {
 				return err
 			}
@@ -90,7 +100,7 @@ func init() {
 			}
 
 			// 注入运行服务
-			if err = service.Init(localnode, rdiscvry, ds); err != nil {
+			if err = service.Init(localnode, rdiscvry, ebus, ds); err != nil {
 				return err
 			}
 
@@ -120,7 +130,7 @@ func init() {
 	}
 }
 
-func startLocalNode(ctx context.Context, conf config.Config) (host.Host, *drouting.RoutingDiscovery, error) {
+func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.Emitter) (host.Host, *drouting.RoutingDiscovery, error) {
 
 	privKey, err := conf.Identity.DecodePrivateKey("")
 	if err != nil {
@@ -192,10 +202,17 @@ func startLocalNode(ctx context.Context, conf config.Config) (host.Host, *drouti
 	go autoRelayFeeder(ctx, localnode, dualDHT, conf.Peering, peerChan)
 
 	// 连接引导节点
-	for _, addr := range conf.Bootstrap {
-		pi, _ := peer.AddrInfoFromString(addr)
-		localnode.Connect(ctx, *pi)
-	}
+	go func() {
+		isAnySucc := false
+		for _, addr := range conf.Bootstrap {
+			pi, _ := peer.AddrInfoFromString(addr)
+			if err := localnode.Connect(ctx, *pi); err == nil {
+				isAnySucc = true
+			}
+		}
+
+		bootEmitter.Emit(gevent.EvtHostBootComplete{IsSucc: isAnySucc})
+	}()
 
 	routingDiscovery := drouting.NewRoutingDiscovery(dualDHT)
 

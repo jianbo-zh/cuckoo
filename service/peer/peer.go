@@ -5,12 +5,13 @@ import (
 
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message"
 	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
+	peerpeer "github.com/jianbo-zh/dchat/service/peer/protocol/peer"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type PeerSvc struct {
-	msgSvc *message.PeerMessageSvc
-	// syncSvc *msgsync.PeerMsgSyncService
+	msgSvc  *message.PeerMessageSvc
+	peerSvc *peerpeer.PeerPeerSvc
 }
 
 func Get() PeerServiceIface {

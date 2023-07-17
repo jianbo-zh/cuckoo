@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore/query"
-	gevent "github.com/jianbo-zh/dchat/service/event"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/group/datastore"
 	msgpb "github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
 	"github.com/jianbo-zh/dchat/service/group/protocol/sync/pb"
