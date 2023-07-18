@@ -2,68 +2,38 @@ package peer
 
 import (
 	"context"
+	"time"
 
-	"github.com/jianbo-zh/dchat/service/peer/protocol/message"
-	"github.com/jianbo-zh/dchat/service/peer/protocol/message/pb"
 	peerpeer "github.com/jianbo-zh/dchat/service/peer/protocol/peer"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-type PeerSvc struct {
-	msgSvc  *message.PeerMessageSvc
-	peerSvc *peerpeer.PeerPeerSvc
+func (p *PeerSvc) AddPeer(ctx context.Context, peerID peer.ID, nickname string) error {
+	return p.peerSvc.AddPeer(peerID, peerpeer.PeerInfo{
+		PeerID:   peerID,
+		Nickname: nickname,
+		AddTs:    time.Now().Unix(),
+		AccessTs: time.Now().Unix(),
+	})
 }
 
-func Get() PeerServiceIface {
-	if peersvc == nil {
-		panic("peer service must init before use")
-	}
+func (p *PeerSvc) GetPeers(context.Context) ([]PeerInfo, error) {
 
-	return peersvc
-}
+	var peers []PeerInfo
 
-func (p *PeerSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]PeerMessage, error) {
-	var peerMsgs []PeerMessage
-
-	msgs, err := p.msgSvc.GetMessages(ctx, peerID, offset, limit)
+	pinfos, err := p.peerSvc.GetPeers()
 	if err != nil {
-		return peerMsgs, err
+		return nil, err
 	}
 
-	for _, msg := range msgs {
-		peerMsgs = append(peerMsgs, PeerMessage{
-			ID:         msg.Id,
-			Type:       convMsgType(msg.Type),
-			SenderID:   peer.ID(msg.SenderId),
-			ReceiverID: peer.ID(msg.ReceiverId),
-			Payload:    msg.Payload,
-			Timestamp:  msg.Timestamp,
-			Lamportime: msg.Lamportime,
+	for _, pi := range pinfos {
+		peers = append(peers, PeerInfo{
+			PeerID:   pi.PeerID,
+			Nickname: pi.Nickname,
+			AddTs:    pi.AddTs,
+			AccessTs: pi.AccessTs,
 		})
 	}
 
-	return peerMsgs, nil
-}
-
-func (p *PeerSvc) SendTextMessage(ctx context.Context, peerID peer.ID, msg string) error {
-	return p.msgSvc.SendTextMessage(ctx, peerID, msg)
-}
-
-func (p *PeerSvc) SendGroupInviteMessage(ctx context.Context, peerID peer.ID, groupID string) error {
-	return p.msgSvc.SendGroupInviteMessage(ctx, peerID, groupID)
-}
-
-func convMsgType(mtype pb.Message_Type) MsgType {
-	switch mtype {
-	case pb.Message_TEXT:
-		return MsgTypeText
-	case pb.Message_AUDIO:
-		return MsgTypeAudio
-	case pb.Message_VIDEO:
-		return MsgTypeVideo
-	case pb.Message_INVITE:
-		return MsgTypeInvite
-	default:
-		return MsgTypeText
-	}
+	return peers, nil
 }

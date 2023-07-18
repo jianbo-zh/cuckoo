@@ -13,5 +13,7 @@ func Daemon(config Config) {
 	app.Get("/api/test/*", handler.TestHandler())
 	app.Get("/api/sendmsg/:peerid/:msgtxt", handler.SendMsgHandler())
 	app.Get("/api/getmsgs/:peerid", handler.GetMsgsHandler())
+	app.Get("/api/addpeer/:peerid/:nickname", handler.GetAddPeerHandler())
+	app.Get("/api/getpeers", handler.GetGetPeersHandler())
 	log.Fatal(app.Listen(fmt.Sprintf("%s:%d", config.Host, config.Port)))
 }

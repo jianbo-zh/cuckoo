@@ -23,7 +23,8 @@ message DataSummary  {
 	string head_id = 2;
 	string tail_id = 3;
 	int32  length = 4;
-    bool   is_end = 5;
+    uint64 lamptime = 5;
+    bool   is_end = 6;
 }
 
 // 第二步，区间HASH

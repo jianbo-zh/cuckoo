@@ -63,7 +63,7 @@ func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus)
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
-	// 订阅同步Peer的消息
+	// 订阅：同步Peer的消息
 	gsubs, err := eventBus.Subscribe([]any{new(gevent.EvtSyncPeers)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
@@ -72,7 +72,7 @@ func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus)
 		go msgsvc.handleAppSubs(context.Background(), gsubs)
 	}
 
-	// 订阅开始拉取离线消息事件
+	// 订阅：开始拉取离线消息事件
 	hsubs, err := lhost.EventBus().Subscribe([]any{new(event.EvtLocalAddressesUpdated)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe error: %v", err)
@@ -95,7 +95,10 @@ func (p *PeerMessageSvc) handleAppSubs(ctx context.Context, sub event.Subscripti
 				return
 			}
 
+			fmt.Println("start sync peers message")
+
 			if ev, ok := e.(gevent.EvtSyncPeers); ok {
+				fmt.Printf("peerIDs: %v", ev.PeerIDs)
 				for _, peerID := range ev.PeerIDs {
 					p.RunSync(peerID)
 				}
@@ -172,16 +175,11 @@ func (p *PeerMessageSvc) Handler(stream network.Stream) {
 	fmt.Println("receive ->", string(msg.Payload))
 }
 
-func (p *PeerMessageSvc) HasMessage(peerID string, msgID string) (bool, error) {
-	peerID1, err := peer.Decode(peerID)
-	if err != nil {
-		return false, err
-	}
-
-	return p.data.HasMessage(context.Background(), peerID1, msgID)
+func (p *PeerMessageSvc) HasMessage(peerID peer.ID, msgID string) (bool, error) {
+	return p.data.HasMessage(context.Background(), peerID, msgID)
 }
 
-func (p *PeerMessageSvc) SaveMessage(peerID string, msgID string, msgData []byte) error {
+func (p *PeerMessageSvc) SaveMessage(peerID peer.ID, msgID string, msgData []byte) error {
 	var pmsg pb.Message
 	if err := proto.Unmarshal(msgData, &pmsg); err != nil {
 		return err
@@ -190,12 +188,7 @@ func (p *PeerMessageSvc) SaveMessage(peerID string, msgID string, msgData []byte
 		return fmt.Errorf("msg id not equal")
 	}
 
-	peerID1, err := peer.Decode(peerID)
-	if err != nil {
-		return err
-	}
-
-	if err = p.data.SaveMessage(context.Background(), peerID1, &pmsg); err != nil {
+	if err := p.data.SaveMessage(context.Background(), peerID, &pmsg); err != nil {
 		return err
 	}
 
@@ -212,7 +205,7 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 	}
 
 	pmsg := pb.Message{
-		Id:         fmt.Sprintf("%d_%s", lamportTime, hostID.String()),
+		Id:         msgID(lamportTime, hostID),
 		Type:       pb.Message_TEXT,
 		Payload:    []byte(msg),
 		SenderId:   []byte(hostID),
@@ -232,7 +225,7 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 		// if errors.Is(err, network.ErrNoConn) {
 		// 	msgdata, _ := proto.Marshal(&pmsg)
 		// 	p.emitters.evtPushOfflineMessage.Emit(gevent.PushOfflineMessageEvt{
-		// 		ToPeerID: peerID.String(),
+		// 		ToPeerID: peerID,
 		// 		MsgID:    pmsg.Id,
 		// 		MsgData:  msgdata,
 		// 	})
@@ -278,7 +271,7 @@ func (p *PeerMessageSvc) SendGroupInviteMessage(ctx context.Context, peerID peer
 	}
 
 	pmsg := pb.Message{
-		Id:         fmt.Sprintf("%d_%s", lamportTime, hostID.String()),
+		Id:         msgID(lamportTime, hostID),
 		Type:       pb.Message_INVITE,
 		Payload:    []byte(groupID),
 		SenderId:   []byte(hostID),

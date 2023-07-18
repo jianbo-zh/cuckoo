@@ -97,9 +97,9 @@ func (pcli *PeerDepositClient) handPushEvent(ev gevent.PushOfflineMessageEvt) er
 func (pcli *PeerDepositClient) handPullEvent(ev gevent.PullOfflineMessageEvt) error {
 
 	ctx := context.Background()
-	peerID := pcli.host.ID().String()
+	hostID := pcli.host.ID()
 
-	depositPeerID, err := pcli.getDepositPeer(context.Background(), peerID)
+	depositPeerID, err := pcli.getDepositPeer(context.Background(), hostID)
 	if err != nil {
 		return fmt.Errorf("get deposit peer error: %v", err)
 	}
@@ -120,13 +120,13 @@ func (pcli *PeerDepositClient) handPullEvent(ev gevent.PullOfflineMessageEvt) er
 			return err
 		}
 
-		exists, err := ev.HasMessage(dmsg.FromPeerId, dmsg.MsgId)
+		exists, err := ev.HasMessage(peer.ID(dmsg.FromPeerId), dmsg.MsgId)
 		if err != nil {
 			return err
 		}
 
 		if !exists {
-			if err = ev.SaveMessage(dmsg.FromPeerId, dmsg.MsgId, dmsg.MsgData); err != nil {
+			if err = ev.SaveMessage(peer.ID(dmsg.FromPeerId), dmsg.MsgId, dmsg.MsgData); err != nil {
 				return err
 			}
 		}
@@ -137,8 +137,8 @@ func (pcli *PeerDepositClient) handPullEvent(ev gevent.PullOfflineMessageEvt) er
 	}
 }
 
-func (pcli *PeerDepositClient) Push(toPeerID string, msgID string, msgData []byte) error {
-	fromPeerID := pcli.host.ID().String()
+func (pcli *PeerDepositClient) Push(toPeerID peer.ID, msgID string, msgData []byte) error {
+	fromPeerID := pcli.host.ID()
 
 	depositPeerID, err := pcli.getDepositPeer(context.Background(), toPeerID)
 	if err != nil {
@@ -154,8 +154,8 @@ func (pcli *PeerDepositClient) Push(toPeerID string, msgID string, msgData []byt
 	defer pw.Close()
 
 	dmsg := pb.DepositMessage{
-		FromPeerId:  fromPeerID,
-		ToPeerId:    toPeerID,
+		FromPeerId:  []byte(fromPeerID),
+		ToPeerId:    []byte(toPeerID),
 		MsgId:       msgID,
 		MsgData:     msgData,
 		DepositTime: time.Now().Unix(),
@@ -182,16 +182,12 @@ func (pcli *PeerDepositClient) findPeers(ctx context.Context, peerCh <-chan peer
 	}
 }
 
-func (pcli *PeerDepositClient) getDepositPeer(ctx context.Context, toPeerID string) (peer.ID, error) {
+func (pcli *PeerDepositClient) getDepositPeer(ctx context.Context, toPeerID peer.ID) (peer.ID, error) {
 	if len(pcli.depositPeers) == 0 {
 		return "", fmt.Errorf("not found deposit service peer")
 	}
 
-	peerID0, err := peer.Decode(toPeerID)
-	if err != nil {
-		return "", fmt.Errorf("peer decode peerid error: %v", err)
-	}
-	peerKey0 := keyspace.XORKeySpace.Key([]byte(peerID0))
+	peerKey0 := keyspace.XORKeySpace.Key([]byte(toPeerID))
 
 	var findPeer peer.ID
 	var minDistance int64

@@ -119,6 +119,11 @@ func (p *PeerMessageSvc) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncM
 		return err
 	}
 
+	err := p.data.MergeLamportTime(context.Background(), peerID, summary.Lamptime)
+	if err != nil {
+		return err
+	}
+
 	summary2, err := p.getMessageSummary(peerID)
 	if err != nil {
 		return err
@@ -370,10 +375,17 @@ func (p *PeerMessageSvc) getMessageSummary(peerID peer.ID) (*pb.DataSummary, err
 		return nil, err
 	}
 
+	// lamport time
+	lamptime, err := p.data.GetLamportTime(ctx, peerID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.DataSummary{
-		HeadId: headID,
-		TailId: tailID,
-		Length: length,
+		HeadId:   headID,
+		TailId:   tailID,
+		Length:   length,
+		Lamptime: lamptime,
 	}, nil
 }
 

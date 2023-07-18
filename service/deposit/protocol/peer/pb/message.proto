@@ -4,8 +4,8 @@ package deposit.pb;
 
 message DepositMessage {
     string id = 1;
-    string from_peer_id = 2;
-    string to_peer_id = 3;
+    bytes from_peer_id = 2;
+    bytes to_peer_id = 3;
     string msg_id = 4;
     bytes  msg_data = 5;
     int64  deposit_time = 6;

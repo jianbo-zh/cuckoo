@@ -24,6 +24,9 @@ type PeerServiceIface interface {
 	GetMessages(context.Context, peer.ID, int, int) ([]PeerMessage, error)
 	SendTextMessage(context.Context, peer.ID, string) error
 	SendGroupInviteMessage(context.Context, peer.ID, string) error
+
+	AddPeer(context.Context, peer.ID, string) error
+	GetPeers(context.Context) ([]PeerInfo, error)
 }
 
 type MsgType int
@@ -43,4 +46,11 @@ type PeerMessage struct {
 	Payload    []byte  `json:"payload"`
 	Timestamp  int64   `json:"timestamp"`
 	Lamportime uint64  `json:"lamportime"`
+}
+
+type PeerInfo struct {
+	PeerID   peer.ID
+	Nickname string
+	AddTs    int64
+	AccessTs int64
 }

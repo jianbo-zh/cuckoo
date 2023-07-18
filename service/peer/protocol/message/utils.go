@@ -1,8 +1,10 @@
 package message
 
 import (
+	"fmt"
 	"net"
 
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 )
@@ -34,4 +36,8 @@ func inAddrRange(ip net.IP, ipnets []*net.IPNet) bool {
 	}
 
 	return false
+}
+
+func msgID(lamptime uint64, peerID peer.ID) string {
+	return fmt.Sprintf("%019d_%s", lamptime, peerID.String())
 }

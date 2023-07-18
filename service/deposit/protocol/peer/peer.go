@@ -24,8 +24,8 @@ var log = logging.Logger("deposit")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	PUSH_ID = "/dchat/deposit/peer/push/1.0.0"
-	PULL_ID = "/dchat/deposit/peer/pull/1.0.0"
+	PUSH_ID = "/dchat/deposit/peer/push/1.0.0" // 寄存服务
+	PULL_ID = "/dchat/deposit/peer/pull/1.0.0" // 获取服务
 
 	ServiceName  = "deposit.peer"
 	maxMsgSize   = 4 * 1024  // 4K
@@ -100,7 +100,7 @@ func (pds *PeerDepositService) PullHandler(stream network.Stream) {
 	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
 	pw := pbio.NewDelimitedWriter(stream)
 
-	remotePeerID := stream.Conn().RemotePeer().String()
+	remotePeerID := stream.Conn().RemotePeer()
 	lastID, err := pds.datastore.GetLastAckID(remotePeerID)
 	if err != nil {
 		log.Errorf("get last ack id error: %v", err)
