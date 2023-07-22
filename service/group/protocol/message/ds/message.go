@@ -38,7 +38,7 @@ func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID strin
 	return &msg, nil
 }
 
-func (m *MessageDs) PutMessage(ctx context.Context, groupID GroupID, msg *msgpb.GroupMsg) error {
+func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb.GroupMsg) error {
 
 	msgPrefix := []string{"dchat", "group", string(groupID), "message"}
 
@@ -104,7 +104,7 @@ func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb
 	return msgs, nil
 }
 
-func (m *MessageDs) GetMessageHeadID(ctx context.Context, groupID GroupID) (string, error) {
+func (m *MessageDs) GetMessageHead(ctx context.Context, groupID GroupID) (string, error) {
 	headKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "head"})
 	head, err := m.Get(ctx, headKey)
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
@@ -113,7 +113,7 @@ func (m *MessageDs) GetMessageHeadID(ctx context.Context, groupID GroupID) (stri
 
 	return string(head), nil
 }
-func (m *MessageDs) GetMessageTailID(ctx context.Context, groupID GroupID) (string, error) {
+func (m *MessageDs) GetMessageTail(ctx context.Context, groupID GroupID) (string, error) {
 	tailKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "tail"})
 	tail, err := m.Get(ctx, tailKey)
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {

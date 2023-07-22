@@ -4,7 +4,7 @@ import (
 	"context"
 
 	ds "github.com/ipfs/go-datastore"
-	msgpb "github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
 )
 
 type MessageIface interface {
@@ -14,11 +14,15 @@ type MessageIface interface {
 	MergeLamportTime(context.Context, GroupID, uint64) error
 	TickLamportTime(context.Context, GroupID) (uint64, error)
 
-	GetMessage(context.Context, GroupID, string) (*msgpb.GroupMsg, error)
-	PutMessage(context.Context, GroupID, *msgpb.GroupMsg) error
-	ListMessages(context.Context, GroupID) ([]*msgpb.GroupMsg, error)
+	GetMessage(context.Context, GroupID, string) (*pb.GroupMsg, error)
+	SaveMessage(context.Context, GroupID, *pb.GroupMsg) error
+	ListMessages(context.Context, GroupID) ([]*pb.GroupMsg, error)
 
-	GetMessageHeadID(context.Context, GroupID) (string, error)
-	GetMessageTailID(context.Context, GroupID) (string, error)
+	GetMessageHead(context.Context, GroupID) (string, error)
+	GetMessageTail(context.Context, GroupID) (string, error)
 	GetMessageLength(context.Context, GroupID) (int32, error)
+
+	GetRangeMessages(string, string, string) ([]*pb.GroupMsg, error)
+	GetRangeIDs(string, string, string) ([]string, error)
+	GetMessagesByIDs(string, []string) ([]*pb.GroupMsg, error)
 }

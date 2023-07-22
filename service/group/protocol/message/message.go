@@ -17,6 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
+	"google.golang.org/protobuf/proto"
 )
 
 var log = logging.Logger("message")
@@ -98,7 +99,7 @@ func (m *MessageService) messageHandler(s network.Stream) {
 	if err != nil {
 		if errors.Is(err, ipfsds.ErrNotFound) {
 			// 保存消息
-			err = m.data.PutMessage(context.Background(), ds.GroupID(msg.GroupId), &msg)
+			err = m.data.SaveMessage(context.Background(), ds.GroupID(msg.GroupId), &msg)
 			if err != nil {
 				log.Errorf("save group message error: %v", err)
 			}
@@ -114,6 +115,45 @@ func (m *MessageService) messageHandler(s network.Stream) {
 		}
 
 		return
+	}
+}
+
+func (m *MessageService) syncHandler(stream network.Stream) {
+	defer stream.Close()
+
+	// 获取同步GroupID
+	var syncmsg pb.GroupSyncMessage
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	if err := rd.ReadMsg(&syncmsg); err != nil {
+		log.Errorf("read msg error: %v", err)
+		return
+	}
+
+	groupID := syncmsg.GroupId
+
+	// 发送同步摘要
+	summary, err := m.getMessageSummary(groupID)
+	if err != nil {
+		return
+	}
+
+	bs, err := proto.Marshal(summary)
+	if err != nil {
+		return
+	}
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err = wt.WriteMsg(&pb.GroupSyncMessage{
+		Type:    pb.GroupSyncMessage_SUMMARY,
+		Payload: bs,
+	}); err != nil {
+		return
+	}
+
+	// 后台同步处理
+	err = m.loopSync(groupID, stream, rd, wt)
+	if err != nil {
+		log.Errorf("loop sync error: %v", err)
 	}
 }
 
@@ -140,10 +180,7 @@ func (m *MessageService) subscribeHandler(ctx context.Context, sub event.Subscri
 			m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
 			// 启动同步
-			err := m.sync(ctx, evt.GroupID, evt.PeerID)
-			if err != nil {
-				log.Errorf("log admin operation error: %v", err)
-			}
+			m.RunSync(evt.GroupID, evt.PeerID)
 
 		case <-ctx.Done():
 			return

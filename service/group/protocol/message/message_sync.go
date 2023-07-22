@@ -4,13 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/ipfs/go-datastore/query"
-	"github.com/jianbo-zh/dchat/service/group/protocol/message/ds"
 	"github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -33,472 +28,388 @@ import (
 // 3，发送区间消息KEY
 // 4，发送对方没有的消息ID
 
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/sync.proto=./pb pb/sync.proto
+func (m *MessageService) RunSync(groupID string, peerID peer.ID) {
 
-func (m *MessageService) sync(ctx context.Context, groupID string, peerID peer.ID) error {
-	stream, err := m.host.NewStream(ctx, peerID, ID)
+	stream, err := m.host.NewStream(context.Background(), peerID, SYNC_ID)
 	if err != nil {
-		return nil
+		return
 	}
+	defer stream.Close()
 
-	totalmsg, err := m.totalMsg(groupID)
-	if err != nil {
-		return err
-	}
-
-	pbtotalmsg := pb.DataTotalLen{
+	wt := pbio.NewDelimitedWriter(stream)
+	if err = wt.WriteMsg(&pb.GroupSyncMessage{
+		Type:    pb.GroupSyncMessage_INIT,
 		GroupId: groupID,
-		HeadId:  totalmsg.HeadId,
-		TailId:  totalmsg.TailId,
-		Length:  totalmsg.Length,
+	}); err != nil {
+		return
 	}
 
-	bs, err := proto.Marshal(&pbtotalmsg)
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+
+	err = m.loopSync(groupID, stream, rd, wt)
 	if err != nil {
-		return err
+		log.Errorf("loop sync error: %v", err)
 	}
+}
 
-	syncmsg := pb.SyncMessage{
-		GroupId: groupID,
-		Step:    pb.SyncMessage_TOTAL_LEN,
-		Payload: bs,
-	}
+func (m *MessageService) loopSync(groupID string, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
 
-	wb := pbio.NewDelimitedWriter(stream)
-	err = wb.WriteMsg(&syncmsg)
-	if err != nil {
-		return err
-	}
+	var syncmsg pb.GroupSyncMessage
 
 	for {
-		// todo
+		syncmsg.Reset()
+
+		// 设置读取超时，
+		stream.SetReadDeadline(time.Now().Add(5 * StreamTimeout))
+		if err := rd.ReadMsg(&syncmsg); err != nil {
+			return err
+		}
+		stream.SetReadDeadline(time.Time{})
+
+		switch syncmsg.Type {
+		case pb.GroupSyncMessage_SUMMARY:
+			if err := m.handleSyncSummary(groupID, &syncmsg, wt); err != nil {
+				return err
+			}
+
+		case pb.GroupSyncMessage_RANGE_HASH:
+			if err := m.handleSyncRangeHash(groupID, &syncmsg, wt); err != nil {
+				return err
+			}
+
+		case pb.GroupSyncMessage_RANGE_IDS:
+			if err := m.handleSyncRangeIDs(groupID, &syncmsg, wt); err != nil {
+				return err
+			}
+
+		case pb.GroupSyncMessage_PUSH_MSG:
+			if err := m.handleSyncPushMsg(groupID, &syncmsg); err != nil {
+				return err
+			}
+
+		case pb.GroupSyncMessage_PULL_MSG:
+			if err := m.handleSyncPullMsg(groupID, &syncmsg, wt); err != nil {
+				return err
+			}
+
+		case pb.GroupSyncMessage_DONE:
+			return nil
+
+		default:
+			// no defined
+		}
 	}
 }
 
-func (m *MessageService) syncHandler(s network.Stream) {
+func (m *MessageService) handleSyncSummary(groupID string, syncmsg *pb.GroupSyncMessage, wt pbio.WriteCloser) error {
 
-	err := s.SetReadDeadline(time.Now().Add(StreamTimeout))
+	var remoteSummary pb.DataSummary
+	if err := proto.Unmarshal(syncmsg.Payload, &remoteSummary); err != nil {
+		return err
+	}
+
+	err := m.data.MergeLamportTime(context.Background(), groupID, remoteSummary.Lamptime)
 	if err != nil {
-		log.Errorf("set read deadline error: %v", err)
-		return
+		return err
 	}
 
-	rb := pbio.NewDelimitedReader(s, maxMsgSize)
-	var msg1 pb.SyncMessage
-	if err := rb.ReadMsg(&msg1); err != nil {
-		log.Errorf("read pb msg error: %v", err)
-		return
+	localSummary, err := m.getMessageSummary(groupID)
+	if err != nil {
+		return err
 	}
-	s.SetReadDeadline(time.Time{})
 
-	switch msg1.Step {
-	case pb.SyncMessage_TOTAL_LEN:
-
-		var dataTotal pb.DataTotalLen
-		if err := proto.Unmarshal(msg1.Payload, &dataTotal); err != nil {
-			log.Errorf("unmarshal pb data total len error: %v", err)
-			return
-		}
-
-		// 同样返回total len
-		dataTotal2, err := m.totalMsg(msg1.GroupId)
+	if !remoteSummary.IsEnd {
+		// 结束标记，避免无限循环
+		localSummary.IsEnd = true
+		payload, err := proto.Marshal(localSummary)
 		if err != nil {
-			log.Errorf("get group total msg error: %v", err)
-			return
-		}
-		dtbs, err := proto.Marshal(dataTotal2)
-		if err != nil {
-			log.Errorf("marshal data total error: %v", err)
-			return
+			return err
 		}
 
-		wb := pbio.NewDelimitedWriter(s)
-		err = wb.WriteMsg(&pb.SyncMessage{
-			GroupId: msg1.GroupId,
-			Payload: dtbs,
+		if err = wt.WriteMsg(&pb.GroupSyncMessage{
+			Type:    pb.GroupSyncMessage_SUMMARY,
+			Payload: payload,
+		}); err != nil {
+			return err
+		}
+	}
+
+	if localSummary.TailId > remoteSummary.TailId {
+		// 如果有最新的数据则发送给对方
+		msgs, err := m.getRangeMessages(groupID, remoteSummary.TailId, localSummary.TailId)
+		if err != nil {
+			return err
+		}
+
+		for _, msg := range msgs {
+			bs, err := proto.Marshal(msg)
+			if err != nil {
+				return err
+			}
+
+			if err = wt.WriteMsg(&pb.GroupSyncMessage{
+				Type:    pb.GroupSyncMessage_PUSH_MSG,
+				Payload: bs,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	if localSummary.HeadId > remoteSummary.HeadId {
+		// 当前数据要少些，则作为同步主动方
+		startID := localSummary.HeadId
+		endID := remoteSummary.TailId
+
+		if localSummary.TailId < remoteSummary.TailId {
+			endID = localSummary.TailId
+		}
+
+		hash, err := m.rangeHash(groupID, startID, endID)
+		if err != nil {
+			return err
+		}
+
+		bs, err := proto.Marshal(&pb.DataRangeHash{
+			StartId: startID,
+			EndId:   endID,
+			Hash:    hash,
 		})
 		if err != nil {
-			log.Errorf("send group total msg error: %v", err)
-			return
+			return err
 		}
 
-		if dataTotal2.TailId > dataTotal.TailId {
-			// 如果有最新的数据则发送给对方
-			pushmsg, err := m.getRangeMessages(dataTotal.GroupId, dataTotal.TailId, dataTotal2.TailId)
-			if err != nil {
-				log.Errorf("get range messages error: %v", err)
-				return
-			}
-
-			bs, err := proto.Marshal(pushmsg)
-			if err != nil {
-				log.Errorf("marshal push msg error: %v", err)
-				return
-			}
-
-			syncmsg := pb.SyncMessage{
-				GroupId: msg1.GroupId,
-				Step:    pb.SyncMessage_PUSH_MSG,
-				Payload: bs,
-			}
-
-			err = wb.WriteMsg(&syncmsg)
-			if err != nil {
-				return
-			}
+		if err = wt.WriteMsg(&pb.GroupSyncMessage{
+			Type:    pb.GroupSyncMessage_RANGE_HASH,
+			Payload: bs,
+		}); err != nil {
+			return err
 		}
-
-		if dataTotal2.HeadId > dataTotal.HeadId {
-			// 当前数据要少些，则作为同步主动方
-			startID := dataTotal.HeadId
-			endID := dataTotal.TailId
-			if dataTotal2.TailId < dataTotal.TailId {
-				endID = dataTotal2.TailId
-			}
-
-			hash, err := m.rangeHash(msg1.GroupId, startID, endID)
-			if err != nil {
-				log.Errorf("range hash error: %v", err)
-				return
-			}
-
-			bs, err := proto.Marshal(&pb.DataRangeHash{
-				GroupId: msg1.GroupId,
-				StartId: startID,
-				EndId:   endID,
-				Hash:    hash,
-			})
-			if err != nil {
-				log.Errorf("pb marshal error: %v", err)
-				return
-			}
-
-			err = wb.WriteMsg(&pb.SyncMessage{
-				GroupId: msg1.GroupId,
-				Step:    pb.SyncMessage_RANGE_HASH,
-				Payload: bs,
-			})
-			if err != nil {
-				log.Errorf("write msg error: %v", err)
-				return
-			}
-		}
-
-	case pb.SyncMessage_RANGE_HASH:
-		// 收到计算hash
-
-		var hashmsg pb.DataRangeHash
-		if err := proto.Unmarshal(msg1.Payload, &hashmsg); err != nil {
-			log.Errorf("unmarshal pb data total len error: %v", err)
-			return
-		}
-
-		// 我也计算hash
-		hashBs, err := m.rangeHash(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
-		if err != nil {
-			log.Errorf("range hash error: %v", err)
-		}
-
-		if !bytes.Equal(hashmsg.Hash, hashBs) {
-			// hash 不同，则消息不一致，则同步消息ID
-			hashidsmsg, err := m.getRangeMsgIDs(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
-			if err != nil {
-				log.Errorf("get range msg ids error: %v", err)
-				return
-			}
-
-			bs, err := proto.Marshal(hashidsmsg)
-			if err != nil {
-				log.Errorf("marshal hash id message error: %v", err)
-				return
-			}
-
-			syncmsg := pb.SyncMessage{
-				GroupId: msg1.GroupId,
-				Step:    pb.SyncMessage_RANGE_IDS,
-				Payload: bs,
-			}
-
-			wb := pbio.NewDelimitedWriter(s)
-			if err = wb.WriteMsg(&syncmsg); err != nil {
-				log.Errorf("send group total msg error: %v", err)
-				return
-			}
-
-		}
-
-	case pb.SyncMessage_RANGE_IDS:
-		var idmsg pb.DataRangeIDs
-		if err := proto.Unmarshal(msg1.Payload, &idmsg); err != nil {
-			log.Errorf("unmarshal pb data total len error: %v", err)
-			return
-		}
-
-		hashidsmsg, err := m.getRangeMsgIDs(idmsg.GroupId, idmsg.StartId, idmsg.EndId)
-		if err != nil {
-			log.Errorf("get range message ids error: %v", err)
-			return
-		}
-
-		// 比较不同点
-		var moreIDs []string
-		mapIds1 := make(map[string]struct{}, len(idmsg.Ids))
-		for _, id := range idmsg.Ids {
-			mapIds1[id] = struct{}{}
-		}
-		for _, id := range hashidsmsg.Ids {
-			if _, exists := mapIds1[id]; !exists {
-				moreIDs = append(moreIDs, id)
-			}
-		}
-
-		if len(moreIDs) > 0 {
-			pushmsg, err := m.getIDMessages(idmsg.GroupId, moreIDs)
-			if err != nil {
-				log.Errorf("get messages by ids error: %v", err)
-				return
-			}
-
-			bs, err := proto.Marshal(pushmsg)
-			if err != nil {
-				log.Errorf("marshal push message error: %v", err)
-				return
-			}
-
-			syncmsg := pb.SyncMessage{
-				GroupId: idmsg.GroupId,
-				Step:    pb.SyncMessage_PUSH_MSG,
-				Payload: bs,
-			}
-			wb := pbio.NewDelimitedWriter(s)
-			if err = wb.WriteMsg(&syncmsg); err != nil {
-				log.Errorf("send group total msg error: %v", err)
-				return
-			}
-		}
-
-	case pb.SyncMessage_PUSH_MSG:
-		var msgs pb.DataPushMsgs
-		if err := proto.Unmarshal(msg1.Payload, &msgs); err != nil {
-			log.Errorf("unmarshal pb data total len error: %v", err)
-			return
-		}
-
-		for _, bs := range msgs.Msgs {
-			var msg pb.GroupMsg
-			if err = proto.Unmarshal(bs, &msg); err != nil {
-				log.Errorf("unmarshal error: %v", err)
-				return
-			}
-
-			err = m.data.PutMessage(context.Background(), ds.GroupID(msg1.GroupId), &msg)
-			if err != nil {
-				log.Errorf("put message error: %v", err)
-				return
-			}
-		}
-
-	default:
-		// no defined
 	}
+
+	return nil
 }
 
-func (m *MessageService) totalMsg(groupID string) (*pb.DataTotalLen, error) {
+func (m *MessageService) handleSyncRangeHash(groupID string, syncmsg *pb.GroupSyncMessage, wt pbio.WriteCloser) error {
+	var hashmsg pb.DataRangeHash
+	if err := proto.Unmarshal(syncmsg.Payload, &hashmsg); err != nil {
+		return err
+	}
+
+	// 我也计算hash
+	hashBytes, err := m.rangeHash(groupID, hashmsg.StartId, hashmsg.EndId)
+	if err != nil {
+		log.Errorf("range hash error: %v", err)
+	}
+
+	if bytes.Equal(hashmsg.Hash, hashBytes) {
+		// hash相同，不需要再同步了
+		return wt.WriteMsg(&pb.GroupSyncMessage{Type: pb.GroupSyncMessage_DONE})
+	}
+
+	// hash 不同，则消息不一致，则同步消息ID
+	hashids, err := m.getRangeIDs(groupID, hashmsg.StartId, hashmsg.EndId)
+	if err != nil {
+		return err
+	}
+
+	bs, err := proto.Marshal(hashids)
+	if err != nil {
+		return err
+	}
+
+	if err = wt.WriteMsg(&pb.GroupSyncMessage{
+		Type:    pb.GroupSyncMessage_RANGE_IDS,
+		Payload: bs,
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MessageService) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyncMessage, wt pbio.WriteCloser) error {
+	var idmsg pb.DataRangeIDs
+	if err := proto.Unmarshal(syncmsg.Payload, &idmsg); err != nil {
+		return err
+	}
+
+	idmsg2, err := m.getRangeIDs(groupID, idmsg.StartId, idmsg.EndId)
+	if err != nil {
+		return err
+	}
+
+	// 比较不同点
+	mapIds := make(map[string]struct{}, len(idmsg.Ids))
+	mapIds2 := make(map[string]struct{}, len(idmsg.Ids))
+
+	for _, id := range idmsg.Ids {
+		mapIds[id] = struct{}{}
+	}
+
+	var moreIDs []string
+	for _, id := range idmsg2.Ids {
+		mapIds2[id] = struct{}{}
+		if _, exists := mapIds[id]; !exists {
+			moreIDs = append(moreIDs, id)
+		}
+	}
+
+	if len(moreIDs) > 0 {
+		msgs, err := m.getMessagesByIDs(groupID, moreIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, msg := range msgs {
+			bs, err := proto.Marshal(msg)
+			if err != nil {
+				return err
+			}
+
+			if err = wt.WriteMsg(&pb.GroupSyncMessage{
+				Type:    pb.GroupSyncMessage_PUSH_MSG,
+				Payload: bs,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	var lessIDs []string
+	for _, id := range idmsg.Ids {
+		if _, exists := mapIds2[id]; !exists {
+			lessIDs = append(lessIDs, id)
+		}
+	}
+
+	if len(lessIDs) > 0 {
+		bs, err := proto.Marshal(&pb.DataPullMsg{
+			Ids: lessIDs,
+		})
+		if err != nil {
+			return err
+		}
+
+		if err = wt.WriteMsg(&pb.GroupSyncMessage{
+			Type:    pb.GroupSyncMessage_PULL_MSG,
+			Payload: bs,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *MessageService) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncMessage) error {
+	var msg pb.GroupMsg
+	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
+		return err
+	}
+
+	if err := m.data.SaveMessage(context.Background(), groupID, &msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MessageService) handleSyncPullMsg(groupID string, syncmsg *pb.GroupSyncMessage, wt pbio.WriteCloser) error {
+	var pullmsg pb.DataPullMsg
+	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
+		return err
+	}
+
+	msgs, err := m.data.GetMessagesByIDs(groupID, pullmsg.Ids)
+	if err != nil {
+		return err
+	}
+
+	for _, msg := range msgs {
+		bs, err := proto.Marshal(msg)
+		if err != nil {
+			return err
+		}
+
+		if err = wt.WriteMsg(&pb.GroupSyncMessage{
+			Type:    pb.GroupSyncMessage_PUSH_MSG,
+			Payload: bs,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *MessageService) getMessageSummary(groupID string) (*pb.DataSummary, error) {
+
 	ctx := context.Background()
 
 	// headID
-	headID, err := m.data.GetMessageHeadID(ctx, ds.GroupID(groupID))
-	if err != nil {
-		return nil, err
-	}
-	// tailID
-	tailID, err := m.data.GetMessageTailID(ctx, ds.GroupID(groupID))
-	if err != nil {
-		return nil, err
-	}
-	// len
-	length, err := m.data.GetMessageLength(ctx, ds.GroupID(groupID))
+	headID, err := m.data.GetMessageHead(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.DataTotalLen{
-		GroupId: groupID,
-		HeadId:  headID,
-		TailId:  tailID,
-		Length:  length,
+	// tailID
+	tailID, err := m.data.GetMessageTail(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// len
+	length, err := m.data.GetMessageLength(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// lamport time
+	lamptime, err := m.data.GetLamportTime(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DataSummary{
+		HeadId:   headID,
+		TailId:   tailID,
+		Length:   length,
+		Lamptime: lamptime,
 	}, nil
 }
 
-type RangeFilter struct {
-	StartID      int64
-	EndID        int64
-	WithoutStart bool
+func (m *MessageService) getRangeMessages(groupID string, startID string, endID string) ([]*pb.GroupMsg, error) {
+	return m.data.GetRangeMessages(groupID, startID, endID)
 }
 
-func (rf *RangeFilter) Filter(e query.Entry) bool {
-	arr := strings.Split(e.Key, "_")
-	if len(arr) <= 1 {
-		return false
-	}
-
-	id, err := strconv.ParseInt(arr[0], 10, 64)
-	if err != nil {
-		return false
-	}
-
-	if id >= rf.StartID && id <= rf.EndID {
-
-		if rf.WithoutStart && id == rf.StartID {
-			return false
-		}
-
-		return true
-	}
-
-	return false
-}
-
-func (m *MessageService) getRangeMsgIDs(groupID string, startIDStr string, endIDStr string) (*pb.DataRangeIDs, error) {
-
-	startArr := strings.Split(startIDStr, "_")
-	if len(startArr) <= 1 {
-		return nil, fmt.Errorf("split start id error")
-	}
-	startID, _ := strconv.ParseInt(startArr[0], 10, 64)
-
-	endArr := strings.Split(endIDStr, "_")
-	if len(endArr) <= 1 {
-		return nil, fmt.Errorf("split end id error")
-	}
-	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
-
-	results, err := m.data.Query(context.Background(), query.Query{
-		Prefix:   "/dchat/group/" + groupID + "/message/logs/",
-		Filters:  []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
-		Orders:   []query.Order{query.OrderByKey{}},
-		KeysOnly: true,
-	})
+func (m *MessageService) rangeHash(groupID string, startID string, endID string) ([]byte, error) {
+	ids, err := m.data.GetRangeIDs(groupID, startID, endID)
 	if err != nil {
 		return nil, err
 	}
-
-	var ids []string
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, result.Error
-		}
-
-		ids = append(ids, result.Entry.Key)
-	}
-
-	dataPushMsg := pb.DataRangeIDs{
-		GroupId: groupID,
-		StartId: startIDStr, // lamportID
-		EndId:   endIDStr,
-	}
-
-	return &dataPushMsg, nil
-}
-
-func (m *MessageService) getRangeMessages(groupID string, startIDStr string, endIDStr string) (*pb.DataPushMsgs, error) {
-
-	startArr := strings.Split(startIDStr, "_")
-	if len(startArr) <= 1 {
-		return nil, fmt.Errorf("split start id error")
-	}
-	startID, _ := strconv.ParseInt(startArr[0], 10, 64)
-
-	endArr := strings.Split(endIDStr, "_")
-	if len(endArr) <= 1 {
-		return nil, fmt.Errorf("split end id error")
-	}
-	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
-
-	results, err := m.data.Query(context.Background(), query.Query{
-		Prefix:  "/dchat/group/" + groupID + "/message/logs/",
-		Filters: []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
-		Orders:  []query.Order{query.OrderByKey{}},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var msgs [][]byte
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, result.Error
-		}
-
-		msgs = append(msgs, result.Entry.Value)
-	}
-
-	dataPushMsg := pb.DataPushMsgs{
-		Msgs: msgs,
-	}
-
-	return &dataPushMsg, nil
-}
-
-func (m *MessageService) getIDMessages(groupID string, msgIDs []string) (*pb.DataPushMsgs, error) {
-
-	var bss [][]byte
-	for _, msgID := range msgIDs {
-		msg, err := m.data.GetMessage(context.Background(), ds.GroupID(groupID), msgID)
-		if err != nil {
-			return nil, err
-		}
-
-		bs, err := proto.Marshal(msg)
-		if err != nil {
-			return nil, err
-		}
-
-		bss = append(bss, bs)
-	}
-
-	pushmsg := pb.DataPushMsgs{
-		Msgs: bss,
-	}
-
-	return &pushmsg, nil
-}
-
-func (m *MessageService) rangeHash(groupID string, startIDStr string, endIDStr string) ([]byte, error) {
-
-	startArr := strings.Split(startIDStr, "_")
-	if len(startArr) <= 1 {
-		return nil, fmt.Errorf("split start id error")
-	}
-	startID, _ := strconv.ParseInt(startArr[0], 10, 64)
-
-	endArr := strings.Split(endIDStr, "_")
-	if len(endArr) <= 1 {
-		return nil, fmt.Errorf("split end id error")
-	}
-	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
-
-	results, err := m.data.Query(context.Background(), query.Query{
-		Prefix:   "/dchat/group/" + groupID + "/message/logs/",
-		Filters:  []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
-		Orders:   []query.Order{query.OrderByKey{}},
-		KeysOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	hash := sha1.New()
-
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, result.Error
-		}
-
-		if _, err = hash.Write([]byte(result.Entry.Key)); err != nil {
+	for _, id := range ids {
+		if _, err = hash.Write([]byte(id)); err != nil {
 			return nil, err
 		}
 	}
 
 	return hash.Sum(nil), nil
+}
+
+func (m *MessageService) getRangeIDs(groupID string, startID string, endID string) (*pb.DataRangeIDs, error) {
+	ids, err := m.data.GetRangeIDs(groupID, startID, endID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DataRangeIDs{
+		StartId: startID,
+		EndId:   endID,
+		Ids:     ids,
+	}, nil
+}
+
+func (m *MessageService) getMessagesByIDs(groupID string, msgIDs []string) ([]*pb.GroupMsg, error) {
+	return m.data.GetMessagesByIDs(groupID, msgIDs)
 }
