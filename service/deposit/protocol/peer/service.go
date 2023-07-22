@@ -17,7 +17,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/message.proto=./pb pb/message.proto
+//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/offline_msg.proto=./pb pb/offline_msg.proto
 
 var log = logging.Logger("deposit")
 
@@ -41,7 +41,7 @@ type PeerDepositService struct {
 	discv     *drouting.RoutingDiscovery
 }
 
-func NewPeerDepositService(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching) *PeerDepositService {
+func NewPeerDepositService(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching) (*PeerDepositService, error) {
 	gsvc := &PeerDepositService{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),
@@ -51,24 +51,22 @@ func NewPeerDepositService(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids
 	h.SetStreamHandler(PUSH_ID, gsvc.PushHandler)
 	h.SetStreamHandler(PULL_ID, gsvc.PullHandler)
 
-	return gsvc
-}
-
-func (pds *PeerDepositService) Run() error {
 	ctx := context.Background()
-	dutil.Advertise(ctx, pds.discv, rendezvous)
+	dutil.Advertise(ctx, gsvc.discv, rendezvous)
 
-	peerChan, err := pds.discv.FindPeers(ctx, rendezvous, discovery.Limit(100))
+	peerChan, err := gsvc.discv.FindPeers(ctx, rendezvous, discovery.Limit(100))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	go pds.findPeers(ctx, peerChan)
+	go gsvc.findPeers(ctx, peerChan)
 
-	return nil
+	return gsvc, nil
 }
 
 func (pds *PeerDepositService) PushHandler(stream network.Stream) {
+	log.Debugf("handle deposit message start")
+
 	err := stream.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
 		stream.Reset()
@@ -76,10 +74,12 @@ func (pds *PeerDepositService) PushHandler(stream network.Stream) {
 		return
 	}
 
+	log.Debugf("handle deposit message start")
+
 	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
 	defer rb.Close()
 
-	var dmsg pb.DepositMessage
+	var dmsg pb.OfflineMessage
 	if err = rb.ReadMsg(&dmsg); err != nil {
 		stream.Reset()
 		log.Errorf("read deposit peer message error: %v", err)
@@ -91,16 +91,20 @@ func (pds *PeerDepositService) PushHandler(stream network.Stream) {
 		log.Errorf("save deposit message error: %v", err)
 		return
 	}
+
+	log.Debugf("save deposit message success")
 }
 
 func (pds *PeerDepositService) PullHandler(stream network.Stream) {
+
+	remotePeerID := stream.Conn().RemotePeer()
+	log.Debugf("receive pull request, %s", remotePeerID.String())
 
 	defer stream.Close()
 
 	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
 	pw := pbio.NewDelimitedWriter(stream)
 
-	remotePeerID := stream.Conn().RemotePeer()
 	lastID, err := pds.datastore.GetLastAckID(remotePeerID)
 	if err != nil {
 		log.Errorf("get last ack id error: %v", err)
@@ -117,6 +121,10 @@ func (pds *PeerDepositService) PullHandler(stream network.Stream) {
 			return
 		}
 
+		if len(msgs) == 0 {
+			break
+		}
+
 		offset = offset + len(msgs)
 
 		for _, msg := range msgs {
@@ -124,6 +132,8 @@ func (pds *PeerDepositService) PullHandler(stream network.Stream) {
 				log.Errorf("io write message error: %v", err)
 				return
 			}
+
+			log.Debugf("send offline msg: %s", msg.MsgId)
 
 			if err = pr.ReadMsg(&ackmsg); err != nil {
 				log.Errorf("io read ack message error: %v", err)

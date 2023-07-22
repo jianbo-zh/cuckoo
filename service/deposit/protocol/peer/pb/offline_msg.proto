@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package deposit.pb;
+package depositmsg.pb;
 
-message DepositMessage {
+message OfflineMessage {
     string id = 1;
     bytes from_peer_id = 2;
     bytes to_peer_id = 3;

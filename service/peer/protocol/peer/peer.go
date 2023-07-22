@@ -28,7 +28,7 @@ type PeerPeerSvc struct {
 	}
 }
 
-func NewPeerPeerSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerPeerSvc, error) {
+func NewPeerSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerPeerSvc, error) {
 	var err error
 	peersvc := PeerPeerSvc{
 		host: lhost,

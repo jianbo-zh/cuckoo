@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
-	"github.com/jianbo-zh/dchat/service/group/datastore"
+	"github.com/jianbo-zh/dchat/service/group/protocol/admin/ds"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -20,7 +21,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/admin.proto=./pb pb/admin.proto
+//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/group_admin.proto=./pb pb/group_admin.proto
 
 var log = logging.Logger("message")
 
@@ -33,63 +34,42 @@ const (
 	maxMsgSize  = 4 * 1024 // 4K
 )
 
-type GroupAdminService struct {
+type AdminService struct {
 	host host.Host
 
-	datastore datastore.GroupIface
+	data ds.AdminIface
 
 	emitters struct {
 		evtSendAdminLog event.Emitter
 	}
 }
 
-func NewGroupAdminService(h host.Host, ds datastore.GroupIface, eventBus event.Bus) *GroupAdminService {
-	gsvc := &GroupAdminService{
-		host:      h,
-		datastore: ds,
-	}
-
-	h.SetStreamHandler(ID, gsvc.Handler)
-
+func NewAdminService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*AdminService, error) {
 	var err error
-	if gsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
-		log.Errorf("set emitter error: %v", err)
+
+	admsvc := &AdminService{
+		host: h,
+		data: ds.AdminWrap(ids),
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtSendAdminLog), new(gevent.EvtRecvAdminLog)}, eventbus.Name("adminlog"))
+	h.SetStreamHandler(ID, admsvc.Handler)
+
+	if admsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
+		return nil, fmt.Errorf("set emitter error: %v", err)
+	}
+
+	sub, err := eventBus.Subscribe([]any{new(gevent.EvtRecvAdminLog)}, eventbus.Name("adminlog"))
 	if err != nil {
-		log.Warnf("subscription failed. group admin server error: %v", err)
+		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
 	} else {
-		go gsvc.background(context.Background(), sub)
+		go admsvc.handleSubscribe(context.Background(), sub)
 	}
 
-	return gsvc
+	return admsvc, nil
 }
 
-func (grp *GroupAdminService) background(ctx context.Context, sub event.Subscription) {
-	defer sub.Close()
-
-	for {
-		select {
-		case e, ok := <-sub.Out():
-			if !ok {
-				return
-			}
-			ev := e.(gevent.EvtRecvAdminLog)
-			// 接收消息日志
-			err := grp.datastore.LogAdminOperation(ctx, grp.host.ID(), datastore.GroupID(ev.MsgData.GroupId), ev.MsgData)
-			if err != nil {
-				log.Errorf("log admin operation error: %v", err)
-			}
-
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (group *GroupAdminService) Handler(s network.Stream) {
+func (a *AdminService) Handler(s network.Stream) {
 	fmt.Println("handler....")
 	if err := s.Scope().SetService(ServiceName); err != nil {
 		log.Errorf("failed to attaching stream to identify service: %v", err)
@@ -112,7 +92,7 @@ func (group *GroupAdminService) Handler(s network.Stream) {
 
 	s.SetReadDeadline(time.Time{})
 
-	err := group.datastore.LogAdminOperation(context.Background(), group.host.ID(), datastore.GroupID(msg.GroupId), &msg)
+	err := a.data.LogAdminOperation(context.Background(), a.host.ID(), ds.GroupID(msg.GroupId), &msg)
 	if err != nil {
 		log.Errorf("log admin operation error: %v", err)
 		s.Reset()
@@ -120,13 +100,35 @@ func (group *GroupAdminService) Handler(s network.Stream) {
 	}
 }
 
-func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, memberIDs []peer.ID) (string, error) {
+func (a *AdminService) handleSubscribe(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
 
-	groupID := datastore.GroupID(uuid.NewString())
-	peerID := group.host.ID().String()
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				return
+			}
+			ev := e.(gevent.EvtRecvAdminLog)
+			// 接收消息日志
+			err := a.data.LogAdminOperation(ctx, a.host.ID(), ds.GroupID(ev.MsgData.GroupId), ev.MsgData)
+			if err != nil {
+				log.Errorf("log admin operation error: %v", err)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs []peer.ID) (string, error) {
+
+	groupID := ds.GroupID(uuid.NewString())
+	peerID := a.host.ID().String()
 
 	// 创建组
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return string(groupID), err
 	}
@@ -141,11 +143,11 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 		Signature:  []byte(""),
 	}
 
-	if err = group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &createLog); err != nil {
+	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &createLog); err != nil {
 		return string(groupID), err
 	}
 
-	if err := group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_CREATE,
 		MsgData: &createLog,
 	}); err != nil {
@@ -153,7 +155,7 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 	}
 
 	// 设置名称
-	lamportTime, err = group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err = a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return string(groupID), err
 	}
@@ -167,11 +169,11 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
-	if err = group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &nameLog); err != nil {
+	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &nameLog); err != nil {
 		return string(groupID), err
 	}
 
-	if err := group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_NAME,
 		MsgData: &nameLog,
 	}); err != nil {
@@ -180,7 +182,7 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 
 	// 设置成员
 	for _, memberID := range memberIDs {
-		lamportTime, err = group.datastore.TickLamportTime(ctx, groupID)
+		lamportTime, err = a.data.TickLamportTime(ctx, groupID)
 		if err != nil {
 			return string(groupID), err
 		}
@@ -198,7 +200,7 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 			Signature:  []byte(""),
 		}
 
-		if err = group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &memberLog); err != nil {
+		if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &memberLog); err != nil {
 			return string(groupID), err
 		}
 
@@ -208,13 +210,13 @@ func (group *GroupAdminService) CreateGroup(ctx context.Context, name string, me
 	return string(groupID), nil
 }
 
-func (group *GroupAdminService) DisbandGroup(ctx context.Context, groupID0 string) error {
+func (a *AdminService) DisbandGroup(ctx context.Context, groupID0 string) error {
 
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
 	// 创建组
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -230,11 +232,11 @@ func (group *GroupAdminService) DisbandGroup(ctx context.Context, groupID0 strin
 		Signature:  []byte(""),
 	}
 
-	if err = group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pbmsg); err != nil {
+	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
-	err = group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_DISBAND,
 		MsgData: &pbmsg,
 	})
@@ -245,32 +247,32 @@ func (group *GroupAdminService) DisbandGroup(ctx context.Context, groupID0 strin
 	return nil
 }
 
-func (group *GroupAdminService) ListGroups(ctx context.Context) ([]datastore.Group, error) {
-	return group.datastore.ListGroups(ctx)
+func (a *AdminService) ListGroups(ctx context.Context) ([]ds.Group, error) {
+	return a.data.ListGroups(ctx)
 }
 
-func (group *GroupAdminService) GroupName(ctx context.Context, groupID string) (string, error) {
+func (a *AdminService) GroupName(ctx context.Context, groupID string) (string, error) {
 
-	if remark, err := group.datastore.GroupRemark(ctx, datastore.GroupID(groupID)); err != nil {
+	if remark, err := a.data.GroupRemark(ctx, ds.GroupID(groupID)); err != nil {
 		return "", err
 
 	} else if remark != "" {
 		return remark, nil
 	}
 
-	return group.datastore.GroupName(ctx, datastore.GroupID(groupID))
+	return a.data.GroupName(ctx, ds.GroupID(groupID))
 }
 
-func (group *GroupAdminService) GroupNotice(ctx context.Context, groupID string) (string, error) {
-	return group.datastore.GroupNotice(ctx, datastore.GroupID(groupID))
+func (a *AdminService) GroupNotice(ctx context.Context, groupID string) (string, error) {
+	return a.data.GroupNotice(ctx, ds.GroupID(groupID))
 }
 
-func (group *GroupAdminService) SetGroupName(ctx context.Context, groupID0 string, name string) error {
+func (a *AdminService) SetGroupName(ctx context.Context, groupID0 string, name string) error {
 
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -286,11 +288,11 @@ func (group *GroupAdminService) SetGroupName(ctx context.Context, groupID0 strin
 		Signature:  []byte(""),
 	}
 
-	if err := group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
-	err = group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_NAME,
 		MsgData: &pbmsg,
 	})
@@ -301,12 +303,12 @@ func (group *GroupAdminService) SetGroupName(ctx context.Context, groupID0 strin
 	return nil
 }
 
-func (group *GroupAdminService) SetGroupNotice(ctx context.Context, groupID0 string, notice string) error {
+func (a *AdminService) SetGroupNotice(ctx context.Context, groupID0 string, notice string) error {
 
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -322,11 +324,11 @@ func (group *GroupAdminService) SetGroupNotice(ctx context.Context, groupID0 str
 		Signature:  []byte(""),
 	}
 
-	if err := group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
-	err = group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_NOTICE,
 		MsgData: &pbmsg,
 	})
@@ -337,22 +339,22 @@ func (group *GroupAdminService) SetGroupNotice(ctx context.Context, groupID0 str
 	return nil
 }
 
-func (group *GroupAdminService) SetGroupRemark(ctx context.Context, groupID string, remark string) error {
+func (a *AdminService) SetGroupRemark(ctx context.Context, groupID string, remark string) error {
 	// 只是更新本地
-	return group.datastore.SetGroupRemark(ctx, datastore.GroupID(groupID), remark)
+	return a.data.SetGroupRemark(ctx, ds.GroupID(groupID), remark)
 }
 
-func (group *GroupAdminService) InviteMember(ctx context.Context, groupID0 string, peerID0 peer.ID) error {
+func (a *AdminService) InviteMember(ctx context.Context, groupID0 string, peerID0 peer.ID) error {
 
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
 
-	return group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pb.AdminLog{
+	return a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pb.AdminLog{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
@@ -366,11 +368,11 @@ func (group *GroupAdminService) InviteMember(ctx context.Context, groupID0 strin
 	})
 }
 
-func (group *GroupAdminService) ApplyMember(ctx context.Context, groupID string, memberID peer.ID, lamportime uint64) error {
+func (a *AdminService) ApplyMember(ctx context.Context, groupID string, memberID peer.ID, lamportime uint64) error {
 
-	peerID := group.host.ID().String()
+	peerID := a.host.ID().String()
 
-	stream, err := group.host.NewStream(ctx, memberID, ID)
+	stream, err := a.host.NewStream(ctx, memberID, ID)
 	if err != nil {
 		return err
 	}
@@ -397,11 +399,11 @@ func (group *GroupAdminService) ApplyMember(ctx context.Context, groupID string,
 	return nil
 }
 
-func (group *GroupAdminService) ReviewMember(ctx context.Context, groupID0 string, memberID0 peer.ID, isAgree bool) error {
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+func (a *AdminService) ReviewMember(ctx context.Context, groupID0 string, memberID0 peer.ID, isAgree bool) error {
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -424,11 +426,11 @@ func (group *GroupAdminService) ReviewMember(ctx context.Context, groupID0 strin
 		Signature:  []byte(""),
 	}
 
-	if err := group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
-	err = group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_MEMBER,
 		MsgData: &pbmsg,
 	})
@@ -439,11 +441,11 @@ func (group *GroupAdminService) ReviewMember(ctx context.Context, groupID0 strin
 	return nil
 }
 
-func (group *GroupAdminService) RemoveMember(ctx context.Context, groupID0 string, memberID0 peer.ID) error {
-	groupID := datastore.GroupID(groupID0)
-	peerID := group.host.ID().String()
+func (a *AdminService) RemoveMember(ctx context.Context, groupID0 string, memberID0 peer.ID) error {
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
 
-	lamportTime, err := group.datastore.TickLamportTime(ctx, groupID)
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -461,11 +463,11 @@ func (group *GroupAdminService) RemoveMember(ctx context.Context, groupID0 strin
 		Signature:  []byte(""),
 	}
 
-	if err := group.datastore.LogAdminOperation(ctx, group.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
-	err = group.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.AdminLog_MEMBER,
 		MsgData: &pbmsg,
 	})
@@ -476,10 +478,10 @@ func (group *GroupAdminService) RemoveMember(ctx context.Context, groupID0 strin
 	return nil
 }
 
-func (group *GroupAdminService) ListMembers(ctx context.Context, groupID0 string) ([]Member, error) {
+func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]ds.Member, error) {
 
-	groupID := datastore.GroupID(groupID0)
-	memberLogs, err := group.datastore.GroupMemberLogs(ctx, groupID)
+	groupID := ds.GroupID(groupID0)
+	memberLogs, err := a.data.GroupMemberLogs(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -513,13 +515,13 @@ func (group *GroupAdminService) ListMembers(ctx context.Context, groupID0 string
 		}
 	}
 
-	var members []Member
+	var members []ds.Member
 	for memberID := range oks {
 		peerID, err := peer.Decode(memberID)
 		if err != nil {
 			return nil, err
 		}
-		members = append(members, Member{
+		members = append(members, ds.Member{
 			PeerID: peerID,
 		})
 	}

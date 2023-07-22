@@ -2,28 +2,20 @@ syntax = "proto3";
 
 package network.pb;
 
-message GroupConnect {
 
-  enum State {
-    CONNECT = 0;
-    UNCONNECT = 1;
-  }
-
-  string group_id = 1;
-
-  string peer_id_a = 2;
-
-  string peer_id_b = 3;
-
-  State state = 6;
-  
-  uint64 lamportime = 10;
+message ConnectInit {
+    string group_id = 1;
+    uint64 boot_ts = 2;
+    uint64 conn_times = 3;
 }
 
-// 群路由信息
-message GroupRouting {
+message ConnectMaintain {
+    enum Type {
+        Heartbeat = 0;
+        ConnectChange = 1;
+    }
 
-  string group_id = 1;
-
-  repeated GroupConnect connects = 2;
+    Type type = 1;
+    bytes payload = 2;
+    uint64 conn_times = 3;
 }

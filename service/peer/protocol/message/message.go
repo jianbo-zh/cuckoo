@@ -43,7 +43,7 @@ type PeerMessageSvc struct {
 	}
 }
 
-func NewPeerMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageSvc, error) {
+func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageSvc, error) {
 	var err error
 	msgsvc := PeerMessageSvc{
 		host: lhost,
@@ -219,21 +219,22 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 		return err
 	}
 
-	stream, err := p.host.NewStream(network.WithUseTransient(ctx, ""), peerID, ID)
+	stream, err := p.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ID)
 	if err != nil {
-		// // if not connect
-		// if errors.Is(err, network.ErrNoConn) {
-		// 	msgdata, _ := proto.Marshal(&pmsg)
-		// 	p.emitters.evtPushOfflineMessage.Emit(gevent.PushOfflineMessageEvt{
-		// 		ToPeerID: peerID,
-		// 		MsgID:    pmsg.Id,
-		// 		MsgData:  msgdata,
-		// 	})
+		// 连接失败，则走离线服务
+		msgdata, _ := proto.Marshal(&pmsg)
+		err = p.emitters.evtPushOfflineMessage.Emit(gevent.PushOfflineMessageEvt{
+			ToPeerID: peerID,
+			MsgID:    pmsg.Id,
+			MsgData:  msgdata,
+		})
+		if err != nil {
+			return fmt.Errorf("push offline error: %v", err)
+		}
 
-		// 	return nil
-		// }
+		fmt.Println("emit offline msg ->", string(pmsg.Payload))
 
-		return err
+		return nil
 	}
 
 	pw := pbio.NewDelimitedWriter(stream)

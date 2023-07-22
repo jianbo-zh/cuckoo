@@ -3,7 +3,6 @@ package event
 import (
 	admpb "github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
 	msgpb "github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
-	networkpb "github.com/jianbo-zh/dchat/service/group/protocol/network/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -22,6 +21,28 @@ type EvtForwardGroupMsg struct {
 	MsgData *msgpb.GroupMsg
 }
 
-type EvtGroupPeerConnectChange struct {
-	MsgData *networkpb.GroupConnect
+type EvtGroupConnectChange struct {
+	GroupID     string
+	PeerID      peer.ID
+	IsConnected bool
+}
+
+type EvtGroupsInit struct {
+	Groups []struct {
+		GroupID string
+		PeerIDs []peer.ID
+	}
+}
+
+type EvtGroupsChange struct {
+	DeleteGroups []string
+	AddGroups    []struct {
+		GroupID string
+		PeerIDs []peer.ID
+	}
+}
+
+type EvtGroupMemberChange struct {
+	GroupID string
+	PeerIDs []peer.ID
 }

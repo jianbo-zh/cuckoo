@@ -2,35 +2,41 @@ package deposit
 
 import (
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/internal/host"
-	"github.com/jianbo-zh/dchat/service/deposit/datastore"
 	"github.com/jianbo-zh/dchat/service/deposit/protocol/peer"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 var depositsvc *DepositService
 
 type DepositService struct {
-	datastore datastore.DepositIface
+	isEnableService bool
 
 	service *peer.PeerDepositService
-
-	client *peer.PeerDepositClient
+	client  *peer.PeerDepositClient
 }
 
-func Init(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ev event.Bus) (*DepositService, error) {
-	depositDs := datastore.DepositWrap(ids)
+func Setup(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus, options ...Option) (*DepositService, error) {
 
-	dsvc := peer.NewPeerDepositService(h, rdiscvry, ids)
-	if err := dsvc.Run(); err != nil {
+	depositsvc = &DepositService{}
+
+	if err := depositsvc.Apply(options...); err != nil {
 		return nil, err
 	}
 
-	depositsvc = &DepositService{
-		datastore: depositDs,
-		service:   dsvc,
-		client:    peer.NewPeerDepositClient(h, rdiscvry, ids, ev),
+	dcli, err := peer.NewPeerDepositClient(lhost, rdiscvry, ids, ebus)
+	if err != nil {
+		return nil, err
+	}
+	depositsvc.client = dcli
+
+	if depositsvc.isEnableService {
+		dsvc, err := peer.NewPeerDepositService(lhost, rdiscvry, ids)
+		if err != nil {
+			return nil, err
+		}
+		depositsvc.service = dsvc
 	}
 
 	return depositsvc, nil

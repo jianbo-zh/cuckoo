@@ -1,4 +1,4 @@
-package sync
+package message
 
 import (
 	"bytes"
@@ -10,16 +10,10 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore/query"
-	gevent "github.com/jianbo-zh/dchat/event"
-	"github.com/jianbo-zh/dchat/service/group/datastore"
-	msgpb "github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
-	"github.com/jianbo-zh/dchat/service/group/protocol/sync/pb"
-	logging "github.com/jianbo-zh/go-log"
-	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/jianbo-zh/dchat/service/group/protocol/message/ds"
+	"github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
 	"google.golang.org/protobuf/proto"
 )
@@ -41,78 +35,13 @@ import (
 
 //go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/sync.proto=./pb pb/sync.proto
 
-var log = logging.Logger("message")
-
-var StreamTimeout = 1 * time.Minute
-
-const (
-	ID = "/dchat/group/syncmsg/1.0.0"
-
-	ServiceName = "group.syncmsg"
-	maxMsgSize  = 4 * 1024 // 4K
-)
-
-type GroupSyncMsgService struct {
-	host host.Host
-
-	datastore datastore.GroupIface
-}
-
-func NewGroupSyncMsgService(h host.Host, ds datastore.GroupIface, eventBus event.Bus) *GroupSyncMsgService {
-	msgsyncsvc := GroupSyncMsgService{
-		host:      h,
-		datastore: ds,
-	}
-
-	h.SetStreamHandler(ID, msgsyncsvc.Handler)
-
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupPeerConnectChange)}, eventbus.Name("syncmsg"))
-	if err != nil {
-		log.Warnf("subscription failed. group admin server error: %v", err)
-
-	} else {
-		go msgsyncsvc.handleSubscribe(context.Background(), sub)
-	}
-
-	return &msgsyncsvc
-}
-
-func (syncsvc *GroupSyncMsgService) handleSubscribe(ctx context.Context, sub event.Subscription) {
-	defer sub.Close()
-
-	for {
-		select {
-		case e, ok := <-sub.Out():
-			if !ok {
-				return
-			}
-			ev := e.(gevent.EvtGroupPeerConnectChange)
-			// 接收消息日志
-			// err := grp.datastore.LogAdminOperation(ctx, grp.host.ID(), datastore.GroupID(ev.MsgData.GroupId), ev.MsgData)
-			var peerID peer.ID
-			if syncsvc.host.ID().String() == ev.MsgData.PeerIdA {
-				peerID, _ = peer.Decode(ev.MsgData.PeerIdB)
-			} else {
-				peerID, _ = peer.Decode(ev.MsgData.PeerIdA)
-			}
-			err := syncsvc.sync(ctx, ev.MsgData.GroupId, peerID)
-			if err != nil {
-				log.Errorf("log admin operation error: %v", err)
-			}
-
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (syncsvc *GroupSyncMsgService) sync(ctx context.Context, groupID string, peerID peer.ID) error {
-	stream, err := syncsvc.host.NewStream(ctx, peerID, ID)
+func (m *MessageService) sync(ctx context.Context, groupID string, peerID peer.ID) error {
+	stream, err := m.host.NewStream(ctx, peerID, ID)
 	if err != nil {
 		return nil
 	}
 
-	totalmsg, err := syncsvc.totalMsg(groupID)
+	totalmsg, err := m.totalMsg(groupID)
 	if err != nil {
 		return err
 	}
@@ -143,13 +72,10 @@ func (syncsvc *GroupSyncMsgService) sync(ctx context.Context, groupID string, pe
 
 	for {
 		// todo
-
 	}
-
-	return nil
 }
 
-func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
+func (m *MessageService) syncHandler(s network.Stream) {
 
 	err := s.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
@@ -175,7 +101,7 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 		}
 
 		// 同样返回total len
-		dataTotal2, err := syncsvc.totalMsg(msg1.GroupId)
+		dataTotal2, err := m.totalMsg(msg1.GroupId)
 		if err != nil {
 			log.Errorf("get group total msg error: %v", err)
 			return
@@ -198,7 +124,7 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 
 		if dataTotal2.TailId > dataTotal.TailId {
 			// 如果有最新的数据则发送给对方
-			pushmsg, err := syncsvc.getRangeMessages(dataTotal.GroupId, dataTotal.TailId, dataTotal2.TailId)
+			pushmsg, err := m.getRangeMessages(dataTotal.GroupId, dataTotal.TailId, dataTotal2.TailId)
 			if err != nil {
 				log.Errorf("get range messages error: %v", err)
 				return
@@ -230,7 +156,7 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 				endID = dataTotal2.TailId
 			}
 
-			hash, err := syncsvc.rangeHash(msg1.GroupId, startID, endID)
+			hash, err := m.rangeHash(msg1.GroupId, startID, endID)
 			if err != nil {
 				log.Errorf("range hash error: %v", err)
 				return
@@ -268,14 +194,14 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 		}
 
 		// 我也计算hash
-		hashBs, err := syncsvc.rangeHash(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
+		hashBs, err := m.rangeHash(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
 		if err != nil {
 			log.Errorf("range hash error: %v", err)
 		}
 
 		if !bytes.Equal(hashmsg.Hash, hashBs) {
 			// hash 不同，则消息不一致，则同步消息ID
-			hashidsmsg, err := syncsvc.getRangeMsgIDs(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
+			hashidsmsg, err := m.getRangeMsgIDs(msg1.GroupId, hashmsg.StartId, hashmsg.EndId)
 			if err != nil {
 				log.Errorf("get range msg ids error: %v", err)
 				return
@@ -308,7 +234,7 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 			return
 		}
 
-		hashidsmsg, err := syncsvc.getRangeMsgIDs(idmsg.GroupId, idmsg.StartId, idmsg.EndId)
+		hashidsmsg, err := m.getRangeMsgIDs(idmsg.GroupId, idmsg.StartId, idmsg.EndId)
 		if err != nil {
 			log.Errorf("get range message ids error: %v", err)
 			return
@@ -327,7 +253,7 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 		}
 
 		if len(moreIDs) > 0 {
-			pushmsg, err := syncsvc.getIDMessages(idmsg.GroupId, moreIDs)
+			pushmsg, err := m.getIDMessages(idmsg.GroupId, moreIDs)
 			if err != nil {
 				log.Errorf("get messages by ids error: %v", err)
 				return
@@ -359,13 +285,13 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 		}
 
 		for _, bs := range msgs.Msgs {
-			var msg msgpb.GroupMsg
+			var msg pb.GroupMsg
 			if err = proto.Unmarshal(bs, &msg); err != nil {
 				log.Errorf("unmarshal error: %v", err)
 				return
 			}
 
-			err = syncsvc.datastore.PutMessage(context.Background(), datastore.GroupID(msg1.GroupId), &msg)
+			err = m.data.PutMessage(context.Background(), ds.GroupID(msg1.GroupId), &msg)
 			if err != nil {
 				log.Errorf("put message error: %v", err)
 				return
@@ -377,21 +303,21 @@ func (syncsvc *GroupSyncMsgService) Handler(s network.Stream) {
 	}
 }
 
-func (syncsvc *GroupSyncMsgService) totalMsg(groupID string) (*pb.DataTotalLen, error) {
+func (m *MessageService) totalMsg(groupID string) (*pb.DataTotalLen, error) {
 	ctx := context.Background()
 
 	// headID
-	headID, err := syncsvc.datastore.GetMessageHeadID(ctx, datastore.GroupID(groupID))
+	headID, err := m.data.GetMessageHeadID(ctx, ds.GroupID(groupID))
 	if err != nil {
 		return nil, err
 	}
 	// tailID
-	tailID, err := syncsvc.datastore.GetMessageTailID(ctx, datastore.GroupID(groupID))
+	tailID, err := m.data.GetMessageTailID(ctx, ds.GroupID(groupID))
 	if err != nil {
 		return nil, err
 	}
 	// len
-	length, err := syncsvc.datastore.GetMessageLength(ctx, datastore.GroupID(groupID))
+	length, err := m.data.GetMessageLength(ctx, ds.GroupID(groupID))
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +359,7 @@ func (rf *RangeFilter) Filter(e query.Entry) bool {
 	return false
 }
 
-func (syncsvc *GroupSyncMsgService) getRangeMsgIDs(groupID string, startIDStr string, endIDStr string) (*pb.DataRangeIDs, error) {
+func (m *MessageService) getRangeMsgIDs(groupID string, startIDStr string, endIDStr string) (*pb.DataRangeIDs, error) {
 
 	startArr := strings.Split(startIDStr, "_")
 	if len(startArr) <= 1 {
@@ -447,7 +373,7 @@ func (syncsvc *GroupSyncMsgService) getRangeMsgIDs(groupID string, startIDStr st
 	}
 	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
 
-	results, err := syncsvc.datastore.Query(context.Background(), query.Query{
+	results, err := m.data.Query(context.Background(), query.Query{
 		Prefix:   "/dchat/group/" + groupID + "/message/logs/",
 		Filters:  []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
 		Orders:   []query.Order{query.OrderByKey{}},
@@ -475,7 +401,7 @@ func (syncsvc *GroupSyncMsgService) getRangeMsgIDs(groupID string, startIDStr st
 	return &dataPushMsg, nil
 }
 
-func (syncsvc *GroupSyncMsgService) getRangeMessages(groupID string, startIDStr string, endIDStr string) (*pb.DataPushMsgs, error) {
+func (m *MessageService) getRangeMessages(groupID string, startIDStr string, endIDStr string) (*pb.DataPushMsgs, error) {
 
 	startArr := strings.Split(startIDStr, "_")
 	if len(startArr) <= 1 {
@@ -489,7 +415,7 @@ func (syncsvc *GroupSyncMsgService) getRangeMessages(groupID string, startIDStr 
 	}
 	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
 
-	results, err := syncsvc.datastore.Query(context.Background(), query.Query{
+	results, err := m.data.Query(context.Background(), query.Query{
 		Prefix:  "/dchat/group/" + groupID + "/message/logs/",
 		Filters: []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
 		Orders:  []query.Order{query.OrderByKey{}},
@@ -514,11 +440,11 @@ func (syncsvc *GroupSyncMsgService) getRangeMessages(groupID string, startIDStr 
 	return &dataPushMsg, nil
 }
 
-func (syncsvc *GroupSyncMsgService) getIDMessages(groupID string, msgIDs []string) (*pb.DataPushMsgs, error) {
+func (m *MessageService) getIDMessages(groupID string, msgIDs []string) (*pb.DataPushMsgs, error) {
 
 	var bss [][]byte
 	for _, msgID := range msgIDs {
-		msg, err := syncsvc.datastore.GetMessage(context.Background(), datastore.GroupID(groupID), msgID)
+		msg, err := m.data.GetMessage(context.Background(), ds.GroupID(groupID), msgID)
 		if err != nil {
 			return nil, err
 		}
@@ -538,7 +464,7 @@ func (syncsvc *GroupSyncMsgService) getIDMessages(groupID string, msgIDs []strin
 	return &pushmsg, nil
 }
 
-func (syncsvc *GroupSyncMsgService) rangeHash(groupID string, startIDStr string, endIDStr string) ([]byte, error) {
+func (m *MessageService) rangeHash(groupID string, startIDStr string, endIDStr string) ([]byte, error) {
 
 	startArr := strings.Split(startIDStr, "_")
 	if len(startArr) <= 1 {
@@ -552,7 +478,7 @@ func (syncsvc *GroupSyncMsgService) rangeHash(groupID string, startIDStr string,
 	}
 	endID, _ := strconv.ParseInt(endArr[0], 10, 64)
 
-	results, err := syncsvc.datastore.Query(context.Background(), query.Query{
+	results, err := m.data.Query(context.Background(), query.Query{
 		Prefix:   "/dchat/group/" + groupID + "/message/logs/",
 		Filters:  []query.Filter{&RangeFilter{StartID: startID, EndID: endID}},
 		Orders:   []query.Order{query.OrderByKey{}},

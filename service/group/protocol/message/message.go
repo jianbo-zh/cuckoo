@@ -6,71 +6,78 @@ import (
 	"fmt"
 	"time"
 
-	ds "github.com/ipfs/go-datastore"
+	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
-	"github.com/jianbo-zh/dchat/service/group/datastore"
+	"github.com/jianbo-zh/dchat/service/group/protocol/message/ds"
 	"github.com/jianbo-zh/dchat/service/group/protocol/message/pb"
-	networkpb "github.com/jianbo-zh/dchat/service/group/protocol/network/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
 )
-
-// 群消息相关协议
-
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/message.proto=./pb pb/message.proto
 
 var log = logging.Logger("message")
 
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID = "/dchat/group/msg/1.0.0"
+	ID      = "/dchat/group/msg/1.0.0"
+	SYNC_ID = "/dchat/group/syncmsg/1.0.0"
 
 	ServiceName = "group.message"
 	maxMsgSize  = 4 * 1024 // 4K
 )
 
-type GroupMessageService struct {
+type MessageService struct {
 	host host.Host
 
-	datastore datastore.GroupIface
+	data ds.MessageIface
 
 	emitters struct {
 		evtForwardGroupMsg event.Emitter
 	}
+
+	groupConns map[string]map[peer.ID]struct{}
 }
 
-func NewGroupMessageService(h host.Host, ds datastore.GroupIface, eventBus event.Bus) *GroupMessageService {
-	msgsvc := &GroupMessageService{
-		host:      h,
-		datastore: ds,
-	}
-
-	h.SetStreamHandler(ID, msgsvc.Handler)
-
+func NewGroupMessageService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageService, error) {
 	var err error
-	if msgsvc.emitters.evtForwardGroupMsg, err = eventBus.Emitter(&gevent.EvtForwardGroupMsg{}); err != nil {
-		log.Errorf("set group msg emitter error: %v", err)
+	msgsvc := &MessageService{
+		host:       h,
+		data:       ds.MessageWrap(ids),
+		groupConns: make(map[string]map[peer.ID]struct{}),
 	}
 
-	return msgsvc
+	h.SetStreamHandler(ID, msgsvc.messageHandler)
+	h.SetStreamHandler(SYNC_ID, msgsvc.syncHandler)
+
+	if msgsvc.emitters.evtForwardGroupMsg, err = eventBus.Emitter(&gevent.EvtForwardGroupMsg{}); err != nil {
+		return nil, fmt.Errorf("set group msg emitter error: %v", err)
+	}
+
+	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
+	if err != nil {
+		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
+
+	} else {
+		go msgsvc.subscribeHandler(context.Background(), sub)
+	}
+
+	return msgsvc, nil
 }
 
-func (msgsvc *GroupMessageService) Handler(s network.Stream) {
+func (m *MessageService) messageHandler(s network.Stream) {
 
 	remotePeerID := s.Conn().RemotePeer()
 
-	fmt.Println("handler....")
 	if err := s.Scope().SetService(ServiceName); err != nil {
 		log.Errorf("failed to attaching stream to identify service: %v", err)
 		s.Reset()
 		return
 	}
-	defer s.Close()
 
 	rd := pbio.NewDelimitedReader(s, maxMsgSize)
 	defer rd.Close()
@@ -87,31 +94,67 @@ func (msgsvc *GroupMessageService) Handler(s network.Stream) {
 	s.SetReadDeadline(time.Time{})
 
 	// 检查本地是否存在
-	_, err := msgsvc.datastore.GetMessage(context.Background(), datastore.GroupID(msg.GroupId), msg.Id)
-	if err != nil && errors.Is(err, ds.ErrNotFound) {
-		// 保存消息
-		err = msgsvc.datastore.PutMessage(context.Background(), datastore.GroupID(msg.GroupId), &msg)
-		if err != nil {
-			log.Errorf("save group message error: %v", err)
+	_, err := m.data.GetMessage(context.Background(), ds.GroupID(msg.GroupId), msg.Id)
+	if err != nil {
+		if errors.Is(err, ipfsds.ErrNotFound) {
+			// 保存消息
+			err = m.data.PutMessage(context.Background(), ds.GroupID(msg.GroupId), &msg)
+			if err != nil {
+				log.Errorf("save group message error: %v", err)
+			}
+
+			// 转发消息
+			err = m.broadcastMessage(context.Background(), msg.GroupId, &msg, remotePeerID)
+			if err != nil {
+				log.Errorf("emit forward group msg error: %v", err)
+			}
+
+		} else {
+			log.Errorf("get group message error: %v", err)
 		}
 
-		// 转发消息
-		err = msgsvc.ForwardMessage(context.Background(), msg.GroupId, remotePeerID, &msg)
-		if err != nil {
-			log.Errorf("emit forward group msg error: %v", err)
-		}
-		return
-
-	} else if err != nil {
-		log.Errorf("get group message error: %v", err)
 		return
 	}
 }
 
-func (msgsvc *GroupMessageService) SendTextMessage(ctx context.Context, groupID string, msg string) error {
+func (m *MessageService) subscribeHandler(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
 
-	peerID := msgsvc.host.ID().String()
-	lamportime, err := msgsvc.datastore.TickMessageLamportTime(context.Background(), datastore.GroupID(groupID))
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				return
+			}
+
+			evt := e.(gevent.EvtGroupConnectChange)
+
+			if !evt.IsConnected { // 断开连接
+				delete(m.groupConns[evt.GroupID], evt.PeerID)
+			}
+
+			// 新建连接
+			if _, exists := m.groupConns[evt.GroupID]; !exists {
+				m.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
+			}
+			m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
+
+			// 启动同步
+			err := m.sync(ctx, evt.GroupID, evt.PeerID)
+			if err != nil {
+				log.Errorf("log admin operation error: %v", err)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, msg string) error {
+
+	peerID := m.host.ID().String()
+	lamportime, err := m.data.TickLamportTime(context.Background(), ds.GroupID(groupID))
 	if err != nil {
 		return err
 	}
@@ -124,87 +167,59 @@ func (msgsvc *GroupMessageService) SendTextMessage(ctx context.Context, groupID 
 		Lamportime: lamportime,
 	}
 
-	err = msgsvc.SendMessage(ctx, groupID, &msg1)
+	err = m.broadcastMessage(ctx, groupID, &msg1)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// 转发消息
-func (msgsvc *GroupMessageService) ForwardMessage(ctx context.Context, groupID string, peerID0 peer.ID, msg *pb.GroupMsg) error {
-
-	peerIDs, err := msgsvc.getConnectPeers(groupID)
-	if err != nil {
-		return err
-	}
-
-	for _, peerID := range peerIDs {
-		if peerID.String() != peerID0.String() {
-			msgsvc.sendPeerMessage(ctx, groupID, peerID, msg)
-		}
 	}
 
 	return nil
 }
 
 // 发送消息
-func (msgsvc *GroupMessageService) SendMessage(ctx context.Context, groupID string, msg *pb.GroupMsg) error {
+func (m *MessageService) broadcastMessage(ctx context.Context, groupID string, msg *pb.GroupMsg, excludePeerIDs ...peer.ID) error {
 
-	peerIDs, err := msgsvc.getConnectPeers(groupID)
-	if err != nil {
-		return err
-	}
+	for _, peerID := range m.getConnectPeers(groupID) {
+		if len(excludePeerIDs) > 0 {
+			isExcluded := false
+			for _, excludePeerID := range excludePeerIDs {
+				if peerID == excludePeerID {
+					isExcluded = true
+				}
+			}
+			if isExcluded {
+				continue
+			}
+		}
 
-	for _, peerID := range peerIDs {
-		msgsvc.sendPeerMessage(ctx, groupID, peerID, msg)
+		m.sendPeerMessage(ctx, groupID, peerID, msg)
 	}
 
 	return nil
 }
 
 // 发送消息（指定peerID）
-func (msgsvc *GroupMessageService) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.GroupMsg) error {
-	stream, err := msgsvc.host.NewStream(ctx, peerID, ID)
+func (m *MessageService) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.GroupMsg) error {
+	stream, err := m.host.NewStream(ctx, peerID, ID)
 	if err != nil {
 		return err
 	}
 
 	stream.SetWriteDeadline(time.Now().Add(StreamTimeout))
-	wb := pbio.NewDelimitedWriter(stream)
-	if err := wb.WriteMsg(msg); err != nil {
+
+	wt := pbio.NewDelimitedWriter(stream)
+	defer wt.Close()
+
+	if err := wt.WriteMsg(msg); err != nil {
 		return err
 	}
-
-	stream.SetWriteDeadline(time.Time{})
 
 	return nil
 }
 
-func (msgsvc *GroupMessageService) getConnectPeers(groupID string) ([]peer.ID, error) {
-	peerID := msgsvc.host.ID().String()
-	connects, err := msgsvc.datastore.GetGroupConnects(context.Background(), datastore.GroupID(groupID))
-	if err != nil {
-		return nil, err
-	}
-	onlinesMap := make(map[string]struct{})
-	for _, connect := range connects {
-		if connect.State == networkpb.GroupConnect_CONNECT {
-			if connect.PeerIdA == peerID {
-				onlinesMap[connect.PeerIdB] = struct{}{}
-
-			} else if connect.PeerIdB == peerID {
-				onlinesMap[connect.PeerIdA] = struct{}{}
-			}
-		}
-	}
-
+func (m *MessageService) getConnectPeers(groupID string) []peer.ID {
 	var peerIDs []peer.ID
-	for pid := range onlinesMap {
-		peerID, _ := peer.Decode(pid)
+	for peerID := range m.groupConns[groupID] {
 		peerIDs = append(peerIDs, peerID)
 	}
-
-	return peerIDs, nil
+	return peerIDs
 }

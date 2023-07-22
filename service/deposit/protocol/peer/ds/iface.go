@@ -9,8 +9,8 @@ import (
 type DepositMessageIface interface {
 	ipfsds.Batching
 
-	SaveDepositMessage(msg *pb.DepositMessage) error
-	GetDepositMessages(peerID peer.ID, offset int, limit int, startTime int64, lastID string) (msgs []*pb.DepositMessage, err error)
+	SaveDepositMessage(msg *pb.OfflineMessage) error
+	GetDepositMessages(peerID peer.ID, offset int, limit int, startTime int64, lastID string) (msgs []*pb.OfflineMessage, err error)
 
 	SetLastAckID(peerID peer.ID, ackID string) error
 	GetLastAckID(peerID peer.ID) (string, error)

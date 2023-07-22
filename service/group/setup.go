@@ -15,9 +15,9 @@ var groupsvc *GroupService
 type GroupService struct {
 	datastore datastore.GroupIface
 
-	adminSvc *admin.GroupAdminService
+	adminSvc *admin.AdminService
 
-	networkSvc *network.GroupNetworkService
+	networkSvc *network.NetworkService
 }
 
 func Get() GroupServiceIface {
@@ -28,7 +28,8 @@ func Get() GroupServiceIface {
 	return groupsvc
 }
 
-func Init(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ev event.Bus, opts ...Option) (*GroupService, error) {
+func Setup(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ev event.Bus, opts ...Option) (*GroupService, error) {
+	var err error
 	groupDs := datastore.GroupWrap(ids)
 
 	groupsvc = &GroupService{
@@ -39,10 +40,13 @@ func Init(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching,
 		return nil, err
 	}
 
-	groupsvc.adminSvc = admin.NewGroupAdminService(h, groupDs, ev)
-	groupsvc.networkSvc = network.NewGroupNetworkService(h, rdiscvry, groupDs, ev)
+	groupsvc.adminSvc, err = admin.NewAdminService(h, groupDs, ev)
+	if err != nil {
+		return nil, err
+	}
 
-	if err := groupsvc.networkSvc.Start(); err != nil {
+	groupsvc.networkSvc, err = network.NewNetworkService(h, rdiscvry, groupDs, ev)
+	if err != nil {
 		return nil, err
 	}
 

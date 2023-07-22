@@ -20,66 +20,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type GroupConnect_State int32
+type ConnectMaintain_Type int32
 
 const (
-	GroupConnect_CONNECT   GroupConnect_State = 0
-	GroupConnect_UNCONNECT GroupConnect_State = 1
+	ConnectMaintain_Heartbeat     ConnectMaintain_Type = 0
+	ConnectMaintain_ConnectChange ConnectMaintain_Type = 1
 )
 
-// Enum value maps for GroupConnect_State.
+// Enum value maps for ConnectMaintain_Type.
 var (
-	GroupConnect_State_name = map[int32]string{
-		0: "CONNECT",
-		1: "UNCONNECT",
+	ConnectMaintain_Type_name = map[int32]string{
+		0: "Heartbeat",
+		1: "ConnectChange",
 	}
-	GroupConnect_State_value = map[string]int32{
-		"CONNECT":   0,
-		"UNCONNECT": 1,
+	ConnectMaintain_Type_value = map[string]int32{
+		"Heartbeat":     0,
+		"ConnectChange": 1,
 	}
 )
 
-func (x GroupConnect_State) Enum() *GroupConnect_State {
-	p := new(GroupConnect_State)
+func (x ConnectMaintain_Type) Enum() *ConnectMaintain_Type {
+	p := new(ConnectMaintain_Type)
 	*p = x
 	return p
 }
 
-func (x GroupConnect_State) String() string {
+func (x ConnectMaintain_Type) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (GroupConnect_State) Descriptor() protoreflect.EnumDescriptor {
+func (ConnectMaintain_Type) Descriptor() protoreflect.EnumDescriptor {
 	return file_pb_connect_proto_enumTypes[0].Descriptor()
 }
 
-func (GroupConnect_State) Type() protoreflect.EnumType {
+func (ConnectMaintain_Type) Type() protoreflect.EnumType {
 	return &file_pb_connect_proto_enumTypes[0]
 }
 
-func (x GroupConnect_State) Number() protoreflect.EnumNumber {
+func (x ConnectMaintain_Type) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use GroupConnect_State.Descriptor instead.
-func (GroupConnect_State) EnumDescriptor() ([]byte, []int) {
-	return file_pb_connect_proto_rawDescGZIP(), []int{0, 0}
+// Deprecated: Use ConnectMaintain_Type.Descriptor instead.
+func (ConnectMaintain_Type) EnumDescriptor() ([]byte, []int) {
+	return file_pb_connect_proto_rawDescGZIP(), []int{1, 0}
 }
 
-type GroupConnect struct {
+type ConnectInit struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	GroupId    string             `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
-	PeerIdA    string             `protobuf:"bytes,2,opt,name=peer_id_a,json=peerIdA,proto3" json:"peer_id_a,omitempty"`
-	PeerIdB    string             `protobuf:"bytes,3,opt,name=peer_id_b,json=peerIdB,proto3" json:"peer_id_b,omitempty"`
-	State      GroupConnect_State `protobuf:"varint,6,opt,name=state,proto3,enum=network.pb.GroupConnect_State" json:"state,omitempty"`
-	Lamportime uint64             `protobuf:"varint,10,opt,name=lamportime,proto3" json:"lamportime,omitempty"`
+	GroupId   string `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	BootTs    uint64 `protobuf:"varint,2,opt,name=boot_ts,json=bootTs,proto3" json:"boot_ts,omitempty"`
+	ConnTimes uint64 `protobuf:"varint,3,opt,name=conn_times,json=connTimes,proto3" json:"conn_times,omitempty"`
 }
 
-func (x *GroupConnect) Reset() {
-	*x = GroupConnect{}
+func (x *ConnectInit) Reset() {
+	*x = ConnectInit{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pb_connect_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -87,13 +85,13 @@ func (x *GroupConnect) Reset() {
 	}
 }
 
-func (x *GroupConnect) String() string {
+func (x *ConnectInit) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GroupConnect) ProtoMessage() {}
+func (*ConnectInit) ProtoMessage() {}
 
-func (x *GroupConnect) ProtoReflect() protoreflect.Message {
+func (x *ConnectInit) ProtoReflect() protoreflect.Message {
 	mi := &file_pb_connect_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -105,58 +103,44 @@ func (x *GroupConnect) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GroupConnect.ProtoReflect.Descriptor instead.
-func (*GroupConnect) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConnectInit.ProtoReflect.Descriptor instead.
+func (*ConnectInit) Descriptor() ([]byte, []int) {
 	return file_pb_connect_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GroupConnect) GetGroupId() string {
+func (x *ConnectInit) GetGroupId() string {
 	if x != nil {
 		return x.GroupId
 	}
 	return ""
 }
 
-func (x *GroupConnect) GetPeerIdA() string {
+func (x *ConnectInit) GetBootTs() uint64 {
 	if x != nil {
-		return x.PeerIdA
-	}
-	return ""
-}
-
-func (x *GroupConnect) GetPeerIdB() string {
-	if x != nil {
-		return x.PeerIdB
-	}
-	return ""
-}
-
-func (x *GroupConnect) GetState() GroupConnect_State {
-	if x != nil {
-		return x.State
-	}
-	return GroupConnect_CONNECT
-}
-
-func (x *GroupConnect) GetLamportime() uint64 {
-	if x != nil {
-		return x.Lamportime
+		return x.BootTs
 	}
 	return 0
 }
 
-// 群路由信息
-type GroupRouting struct {
+func (x *ConnectInit) GetConnTimes() uint64 {
+	if x != nil {
+		return x.ConnTimes
+	}
+	return 0
+}
+
+type ConnectMaintain struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	GroupId  string          `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
-	Connects []*GroupConnect `protobuf:"bytes,2,rep,name=connects,proto3" json:"connects,omitempty"`
+	Type      ConnectMaintain_Type `protobuf:"varint,1,opt,name=type,proto3,enum=network.pb.ConnectMaintain_Type" json:"type,omitempty"`
+	Payload   []byte               `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	ConnTimes uint64               `protobuf:"varint,3,opt,name=conn_times,json=connTimes,proto3" json:"conn_times,omitempty"`
 }
 
-func (x *GroupRouting) Reset() {
-	*x = GroupRouting{}
+func (x *ConnectMaintain) Reset() {
+	*x = ConnectMaintain{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pb_connect_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -164,13 +148,13 @@ func (x *GroupRouting) Reset() {
 	}
 }
 
-func (x *GroupRouting) String() string {
+func (x *ConnectMaintain) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GroupRouting) ProtoMessage() {}
+func (*ConnectMaintain) ProtoMessage() {}
 
-func (x *GroupRouting) ProtoReflect() protoreflect.Message {
+func (x *ConnectMaintain) ProtoReflect() protoreflect.Message {
 	mi := &file_pb_connect_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -182,51 +166,55 @@ func (x *GroupRouting) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GroupRouting.ProtoReflect.Descriptor instead.
-func (*GroupRouting) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConnectMaintain.ProtoReflect.Descriptor instead.
+func (*ConnectMaintain) Descriptor() ([]byte, []int) {
 	return file_pb_connect_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GroupRouting) GetGroupId() string {
+func (x *ConnectMaintain) GetType() ConnectMaintain_Type {
 	if x != nil {
-		return x.GroupId
+		return x.Type
 	}
-	return ""
+	return ConnectMaintain_Heartbeat
 }
 
-func (x *GroupRouting) GetConnects() []*GroupConnect {
+func (x *ConnectMaintain) GetPayload() []byte {
 	if x != nil {
-		return x.Connects
+		return x.Payload
 	}
 	return nil
+}
+
+func (x *ConnectMaintain) GetConnTimes() uint64 {
+	if x != nil {
+		return x.ConnTimes
+	}
+	return 0
 }
 
 var File_pb_connect_proto protoreflect.FileDescriptor
 
 var file_pb_connect_proto_rawDesc = []byte{
 	0x0a, 0x10, 0x70, 0x62, 0x2f, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x12, 0x0a, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x62, 0x22, 0xdc,
-	0x01, 0x0a, 0x0c, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x12,
-	0x19, 0x0a, 0x08, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x09, 0x70, 0x65,
-	0x65, 0x72, 0x5f, 0x69, 0x64, 0x5f, 0x61, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70,
-	0x65, 0x65, 0x72, 0x49, 0x64, 0x41, 0x12, 0x1a, 0x0a, 0x09, 0x70, 0x65, 0x65, 0x72, 0x5f, 0x69,
-	0x64, 0x5f, 0x62, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x65, 0x65, 0x72, 0x49,
-	0x64, 0x42, 0x12, 0x34, 0x0a, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28,
-	0x0e, 0x32, 0x1e, 0x2e, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x62, 0x2e, 0x47,
-	0x72, 0x6f, 0x75, 0x70, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x2e, 0x53, 0x74, 0x61, 0x74,
-	0x65, 0x52, 0x05, 0x73, 0x74, 0x61, 0x74, 0x65, 0x12, 0x1e, 0x0a, 0x0a, 0x6c, 0x61, 0x6d, 0x70,
-	0x6f, 0x72, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x6c, 0x61,
-	0x6d, 0x70, 0x6f, 0x72, 0x74, 0x69, 0x6d, 0x65, 0x22, 0x23, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x74,
-	0x65, 0x12, 0x0b, 0x0a, 0x07, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x00, 0x12, 0x0d,
-	0x0a, 0x09, 0x55, 0x4e, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x01, 0x22, 0x5f, 0x0a,
-	0x0c, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x52, 0x6f, 0x75, 0x74, 0x69, 0x6e, 0x67, 0x12, 0x19, 0x0a,
+	0x74, 0x6f, 0x12, 0x0a, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x62, 0x22, 0x60,
+	0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x49, 0x6e, 0x69, 0x74, 0x12, 0x19, 0x0a,
 	0x08, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x34, 0x0a, 0x08, 0x63, 0x6f, 0x6e, 0x6e,
-	0x65, 0x63, 0x74, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x6e, 0x65, 0x74,
-	0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x62, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x43, 0x6f, 0x6e,
-	0x6e, 0x65, 0x63, 0x74, 0x52, 0x08, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x73, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x62, 0x6f, 0x6f, 0x74,
+	0x5f, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x62, 0x6f, 0x6f, 0x74, 0x54,
+	0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x6f, 0x6e, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x63, 0x6f, 0x6e, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x73,
+	0x22, 0xaa, 0x01, 0x0a, 0x0f, 0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x69, 0x6e,
+	0x74, 0x61, 0x69, 0x6e, 0x12, 0x34, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0e, 0x32, 0x20, 0x2e, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x62, 0x2e,
+	0x43, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x69, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x2e,
+	0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61,
+	0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x70, 0x61, 0x79,
+	0x6c, 0x6f, 0x61, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x6f, 0x6e, 0x6e, 0x5f, 0x74, 0x69, 0x6d,
+	0x65, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x63, 0x6f, 0x6e, 0x6e, 0x54, 0x69,
+	0x6d, 0x65, 0x73, 0x22, 0x28, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0d, 0x0a, 0x09, 0x48,
+	0x65, 0x61, 0x72, 0x74, 0x62, 0x65, 0x61, 0x74, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d, 0x43, 0x6f,
+	0x6e, 0x6e, 0x65, 0x63, 0x74, 0x43, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x10, 0x01, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -244,18 +232,17 @@ func file_pb_connect_proto_rawDescGZIP() []byte {
 var file_pb_connect_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pb_connect_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_pb_connect_proto_goTypes = []interface{}{
-	(GroupConnect_State)(0), // 0: network.pb.GroupConnect.State
-	(*GroupConnect)(nil),    // 1: network.pb.GroupConnect
-	(*GroupRouting)(nil),    // 2: network.pb.GroupRouting
+	(ConnectMaintain_Type)(0), // 0: network.pb.ConnectMaintain.Type
+	(*ConnectInit)(nil),       // 1: network.pb.ConnectInit
+	(*ConnectMaintain)(nil),   // 2: network.pb.ConnectMaintain
 }
 var file_pb_connect_proto_depIdxs = []int32{
-	0, // 0: network.pb.GroupConnect.state:type_name -> network.pb.GroupConnect.State
-	1, // 1: network.pb.GroupRouting.connects:type_name -> network.pb.GroupConnect
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 0: network.pb.ConnectMaintain.type:type_name -> network.pb.ConnectMaintain.Type
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_pb_connect_proto_init() }
@@ -265,7 +252,7 @@ func file_pb_connect_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_pb_connect_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupConnect); i {
+			switch v := v.(*ConnectInit); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -277,7 +264,7 @@ func file_pb_connect_proto_init() {
 			}
 		}
 		file_pb_connect_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupRouting); i {
+			switch v := v.(*ConnectMaintain); i {
 			case 0:
 				return &v.state
 			case 1:

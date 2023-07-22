@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package message.pb;
 
-
 message GroupMsg {
 
     enum Type {

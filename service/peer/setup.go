@@ -10,7 +10,7 @@ import (
 
 var peersvc *PeerSvc
 
-func Init(lhost host.Host, ids ipfsds.Batching, ebus event.Bus, opts ...Option) (*PeerSvc, error) {
+func Setup(lhost host.Host, ids ipfsds.Batching, ebus event.Bus, opts ...Option) (*PeerSvc, error) {
 
 	var err error
 
@@ -20,12 +20,12 @@ func Init(lhost host.Host, ids ipfsds.Batching, ebus event.Bus, opts ...Option) 
 		return nil, err
 	}
 
-	peersvc.msgSvc, err = message.NewPeerMessageSvc(lhost, ids, ebus)
+	peersvc.msgSvc, err = message.NewMessageSvc(lhost, ids, ebus)
 	if err != nil {
 		return nil, err
 	}
 
-	peersvc.peerSvc, err = peerpeer.NewPeerPeerSvc(lhost, ids, ebus)
+	peersvc.peerSvc, err = peerpeer.NewPeerSvc(lhost, ids, ebus)
 	if err != nil {
 		return nil, err
 	}

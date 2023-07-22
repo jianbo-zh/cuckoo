@@ -24,7 +24,7 @@ func DepositPeerWrap(d ipfsds.Batching) *DepositPeerDataStore {
 	return &DepositPeerDataStore{Batching: d}
 }
 
-func (pds *DepositPeerDataStore) SaveDepositMessage(msg *pb.DepositMessage) error {
+func (pds *DepositPeerDataStore) SaveDepositMessage(msg *pb.OfflineMessage) error {
 	prefix := "/dchat/deposit/peer/" + peer.ID(msg.ToPeerId).String() + "/message/logs/"
 
 	msg.Id = msgID(msg.DepositTime, peer.ID(msg.FromPeerId))
@@ -39,7 +39,7 @@ func (pds *DepositPeerDataStore) SaveDepositMessage(msg *pb.DepositMessage) erro
 	return pds.Put(context.Background(), key, bs)
 }
 
-func (pds *DepositPeerDataStore) GetDepositMessages(peerID peer.ID, offset int, limit int, startTime int64, lastID string) (msgs []*pb.DepositMessage, err error) {
+func (pds *DepositPeerDataStore) GetDepositMessages(peerID peer.ID, offset int, limit int, startTime int64, lastID string) (msgs []*pb.OfflineMessage, err error) {
 	prefix := "/dchat/deposit/peer/" + peerID.String() + "/message/logs/"
 	results, err := pds.Query(context.Background(), query.Query{
 		Prefix:  prefix,
@@ -58,7 +58,7 @@ func (pds *DepositPeerDataStore) GetDepositMessages(peerID peer.ID, offset int, 
 			return nil, result.Error
 		}
 
-		var msg pb.DepositMessage
+		var msg pb.OfflineMessage
 		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
 			return nil, err
 		}

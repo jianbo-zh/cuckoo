@@ -33,7 +33,7 @@ type PeerDepositClient struct {
 	depositPeers     map[string]struct{}
 }
 
-func NewPeerDepositClient(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, eventBus event.Bus) *PeerDepositClient {
+func NewPeerDepositClient(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, eventBus event.Bus) (*PeerDepositClient, error) {
 	gcli := &PeerDepositClient{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),
@@ -43,13 +43,13 @@ func NewPeerDepositClient(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids 
 	// 订阅push、pull
 	sub, err := eventBus.Subscribe([]any{new(gevent.PushOfflineMessageEvt), new(gevent.PullOfflineMessageEvt)}, eventbus.Name("deposit"))
 	if err != nil {
-		log.Warnf("eventbus subscribe deposit event error: %v", err)
+		return nil, err
 
 	} else {
-		gcli.handleSubscribe(context.Background(), sub)
+		go gcli.handleSubscribe(context.Background(), sub)
 	}
 
-	return gcli
+	return gcli, nil
 }
 
 func (pcli *PeerDepositClient) handleSubscribe(ctx context.Context, sub event.Subscription) {
@@ -72,14 +72,24 @@ func (pcli *PeerDepositClient) handleSubscribe(ctx context.Context, sub event.Su
 	for {
 		select {
 		case e, ok := <-sub.Out():
+			log.Debugf("get subscribe", ok)
 			if !ok {
 				return
 			}
 			switch ev := e.(type) {
 			case gevent.PushOfflineMessageEvt:
-				pcli.handPushEvent(ev)
+				go func() {
+					if err = pcli.handlePushEvent(ev); err != nil {
+						log.Errorf("hand push event error: %v", err)
+					}
+				}()
+
 			case gevent.PullOfflineMessageEvt:
-				pcli.handPullEvent(ev)
+				go func() {
+					if err = pcli.handlePullEvent(ev); err != nil {
+						log.Errorf("handle pull event error: %v", err)
+					}
+				}()
 			default:
 				log.Warnf("undefined event type: %T", ev)
 			}
@@ -88,14 +98,17 @@ func (pcli *PeerDepositClient) handleSubscribe(ctx context.Context, sub event.Su
 			return
 		}
 	}
+
+	fmt.Println("break???")
 }
 
-func (pcli *PeerDepositClient) handPushEvent(ev gevent.PushOfflineMessageEvt) error {
+func (pcli *PeerDepositClient) handlePushEvent(ev gevent.PushOfflineMessageEvt) error {
+	log.Debugf("receive push offline event: %s", ev.MsgID)
 	return pcli.Push(ev.ToPeerID, ev.MsgID, ev.MsgData)
 }
 
-func (pcli *PeerDepositClient) handPullEvent(ev gevent.PullOfflineMessageEvt) error {
-
+func (pcli *PeerDepositClient) handlePullEvent(ev gevent.PullOfflineMessageEvt) error {
+	log.Debugf("receive pull offline event")
 	ctx := context.Background()
 	hostID := pcli.host.ID()
 
@@ -104,35 +117,37 @@ func (pcli *PeerDepositClient) handPullEvent(ev gevent.PullOfflineMessageEvt) er
 		return fmt.Errorf("get deposit peer error: %v", err)
 	}
 
+	fmt.Println("deposit peerID: ", depositPeerID.String())
+
 	stream, err := pcli.host.NewStream(ctx, depositPeerID, PULL_ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("new stream to deposit error: %v", err)
 	}
 	defer stream.Close()
 
 	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
 	pw := pbio.NewDelimitedWriter(stream)
 
-	var dmsg pb.DepositMessage
+	var dmsg pb.OfflineMessage
 	for {
 		dmsg.Reset()
 		if err = pr.ReadMsg(&dmsg); err != nil {
-			return err
+			return fmt.Errorf("receive deposit msg error: %v", err)
 		}
 
 		exists, err := ev.HasMessage(peer.ID(dmsg.FromPeerId), dmsg.MsgId)
 		if err != nil {
-			return err
+			return fmt.Errorf("check has offline msg error: %v", err)
 		}
 
 		if !exists {
 			if err = ev.SaveMessage(peer.ID(dmsg.FromPeerId), dmsg.MsgId, dmsg.MsgData); err != nil {
-				return err
+				return fmt.Errorf("save offline msg error: %v", err)
 			}
 		}
 
 		if err = pw.WriteMsg(&pb.AckMessage{Id: dmsg.Id}); err != nil {
-			return err
+			return fmt.Errorf("send ack msg error: %v", err)
 		}
 	}
 }
@@ -145,6 +160,8 @@ func (pcli *PeerDepositClient) Push(toPeerID peer.ID, msgID string, msgData []by
 		return fmt.Errorf("get deposit peer error: %v", err)
 	}
 
+	log.Debugf("get deposit service peer: %s", depositPeerID.String())
+
 	stream, err := pcli.host.NewStream(network.WithUseTransient(context.Background(), ""), depositPeerID, PUSH_ID)
 	if err != nil {
 		return fmt.Errorf("new stream to deposit peer error: %v", err)
@@ -153,7 +170,7 @@ func (pcli *PeerDepositClient) Push(toPeerID peer.ID, msgID string, msgData []by
 	pw := pbio.NewDelimitedWriter(stream)
 	defer pw.Close()
 
-	dmsg := pb.DepositMessage{
+	dmsg := pb.OfflineMessage{
 		FromPeerId:  []byte(fromPeerID),
 		ToPeerId:    []byte(toPeerID),
 		MsgId:       msgID,
@@ -176,6 +193,7 @@ func (pcli *PeerDepositClient) findPeers(ctx context.Context, peerCh <-chan peer
 	}
 
 	for peer := range peerCh {
+		fmt.Println("deposit service provider: ", peer.ID.String())
 		pcli.depositPeerMutex.Lock()
 		pcli.depositPeers[peer.ID.String()] = struct{}{}
 		pcli.depositPeerMutex.Unlock()

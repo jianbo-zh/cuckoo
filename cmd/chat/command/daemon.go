@@ -100,7 +100,7 @@ func init() {
 			}
 
 			// 注入运行服务
-			if err = service.Init(localnode, rdiscvry, ebus, ds); err != nil {
+			if err = service.Setup(localnode, rdiscvry, ebus, ds); err != nil {
 				return err
 			}
 
@@ -210,6 +210,8 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 				isAnySucc = true
 			}
 		}
+
+		fmt.Println("boot complete")
 
 		bootEmitter.Emit(gevent.EvtHostBootComplete{IsSucc: isAnySucc})
 	}()

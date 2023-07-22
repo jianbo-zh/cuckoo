@@ -1,4 +1,4 @@
-package datastore
+package ds
 
 import (
 	"strconv"
@@ -6,11 +6,6 @@ import (
 
 	"github.com/ipfs/go-datastore/query"
 )
-
-type Group struct {
-	ID   string
-	Name string
-}
 
 type GroupFilter struct{}
 
