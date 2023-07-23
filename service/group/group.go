@@ -3,7 +3,7 @@ package group
 import (
 	"context"
 
-	"github.com/jianbo-zh/dchat/service/group/datastore"
+	"github.com/jianbo-zh/dchat/service/group/protocol/admin/ds"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -24,7 +24,7 @@ func (group *GroupService) DisbandGroup(ctx context.Context, groupID string) err
 }
 
 // 群列表
-func (group *GroupService) ListGroups(ctx context.Context) ([]datastore.Group, error) {
+func (group *GroupService) ListGroups(ctx context.Context) ([]ds.Group, error) {
 	return group.adminSvc.ListGroups(ctx)
 }
 

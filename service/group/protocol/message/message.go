@@ -37,10 +37,6 @@ type MessageService struct {
 
 	data ds.MessageIface
 
-	emitters struct {
-		evtForwardGroupMsg event.Emitter
-	}
-
 	groupConns map[string]map[peer.ID]struct{}
 }
 
@@ -54,10 +50,6 @@ func NewMessageService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*M
 
 	h.SetStreamHandler(ID, msgsvc.messageHandler)
 	h.SetStreamHandler(SYNC_ID, msgsvc.syncHandler)
-
-	if msgsvc.emitters.evtForwardGroupMsg, err = eventBus.Emitter(&gevent.EvtForwardGroupMsg{}); err != nil {
-		return nil, fmt.Errorf("set group msg emitter error: %v", err)
-	}
 
 	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
 	if err != nil {

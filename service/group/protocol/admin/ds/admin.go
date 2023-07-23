@@ -1,7 +1,6 @@
 package ds
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-varint"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,64 +27,7 @@ func AdminWrap(d ds.Batching) *AdminDs {
 	return &AdminDs{Batching: d}
 }
 
-func (a *AdminDs) GetLamportTime(ctx context.Context, groupID GroupID) (uint64, error) {
-	a.lamportMutex.Lock()
-	defer a.lamportMutex.Unlock()
-
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "admin", "lamportime"})
-
-	tbs, err := a.Get(ctx, key)
-	if err != nil {
-		if errors.Is(err, ds.ErrNotFound) {
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	return varint.ReadUvarint(bytes.NewReader(tbs))
-}
-
-func (a *AdminDs) SetLamportTime(ctx context.Context, groupID GroupID, lamptime uint64) error {
-	a.lamportMutex.Lock()
-	defer a.lamportMutex.Unlock()
-
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "lamportime"})
-
-	buff := make([]byte, varint.MaxLenUvarint63)
-	len := varint.PutUvarint(buff, lamptime)
-
-	return a.Put(ctx, key, buff[:len])
-}
-
-func (a *AdminDs) TickLamportTime(ctx context.Context, groupID GroupID) (uint64, error) {
-	a.lamportMutex.Lock()
-	defer a.lamportMutex.Unlock()
-
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "lamportime"})
-
-	lamptime := uint64(0)
-
-	if tbs, err := a.Get(ctx, key); err != nil {
-
-		if !errors.Is(err, ds.ErrNotFound) {
-			return 0, err
-		}
-
-	} else if lamptime, err = varint.ReadUvarint(bytes.NewReader(tbs)); err != nil {
-		return 0, err
-	}
-
-	buff := make([]byte, varint.MaxLenUvarint63)
-	len := varint.PutUvarint(buff, lamptime+1)
-
-	if err := a.Put(ctx, key, buff[:len]); err != nil {
-		return 0, err
-	}
-
-	return lamptime + 1, nil
-}
-
-func (a *AdminDs) LogAdminOperation(ctx context.Context, peerID peer.ID, groupID GroupID, msg *pb.AdminLog) error {
+func (a *AdminDs) SaveLog(ctx context.Context, hostID peer.ID, groupID GroupID, msg *pb.Log) error {
 
 	bs, err := proto.Marshal(msg)
 	if err != nil {
@@ -123,7 +64,7 @@ func (a *AdminDs) LogAdminOperation(ctx context.Context, peerID peer.ID, groupID
 	}
 
 	switch msg.Type {
-	case pb.AdminLog_CREATE:
+	case pb.Log_CREATE:
 		createKey := ds.KeyWithNamespaces(append(msgPrefix, "creator"))
 		if err = batch.Put(ctx, createKey, []byte(msg.PeerId)); err != nil {
 			return err
@@ -132,32 +73,31 @@ func (a *AdminDs) LogAdminOperation(ctx context.Context, peerID peer.ID, groupID
 		if err = batch.Put(ctx, stateKey, []byte("create")); err != nil {
 			return err
 		}
-	case pb.AdminLog_DISBAND:
+	case pb.Log_DISBAND:
 		stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
 		if err = batch.Put(ctx, stateKey, []byte("disband")); err != nil {
 			return err
 		}
-	case pb.AdminLog_NAME:
+	case pb.Log_NAME:
 		nameKey := ds.KeyWithNamespaces(append(msgPrefix, "name"))
 		if err = batch.Put(ctx, nameKey, msg.Payload); err != nil {
 			return err
 		}
-	case pb.AdminLog_NOTICE:
+	case pb.Log_NOTICE:
 		noticeKey := ds.KeyWithNamespaces(append(msgPrefix, "notice"))
 		if err = batch.Put(ctx, noticeKey, msg.Payload); err != nil {
 			return err
 		}
-	case pb.AdminLog_MEMBER:
+	case pb.Log_MEMBER:
 		switch msg.Operate {
-		case pb.AdminLog_REMOVE:
-			if peerID.String() == msg.MemberId {
+		case pb.Log_REMOVE:
+			if hostID.String() == msg.MemberId {
 				// 自己被移除了，则更新状态
 				stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
 				if err = batch.Put(ctx, stateKey, []byte("kicked")); err != nil {
 					return err
 				}
 			}
-
 		}
 	}
 
@@ -242,7 +182,7 @@ func (a *AdminDs) SetGroupRemark(ctx context.Context, groupID GroupID, remark st
 	return a.Put(ctx, key, []byte(remark))
 }
 
-func (a *AdminDs) GroupMemberLogs(ctx context.Context, groupID GroupID) ([]*pb.AdminLog, error) {
+func (a *AdminDs) GroupMemberLogs(ctx context.Context, groupID GroupID) ([]*pb.Log, error) {
 
 	results, err := a.Query(ctx, query.Query{
 		Prefix:  "/dchat/group/" + string(groupID),
@@ -253,14 +193,14 @@ func (a *AdminDs) GroupMemberLogs(ctx context.Context, groupID GroupID) ([]*pb.A
 		return nil, err
 	}
 
-	var memberLogs []*pb.AdminLog
+	var memberLogs []*pb.Log
 
 	for result := range results.Next() {
 		if result.Error != nil {
 			return nil, err
 		}
 
-		var pbmsg pb.AdminLog
+		var pbmsg pb.Log
 		if err := proto.Unmarshal(result.Entry.Value, &pbmsg); err != nil {
 			return nil, err
 		}

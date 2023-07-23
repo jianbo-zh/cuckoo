@@ -2,7 +2,6 @@ package group
 
 import (
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/service/group/datastore"
 	"github.com/jianbo-zh/dchat/service/group/protocol/admin"
 	"github.com/jianbo-zh/dchat/service/group/protocol/network"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -13,8 +12,6 @@ import (
 var groupsvc *GroupService
 
 type GroupService struct {
-	datastore datastore.GroupIface
-
 	adminSvc *admin.AdminService
 
 	networkSvc *network.NetworkService
@@ -28,24 +25,21 @@ func Get() GroupServiceIface {
 	return groupsvc
 }
 
-func Setup(h host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ev event.Bus, opts ...Option) (*GroupService, error) {
+func Setup(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus, opts ...Option) (*GroupService, error) {
 	var err error
-	groupDs := datastore.GroupWrap(ids)
 
-	groupsvc = &GroupService{
-		datastore: groupDs,
-	}
+	groupsvc = &GroupService{}
 
 	if err := groupsvc.Apply(opts...); err != nil {
 		return nil, err
 	}
 
-	groupsvc.adminSvc, err = admin.NewAdminService(h, groupDs, ev)
+	groupsvc.adminSvc, err = admin.NewAdminService(lhost, ids, ebus)
 	if err != nil {
 		return nil, err
 	}
 
-	groupsvc.networkSvc, err = network.NewNetworkService(h, rdiscvry, groupDs, ev)
+	groupsvc.networkSvc, err = network.NewNetworkService(lhost, rdiscvry, ids, ebus)
 	if err != nil {
 		return nil, err
 	}

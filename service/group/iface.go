@@ -3,14 +3,14 @@ package group
 import (
 	"context"
 
-	"github.com/jianbo-zh/dchat/service/group/datastore"
+	"github.com/jianbo-zh/dchat/service/group/protocol/admin/ds"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type GroupServiceIface interface {
 	CreateGroup(ctx context.Context, name string, memberIDs []peer.ID) (string, error) // 创建群
 	DisbandGroup(ctx context.Context, groupID string) error                            // 解散群
-	ListGroups(ctx context.Context) ([]datastore.Group, error)                         // 群列表
+	ListGroups(ctx context.Context) ([]ds.Group, error)                                // 群列表
 
 	GroupName(ctx context.Context, groupID string) (string, error)           // 群备注/名称
 	SetGroupName(ctx context.Context, groupID string, name string) error     // 设置群名称

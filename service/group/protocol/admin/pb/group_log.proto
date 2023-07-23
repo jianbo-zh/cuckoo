@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package admin.pb;
 
-message AdminLog {
+message Log {
 
   // 日志类型
   enum Type {

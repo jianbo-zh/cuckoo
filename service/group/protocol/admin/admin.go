@@ -21,14 +21,13 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/group_admin.proto=./pb pb/group_admin.proto
-
 var log = logging.Logger("message")
 
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID = "/dchat/group/admin/1.0.0"
+	ID      = "/dchat/group/admin/1.0.0"
+	SYNC_ID = "/dchat/group/syncmsg/1.0.0"
 
 	ServiceName = "group.admin"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -42,28 +41,32 @@ type AdminService struct {
 	emitters struct {
 		evtSendAdminLog event.Emitter
 	}
+
+	groupConns map[string]map[peer.ID]struct{}
 }
 
-func NewAdminService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*AdminService, error) {
+func NewAdminService(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*AdminService, error) {
 	var err error
 
 	admsvc := &AdminService{
-		host: h,
-		data: ds.AdminWrap(ids),
+		host:       lhost,
+		data:       ds.AdminWrap(ids),
+		groupConns: make(map[string]map[peer.ID]struct{}),
 	}
 
-	h.SetStreamHandler(ID, admsvc.Handler)
+	lhost.SetStreamHandler(ID, admsvc.Handler)
+	lhost.SetStreamHandler(SYNC_ID, admsvc.Handler)
 
 	if admsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtRecvAdminLog)}, eventbus.Name("adminlog"))
+	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
 	} else {
-		go admsvc.handleSubscribe(context.Background(), sub)
+		go admsvc.subscribeHandler(context.Background(), sub)
 	}
 
 	return admsvc, nil
@@ -83,7 +86,7 @@ func (a *AdminService) Handler(s network.Stream) {
 
 	s.SetDeadline(time.Now().Add(StreamTimeout))
 
-	var msg pb.AdminLog
+	var msg pb.Log
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
 		s.Reset()
@@ -92,7 +95,7 @@ func (a *AdminService) Handler(s network.Stream) {
 
 	s.SetReadDeadline(time.Time{})
 
-	err := a.data.LogAdminOperation(context.Background(), a.host.ID(), ds.GroupID(msg.GroupId), &msg)
+	err := a.data.SaveLog(context.Background(), a.host.ID(), ds.GroupID(msg.GroupId), &msg)
 	if err != nil {
 		log.Errorf("log admin operation error: %v", err)
 		s.Reset()
@@ -100,7 +103,7 @@ func (a *AdminService) Handler(s network.Stream) {
 	}
 }
 
-func (a *AdminService) handleSubscribe(ctx context.Context, sub event.Subscription) {
+func (a *AdminService) subscribeHandler(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -109,12 +112,21 @@ func (a *AdminService) handleSubscribe(ctx context.Context, sub event.Subscripti
 			if !ok {
 				return
 			}
-			ev := e.(gevent.EvtRecvAdminLog)
-			// 接收消息日志
-			err := a.data.LogAdminOperation(ctx, a.host.ID(), ds.GroupID(ev.MsgData.GroupId), ev.MsgData)
-			if err != nil {
-				log.Errorf("log admin operation error: %v", err)
+
+			evt := e.(gevent.EvtGroupConnectChange)
+
+			if !evt.IsConnected { // 断开连接
+				delete(a.groupConns[evt.GroupID], evt.PeerID)
 			}
+
+			// 新建连接
+			if _, exists := a.groupConns[evt.GroupID]; !exists {
+				a.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
+			}
+			a.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
+
+			// 启动同步
+			a.sync(evt.GroupID, evt.PeerID)
 
 		case <-ctx.Done():
 			return
@@ -132,23 +144,23 @@ func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs [
 	if err != nil {
 		return string(groupID), err
 	}
-	createLog := pb.AdminLog{
+	createLog := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "create", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_CREATE,
+		Type:       pb.Log_CREATE,
 		Payload:    []byte(groupID),
 		Timestamp:  int32(time.Now().Unix()),
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
 
-	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &createLog); err != nil {
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &createLog); err != nil {
 		return string(groupID), err
 	}
 
 	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_CREATE,
+		MsgType: pb.Log_CREATE,
 		MsgData: &createLog,
 	}); err != nil {
 		return "", err
@@ -159,22 +171,22 @@ func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs [
 	if err != nil {
 		return string(groupID), err
 	}
-	nameLog := pb.AdminLog{
+	nameLog := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "name", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_NAME,
+		Type:       pb.Log_NAME,
 		Payload:    []byte(name),
 		Timestamp:  int32(time.Now().Unix()),
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
-	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &nameLog); err != nil {
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &nameLog); err != nil {
 		return string(groupID), err
 	}
 
 	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_NAME,
+		MsgType: pb.Log_NAME,
 		MsgData: &nameLog,
 	}); err != nil {
 		return "", err
@@ -187,20 +199,20 @@ func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs [
 			return string(groupID), err
 		}
 
-		memberLog := pb.AdminLog{
+		memberLog := pb.Log{
 			Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", peerID),
 			GroupId:    string(groupID),
 			PeerId:     peerID,
-			Type:       pb.AdminLog_MEMBER,
+			Type:       pb.Log_MEMBER,
 			MemberId:   memberID.String(),
-			Operate:    pb.AdminLog_AGREE,
+			Operate:    pb.Log_AGREE,
 			Payload:    []byte(""),
 			Timestamp:  int32(time.Now().Unix()),
 			Lamportime: lamportTime,
 			Signature:  []byte(""),
 		}
 
-		if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &memberLog); err != nil {
+		if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &memberLog); err != nil {
 			return string(groupID), err
 		}
 
@@ -221,23 +233,23 @@ func (a *AdminService) DisbandGroup(ctx context.Context, groupID0 string) error 
 		return err
 	}
 
-	pbmsg := pb.AdminLog{
+	pbmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "disband", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_DISBAND,
+		Type:       pb.Log_DISBAND,
 		Payload:    []byte(groupID),
 		Timestamp:  int32(time.Now().Unix()),
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
 
-	if err = a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
 	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_DISBAND,
+		MsgType: pb.Log_DISBAND,
 		MsgData: &pbmsg,
 	})
 	if err != nil {
@@ -277,23 +289,23 @@ func (a *AdminService) SetGroupName(ctx context.Context, groupID0 string, name s
 		return err
 	}
 
-	pbmsg := pb.AdminLog{
+	pbmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "name", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_NAME,
+		Type:       pb.Log_NAME,
 		Payload:    []byte(name),
 		Timestamp:  int32(time.Now().Unix()),
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
 
-	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
 	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_NAME,
+		MsgType: pb.Log_NAME,
 		MsgData: &pbmsg,
 	})
 	if err != nil {
@@ -313,23 +325,23 @@ func (a *AdminService) SetGroupNotice(ctx context.Context, groupID0 string, noti
 		return err
 	}
 
-	pbmsg := pb.AdminLog{
+	pbmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "notice", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_NOTICE,
+		Type:       pb.Log_NOTICE,
 		Payload:    []byte(notice),
 		Timestamp:  int32(time.Now().Unix()),
 		Lamportime: lamportTime,
 		Signature:  []byte(""),
 	}
 
-	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
 	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_NOTICE,
+		MsgType: pb.Log_NOTICE,
 		MsgData: &pbmsg,
 	})
 	if err != nil {
@@ -354,12 +366,12 @@ func (a *AdminService) InviteMember(ctx context.Context, groupID0 string, peerID
 		return err
 	}
 
-	return a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pb.AdminLog{
+	return a.data.SaveLog(ctx, a.host.ID(), groupID, &pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_MEMBER,
-		Operate:    pb.AdminLog_INVITE,
+		Type:       pb.Log_MEMBER,
+		Operate:    pb.Log_INVITE,
 		MemberId:   peerID0.String(),
 		Payload:    []byte(""),
 		Timestamp:  int32(time.Now().Unix()),
@@ -379,12 +391,12 @@ func (a *AdminService) ApplyMember(ctx context.Context, groupID string, memberID
 
 	pw := pbio.NewDelimitedWriter(stream)
 
-	pmsg := pb.AdminLog{
+	pmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportime, "member", peerID),
 		GroupId:    groupID,
 		PeerId:     peerID,
-		Type:       pb.AdminLog_MEMBER,
-		Operate:    pb.AdminLog_APPLY,
+		Type:       pb.Log_MEMBER,
+		Operate:    pb.Log_APPLY,
 		MemberId:   peerID,
 		Payload:    []byte(groupID),
 		Timestamp:  int32(time.Now().Unix()),
@@ -408,16 +420,16 @@ func (a *AdminService) ReviewMember(ctx context.Context, groupID0 string, member
 		return err
 	}
 
-	operate := pb.AdminLog_AGREE
+	operate := pb.Log_AGREE
 	if !isAgree {
-		operate = pb.AdminLog_REJECTED
+		operate = pb.Log_REJECTED
 	}
 
-	pbmsg := pb.AdminLog{
+	pbmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_MEMBER,
+		Type:       pb.Log_MEMBER,
 		Operate:    operate,
 		MemberId:   memberID0.String(),
 		Payload:    []byte(""),
@@ -426,12 +438,12 @@ func (a *AdminService) ReviewMember(ctx context.Context, groupID0 string, member
 		Signature:  []byte(""),
 	}
 
-	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
 	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_MEMBER,
+		MsgType: pb.Log_MEMBER,
 		MsgData: &pbmsg,
 	})
 	if err != nil {
@@ -450,12 +462,12 @@ func (a *AdminService) RemoveMember(ctx context.Context, groupID0 string, member
 		return err
 	}
 
-	pbmsg := pb.AdminLog{
+	pbmsg := pb.Log{
 		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", peerID),
 		GroupId:    string(groupID),
 		PeerId:     peerID,
-		Type:       pb.AdminLog_MEMBER,
-		Operate:    pb.AdminLog_REMOVE,
+		Type:       pb.Log_MEMBER,
+		Operate:    pb.Log_REMOVE,
 		MemberId:   memberID0.String(),
 		Payload:    []byte(""),
 		Timestamp:  int32(time.Now().Unix()),
@@ -463,12 +475,12 @@ func (a *AdminService) RemoveMember(ctx context.Context, groupID0 string, member
 		Signature:  []byte(""),
 	}
 
-	if err := a.data.LogAdminOperation(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+	if err := a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
 		return err
 	}
 
 	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.AdminLog_MEMBER,
+		MsgType: pb.Log_MEMBER,
 		MsgData: &pbmsg,
 	})
 	if err != nil {
@@ -487,7 +499,7 @@ func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]ds.M
 	}
 
 	oks := make(map[string]struct{})
-	mmap := make(map[string]pb.AdminLog_Operate)
+	mmap := make(map[string]pb.Log_Operate)
 
 	for _, pbmsg := range memberLogs {
 		if state, exists := mmap[pbmsg.MemberId]; !exists {
@@ -499,14 +511,14 @@ func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]ds.M
 			}
 
 			switch state {
-			case pb.AdminLog_REMOVE, pb.AdminLog_REJECTED:
+			case pb.Log_REMOVE, pb.Log_REJECTED:
 				continue
-			case pb.AdminLog_AGREE:
-				if pbmsg.Operate == pb.AdminLog_APPLY {
+			case pb.Log_AGREE:
+				if pbmsg.Operate == pb.Log_APPLY {
 					oks[pbmsg.MemberId] = struct{}{}
 				}
-			case pb.AdminLog_APPLY:
-				if pbmsg.Operate == pb.AdminLog_AGREE {
+			case pb.Log_APPLY:
+				if pbmsg.Operate == pb.Log_AGREE {
 					oks[pbmsg.MemberId] = struct{}{}
 				}
 			default:

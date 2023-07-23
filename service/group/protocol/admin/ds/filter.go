@@ -65,3 +65,26 @@ func (o GroupOrderByKeyDescending) Compare(a, b query.Entry) int {
 func (GroupOrderByKeyDescending) String() string {
 	return "desc(GroupKEY)"
 }
+
+type IDRangeFilter struct {
+	StartID string
+	EndID   string
+}
+
+func NewIDRangeFilter(startMsgID string, endMsgID string) *IDRangeFilter {
+	return &IDRangeFilter{
+		StartID: startMsgID,
+		EndID:   endMsgID,
+	}
+}
+
+func (f *IDRangeFilter) Filter(e query.Entry) bool {
+	keys := strings.Split(e.Key, "/")
+	msgID := keys[len(keys)-1]
+
+	if msgID >= f.StartID && msgID <= f.EndID {
+		return true
+	}
+
+	return false
+}
