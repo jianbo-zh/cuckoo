@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package message.pb;
 
-message GroupMsg {
+message Message {
 
     enum Type {
       TEXT = 0;
@@ -14,7 +14,7 @@ message GroupMsg {
 
     string group_id = 2;
 
-    string peer_id = 3;
+    bytes peer_id = 3;
   
     Type type = 4;
   

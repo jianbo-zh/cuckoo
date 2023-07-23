@@ -44,7 +44,7 @@ type MessageService struct {
 	groupConns map[string]map[peer.ID]struct{}
 }
 
-func NewGroupMessageService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageService, error) {
+func NewMessageService(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageService, error) {
 	var err error
 	msgsvc := &MessageService{
 		host:       h,
@@ -85,7 +85,7 @@ func (m *MessageService) messageHandler(s network.Stream) {
 
 	s.SetDeadline(time.Now().Add(StreamTimeout))
 
-	var msg pb.GroupMsg
+	var msg pb.Message
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
 		s.Reset()
@@ -95,11 +95,11 @@ func (m *MessageService) messageHandler(s network.Stream) {
 	s.SetReadDeadline(time.Time{})
 
 	// 检查本地是否存在
-	_, err := m.data.GetMessage(context.Background(), ds.GroupID(msg.GroupId), msg.Id)
+	_, err := m.data.GetMessage(context.Background(), msg.GroupId, msg.Id)
 	if err != nil {
 		if errors.Is(err, ipfsds.ErrNotFound) {
 			// 保存消息
-			err = m.data.SaveMessage(context.Background(), ds.GroupID(msg.GroupId), &msg)
+			err = m.data.SaveMessage(context.Background(), msg.GroupId, &msg)
 			if err != nil {
 				log.Errorf("save group message error: %v", err)
 			}
@@ -180,7 +180,7 @@ func (m *MessageService) subscribeHandler(ctx context.Context, sub event.Subscri
 			m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
 			// 启动同步
-			m.RunSync(evt.GroupID, evt.PeerID)
+			m.sync(evt.GroupID, evt.PeerID)
 
 		case <-ctx.Done():
 			return
@@ -190,21 +190,20 @@ func (m *MessageService) subscribeHandler(ctx context.Context, sub event.Subscri
 
 func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, msg string) error {
 
-	peerID := m.host.ID().String()
-	lamportime, err := m.data.TickLamportTime(context.Background(), ds.GroupID(groupID))
+	peerID := m.host.ID()
+	lamportime, err := m.data.TickLamportTime(context.Background(), groupID)
 	if err != nil {
 		return err
 	}
-	msg1 := pb.GroupMsg{
-		Id:         fmt.Sprintf("%d_%s", lamportime, peerID),
-		PeerId:     peerID,
-		Type:       pb.GroupMsg_TEXT,
+
+	err = m.broadcastMessage(ctx, groupID, &pb.Message{
+		Id:         msgID(lamportime, peerID),
+		PeerId:     []byte(peerID),
+		Type:       pb.Message_TEXT,
 		Payload:    []byte(msg),
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportime,
-	}
-
-	err = m.broadcastMessage(ctx, groupID, &msg1)
+	})
 	if err != nil {
 		return err
 	}
@@ -213,7 +212,7 @@ func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, ms
 }
 
 // 发送消息
-func (m *MessageService) broadcastMessage(ctx context.Context, groupID string, msg *pb.GroupMsg, excludePeerIDs ...peer.ID) error {
+func (m *MessageService) broadcastMessage(ctx context.Context, groupID string, msg *pb.Message, excludePeerIDs ...peer.ID) error {
 
 	for _, peerID := range m.getConnectPeers(groupID) {
 		if len(excludePeerIDs) > 0 {
@@ -235,7 +234,7 @@ func (m *MessageService) broadcastMessage(ctx context.Context, groupID string, m
 }
 
 // 发送消息（指定peerID）
-func (m *MessageService) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.GroupMsg) error {
+func (m *MessageService) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.Message) error {
 	stream, err := m.host.NewStream(ctx, peerID, ID)
 	if err != nil {
 		return err

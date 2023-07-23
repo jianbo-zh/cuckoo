@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (m *MessageDs) GetRangeMessages(groupID string, startID string, endID string) ([]*pb.GroupMsg, error) {
+func (m *MessageDs) GetRangeMessages(groupID string, startID string, endID string) ([]*pb.Message, error) {
 	results, err := m.Query(context.Background(), query.Query{
 		Prefix:  "/dchat/group/" + groupID + "/message/logs/",
 		Filters: []query.Filter{NewIDRangeFilter(startID, endID)},
@@ -20,14 +20,14 @@ func (m *MessageDs) GetRangeMessages(groupID string, startID string, endID strin
 		return nil, err
 	}
 
-	var msgs []*pb.GroupMsg
+	var msgs []*pb.Message
 
 	for result := range results.Next() {
 		if result.Error != nil {
 			return nil, result.Error
 		}
 
-		var msg pb.GroupMsg
+		var msg pb.Message
 		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
 			return nil, err
 		}
@@ -64,12 +64,12 @@ func (m *MessageDs) GetRangeIDs(groupID string, startID string, endID string) ([
 	return msgIDs, nil
 }
 
-func (m *MessageDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.GroupMsg, error) {
+func (m *MessageDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Message, error) {
 
 	ctx := context.Background()
 	prefix := "/dchat/group/" + groupID + "/message/logs/"
 
-	var msgs []*pb.GroupMsg
+	var msgs []*pb.Message
 
 	for _, msgID := range msgIDs {
 		val, err := m.Get(ctx, ds.NewKey(prefix+msgID))
@@ -77,7 +77,7 @@ func (m *MessageDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Gro
 			return nil, err
 		}
 
-		var msg pb.GroupMsg
+		var msg pb.Message
 		if err := proto.Unmarshal(val, &msg); err != nil {
 			return nil, err
 		}

@@ -23,14 +23,14 @@ func MessageWrap(d ds.Batching) *MessageDs {
 	return &MessageDs{Batching: d}
 }
 
-func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID string) (*msgpb.GroupMsg, error) {
+func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID string) (*msgpb.Message, error) {
 	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "message", "logs", msgID})
 	bs, err := m.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 
-	var msg msgpb.GroupMsg
+	var msg msgpb.Message
 	if err := proto.Unmarshal(bs, &msg); err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID strin
 	return &msg, nil
 }
 
-func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb.GroupMsg) error {
+func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb.Message) error {
 
 	msgPrefix := []string{"dchat", "group", string(groupID), "message"}
 
@@ -77,7 +77,7 @@ func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb
 	return batch.Commit(ctx)
 }
 
-func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb.GroupMsg, error) {
+func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb.Message, error) {
 
 	results, err := m.Query(ctx, query.Query{
 		Prefix: "/dchat/group/" + string(groupID) + "/message/logs",
@@ -87,13 +87,13 @@ func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb
 		return nil, err
 	}
 
-	var msgs []*msgpb.GroupMsg
+	var msgs []*msgpb.Message
 	for result := range results.Next() {
 		if result.Error != nil {
 			return nil, err
 		}
 
-		var msg msgpb.GroupMsg
+		var msg msgpb.Message
 		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
 			return nil, err
 		}

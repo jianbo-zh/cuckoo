@@ -28,7 +28,7 @@ import (
 // 3，发送区间消息KEY
 // 4，发送对方没有的消息ID
 
-func (m *MessageService) RunSync(groupID string, peerID peer.ID) {
+func (m *MessageService) sync(groupID string, peerID peer.ID) {
 
 	stream, err := m.host.NewStream(context.Background(), peerID, SYNC_ID)
 	if err != nil {
@@ -303,7 +303,7 @@ func (m *MessageService) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyn
 }
 
 func (m *MessageService) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncMessage) error {
-	var msg pb.GroupMsg
+	var msg pb.Message
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
 		return err
 	}
@@ -378,7 +378,7 @@ func (m *MessageService) getMessageSummary(groupID string) (*pb.DataSummary, err
 	}, nil
 }
 
-func (m *MessageService) getRangeMessages(groupID string, startID string, endID string) ([]*pb.GroupMsg, error) {
+func (m *MessageService) getRangeMessages(groupID string, startID string, endID string) ([]*pb.Message, error) {
 	return m.data.GetRangeMessages(groupID, startID, endID)
 }
 
@@ -410,6 +410,6 @@ func (m *MessageService) getRangeIDs(groupID string, startID string, endID strin
 	}, nil
 }
 
-func (m *MessageService) getMessagesByIDs(groupID string, msgIDs []string) ([]*pb.GroupMsg, error) {
+func (m *MessageService) getMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Message, error) {
 	return m.data.GetMessagesByIDs(groupID, msgIDs)
 }
