@@ -1,0 +1,509 @@
+syntax = "proto3";
+
+option go_package="/proto";
+option java_generic_services = true;
+option java_multiple_files = true;
+option java_package = "xyz.tobin.chat.proto";
+option java_outer_classname = "ChatProto";
+
+package chat;
+
+// 账号服务
+service AccountSvc {
+  // 创建账号
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply) {}
+  // 账号信息
+  rpc GetAccount(GetAccountRequest) returns (GetAccountReply) {}
+  // 更新头像
+  rpc SetAccountAvatar(SetAccountAvatarRequest) returns (SetAccountAvatarReply) {}
+  // 更新名称
+  rpc SetAccountName(SetAccountNameRequest) returns (SetAccountNameReply) {}
+  // 设置加人是否审核
+  rpc SetAutoReviewAddContact(SetAutoReviewAddContactRequest) returns (SetAutoReviewAddContactReply) {}
+  // 设置入群是否审核
+  rpc SetAutoReviewJoinGroup(SetAutoReviewJoinGroupRequest) returns (SetAutoReviewJoinGroupReply) {}
+}
+
+// 联系人服务
+service ContactSvc {
+  // 添加联系人
+  rpc AddContact(AddContactRequest) returns (AddContactReply) {}
+  // 获取联系人列表
+  rpc GetContactList(GetContactListRequest) returns (GetContactListReply) {}
+  // 获取联系人列表
+  rpc GetNearbyContactList(GetNearbyContactListRequest) returns (GetNearbyContactListReply) {}
+  // 联系人信息
+  rpc GetContact(GetContactRequest) returns (GetContactReply) {}
+  // 获取聊天记录
+  rpc GetContactMessageList(GetContactMessageListRequest) returns (GetContactMessageListReply) {}
+  // 发送消息
+  rpc SendContactMessage(SendContactMessageRequest) returns (SendContactMessageReply) {}
+  // 设置联系人别名
+  rpc SetContactAlias(SetContactAliasRequest) returns (SetContactAliasReply) {}
+  // 清空聊天记录
+  rpc ClearContactMessage(ClearContactMessageRequest) returns (ClearContactMessageReply) {}
+  // 删除联系人
+  rpc DeleteContact(DeleteContactRequest) returns (DeleteContactReply) {}
+}
+
+// 群服务
+service GroupSvc {
+  // 创建群
+  rpc CreateGroup(CreateGroupRequest) returns (CreateGroupReply) {}
+  // 获取群列表
+  rpc GetGroupList(GetGroupListRequest) returns (GetGroupListReply) {}
+  // 获取群信息
+  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
+  // 获取聊天记录
+  rpc GetGroupMessageList(GetGroupMessageListRequest) returns (GetGroupMessageListReply) {}
+  // 发送消息
+  rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
+  // 设置头像（管理员操作）
+  rpc SetGroupAvatar(SetGroupAvatarRequest) returns (SetGroupAvatarReply) {}
+  // 设置别名
+  rpc SetGroupAlias(SetGroupAliasRequest) returns (SetGroupAliasReply) {}
+  // 设置群公告
+  rpc SetGroupNotice(SetGroupNoticeRequest) returns (SetGroupNoticeReply) {}
+  // 邀请群成员
+  rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
+  // 群成员列表
+  rpc GetMemberList(GetMemberListRequest) returns (GetMemberListReply) {}
+  // 移除群成员
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberReply) {}
+  // 设置入群是否审核
+  rpc SetJoinGroupReview(SetJoinGroupReviewRequest) returns (SetJoinGroupReviewReply) {}
+  // 清空聊天记录
+  rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
+  // 退出此群
+  rpc ExitGroup(ExitGroupRequest) returns (ExitGroupReply) {}
+  // 删除此群
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupReply) {}
+}
+
+// 会话服务
+service SessionSvc {
+  rpc GetSessionList(GetSessionListRequest) returns (GetSessionListReply) {}
+}
+
+// 系统服务
+service SystemSvc {
+  rpc GetSystemMessageList(GetMessageListRequest) returns (GetMessageListReply) {}
+  rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
+}
+
+// -------------------- 分隔符 --------------------
+message Result {
+  int32 Code = 1;
+  string Message = 2;
+}
+
+message CreateAccountRequest {
+  string Avatar = 1;
+  string name = 2;
+}
+message CreateAccountReply {
+  Result Result = 1;
+}
+
+message GetAccountRequest {}
+
+message GetAccountReply {
+  Result Result = 1;
+  Account account = 2;
+}
+
+message SetAccountAvatarRequest{
+  string Avatar = 1;
+}
+message SetAccountAvatarReply{
+    Result Result = 1;
+}
+
+message SetAccountNameRequest {
+  string Name = 1;
+}
+message SetAccountNameReply {
+  Result Result = 1;
+}
+
+message SetAutoReviewAddContactRequest {
+  bool IsReview = 1;
+}
+
+message SetAutoReviewAddContactReply {
+  Result Result = 1;
+}
+
+message SetAutoReviewJoinGroupRequest {
+  bool IsReview = 1;
+}
+
+message SetAutoReviewJoinGroupReply {
+  Result Result = 1;
+}
+
+// -------------------- 分隔符 --------------------
+message AddContactRequest {
+  string PeerID = 1;
+  string Content = 2;
+}
+message AddContactReply {
+  Result Result = 1;
+}
+
+message GetContactListRequest {}
+
+message GetContactListReply {
+  Result Result = 1;
+  repeated Contact contactList = 2;
+}
+
+message GetNearbyContactListRequest {}
+
+message GetNearbyContactListReply {
+  Result Result = 1;
+  repeated Contact contactList = 2;
+}
+
+message GetContactRequest {
+  string PeerID = 1;
+}
+message GetContactReply {
+  Result Result = 1;
+  Contact contact = 2;
+}
+
+message GetContactMessageListRequest {
+  string PeerID = 1;
+  string OldestMessageID = 2;
+  string LatestMessageID = 3;
+  int32 Limit = 4;
+}
+
+message GetContactMessageListReply {
+  Result Result = 1;
+  repeated ContactMessage MessageList = 2;
+}
+
+message SendContactMessageRequest {
+  string PeerID = 1;
+  MsgType MsgType = 2;
+  string MimeType = 3;
+  bytes data = 4;
+}
+
+message SendContactMessageReply {
+  Result Result = 1;
+}
+
+message SetContactAliasRequest {
+  string PeerID = 1;
+  string Alias = 2;
+}
+
+message SetContactAliasReply {
+  Result Result = 1;
+}
+
+message ClearContactMessageRequest {
+  string PeerID = 1;
+}
+
+message ClearContactMessageReply {
+  Result Result = 1;
+}
+
+message DeleteContactRequest {
+  string PeerID = 1;
+}
+
+message DeleteContactReply {
+  Result Result = 1;
+}
+
+// -------------------- 分隔符 --------------------
+
+message CreateGroupRequest {
+  string Name = 1;
+  repeated string PeerIDs = 2;
+}
+
+message CreateGroupReply {
+  Result Result = 1;
+}
+
+
+message GetGroupListRequest {}
+message GetGroupListReply {
+  Result Result = 1;
+  repeated Group groupList = 2;
+}
+
+
+message GetGroupRequest {
+  string GroupID = 1;
+}
+message GetGroupReply {
+  Result Result = 1;
+  Group group = 2;
+}
+
+
+message GetGroupMessageListRequest {
+  string GroupID = 1;
+  string OldestMessageID = 2;
+  string LatestMessageID = 3;
+  int32 limit = 4;
+}
+message GetGroupMessageListReply {
+  Result Result = 1;
+  repeated GroupMessage MessageList = 2;
+}
+
+
+message SendGroupMessageRequest {
+  string GroupID = 1;
+  MsgType MsgType = 2;
+  string MimeType = 3;
+  bytes data = 4;
+}
+message SendGroupMessageReply {
+  Result Result = 1;
+}
+
+message SetGroupAvatarRequest {
+  string GroupID = 1;
+  string Avatar = 2;
+}
+message SetGroupAvatarReply {
+  Result Result = 1;
+}
+
+message SetGroupAliasRequest {
+  string GroupID = 1;
+  string Alias = 2;
+}
+message SetGroupAliasReply {
+  Result Result = 1;
+}
+
+message SetGroupNoticeRequest {
+  string GroupID = 1;
+  string Notice = 2;
+}
+message SetGroupNoticeReply {
+  Result Result = 1;
+}
+
+message InviteJoinGroupRequest {
+  string GroupID = 1;
+  string PeerID = 2;
+}
+message InviteJoinGroupReply {
+  Result Result = 1;
+}
+
+message GetMemberListRequest {
+  string GroupID = 1;
+}
+message GetMemberListReply {
+  Result Result = 1;
+  repeated Contact memberList = 2;
+}
+
+message RemoveMemberRequest {
+  string GroupID = 1;
+  string PeerID = 2;
+}
+message RemoveMemberReply {
+  Result Result = 1;
+}
+
+message SetJoinGroupReviewRequest {
+  string GroupID = 1;
+  bool IsReview = 2;
+}
+message SetJoinGroupReviewReply {
+  Result Result = 1;
+}
+
+message ClearGroupMessageRequest {
+  string GroupID = 1;
+}
+message ClearGroupMessageReply {
+  Result Result = 1;
+}
+
+
+message ExitGroupRequest {
+  string GroupID = 1;
+}
+message ExitGroupReply {
+  Result Result = 1;
+}
+
+
+message DeleteGroupRequest {
+  string GroupID = 1;
+}
+message DeleteGroupReply {
+  Result Result = 1;
+}
+
+// -------------------- 分隔符 --------------------
+
+message GetSessionListRequest {}
+
+message GetSessionListReply {
+  Result Result = 1;
+  repeated Session sessionList = 2;
+}
+
+// -------------------- 分隔符 --------------------
+message GetMessageListRequest {}
+message GetMessageListReply {
+  Result result = 1;
+  repeated SystemMessage messageList = 2;
+}
+
+message ClearSystemMessageRequest {}
+message ClearSystemMessageReply {
+  Result result = 1;
+}
+
+// -------------------- 分隔符 --------------------
+
+enum MsgType {
+  TEXT_MSG = 0;
+  IMAGE_MSG = 1;
+  AUDIO_MSG = 2;
+  VIDEO_MSG = 3;
+}
+
+enum SessionType {
+  CONTACT_SESSION = 0;
+  GROUP_SESSION = 1;
+}
+
+message Account {
+  // PeerID
+  string PeerID = 1;
+  // 头像SHA1
+  string Avatar = 2;
+  // 用户名称
+  string Name = 3;
+  // 加人是否需要审核
+  bool AddContactWithoutReview = 4;
+  // 入群是否需要审核
+  bool JoinGroupWithoutReview = 5;
+}
+
+// 联系人
+message Contact {
+  // PeerID
+  string PeerID = 1;
+  // 头像SHA1
+  string Avatar = 2;
+  // 用户名称
+  string Name = 3;
+  // 用户昵称
+  string Alias = 4;
+}
+
+// 联系人消息
+message ContactMessage {
+  // 消息ID
+  string ID = 1;
+  // 发送者
+  Contact Sender = 2;
+  // 接收者
+  Contact Receiver = 3;
+  // 消息类型
+  MsgType MsgType = 4;
+  // MIME-Type
+  string MimeType = 5;
+  // 消息内容
+  bytes Data = 6;
+  // 消息时间
+  int64 CreateTime = 7;
+}
+
+// 群
+message Group {
+  // ID
+  string GroupID = 1;
+  // Avatar
+  string Avatar = 2;
+  // 名称
+  string Name = 3;
+  // 别名
+  string Alias = 4;
+  // 通知公告
+  string Notice = 5;
+  // 管理员
+  Contact Admin = 6;
+  // 群成员
+  repeated Contact Members = 7;
+  // 是否需要审核入群
+  bool JoinGroupWithoutReview = 8;
+  // 创建时间
+  int64 CreateTime = 9;
+  // 更新时间
+  int64 UpdateTime = 10;
+}
+
+// 群消息
+message  GroupMessage {
+  // 消息ID
+  string ID = 1;
+  // 群ID
+  string GroupID = 2;
+  // 发送者
+  Contact Sender = 3;
+  // 消息类型
+  MsgType MsgType = 4;
+  // MIME-Type
+  string MimeType = 5;
+  // 内容
+  bytes Data = 6;
+  // 消息时间
+  int64 CreateTime = 7;
+}
+
+// 会话信息
+message Session {
+  // 会话类型
+  SessionType SessionType = 1;
+  // 头像 SHA1
+  string Avatar = 2;
+  // 名称
+  string Name = 3;
+  // 最新消息
+  string LastMessage = 4;
+  // 最新消息时间
+  int64 LastMessageTime = 5;
+  // 有未读消息
+  bool HaveUnreadMessage = 6;
+}
+
+// 系统操作类型
+enum SystemOperate {
+  APPLY_ADD_CONTACT = 0;
+  AGREE_ADD_CONTACT = 1;
+  REJECT_ADD_CONTACT = 2;
+  INVITE_JOIN_GROUP = 3;
+  APPLY_JOIN_GROUP = 4;
+  AGREE_JOIN_GROUP = 5;
+  REJECT_JOIN_CONTACT = 6;
+}
+
+// 系统消息
+message SystemMessage {
+  string ID = 1;
+  SystemOperate SystemOperate = 2;
+  string GroupID = 3;
+  Contact Sender = 4;
+  Contact Receiver = 5;
+  string Content = 6;
+  int32 CreateTime = 7;
+}
