@@ -22,7 +22,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
@@ -147,7 +146,7 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 	}
 
 	var dualDHT *ddht.DHT
-	peerChan := make(chan peer.AddrInfo)
+	// peerChan := make(chan peer.AddrInfo)
 
 	// 创建host节点
 	localnode, err := libp2p.New(
@@ -165,31 +164,31 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 		}),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelay(),
-		libp2p.EnableAutoRelayWithPeerSource(
-			func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
-				r := make(chan peer.AddrInfo)
-				go func() {
-					defer close(r)
-					for ; numPeers != 0; numPeers-- {
-						select {
-						case v, ok := <-peerChan:
-							if !ok {
-								return
-							}
-							select {
-							case r <- v:
-							case <-ctx.Done():
-								return
-							}
-						case <-ctx.Done():
-							return
-						}
-					}
-				}()
-				return r
-			},
-			autorelay.WithMinInterval(0),
-		),
+		// libp2p.EnableAutoRelayWithPeerSource(
+		// 	func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
+		// 		r := make(chan peer.AddrInfo)
+		// 		go func() {
+		// 			defer close(r)
+		// 			for ; numPeers != 0; numPeers-- {
+		// 				select {
+		// 				case v, ok := <-peerChan:
+		// 					if !ok {
+		// 						return
+		// 					}
+		// 					select {
+		// 					case r <- v:
+		// 					case <-ctx.Done():
+		// 						return
+		// 					}
+		// 				case <-ctx.Done():
+		// 					return
+		// 				}
+		// 			}
+		// 		}()
+		// 		return r
+		// 	},
+		// 	autorelay.WithMinInterval(0),
+		// ),
 	)
 	if err != nil {
 		panic(err)
@@ -198,8 +197,8 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 	// 初始化mdns服务
 	initMDNS(ctx, localnode)
 
-	// 查找中继节点
-	go autoRelayFeeder(ctx, localnode, dualDHT, conf.Peering, peerChan)
+	// // 查找中继节点
+	// go autoRelayFeeder(ctx, localnode, dualDHT, conf.Peering, peerChan)
 
 	// 连接引导节点
 	go func() {

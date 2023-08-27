@@ -117,6 +117,7 @@ message SetAccountAvatarRequest{
 }
 message SetAccountAvatarReply{
     Result Result = 1;
+    string Avatar = 2;
 }
 
 message SetAccountNameRequest {
@@ -124,6 +125,7 @@ message SetAccountNameRequest {
 }
 message SetAccountNameReply {
   Result Result = 1;
+  string Name = 2;
 }
 
 message SetAutoReviewAddContactRequest {
@@ -132,6 +134,7 @@ message SetAutoReviewAddContactRequest {
 
 message SetAutoReviewAddContactReply {
   Result Result = 1;
+  bool IsReview = 2;
 }
 
 message SetAutoReviewJoinGroupRequest {
@@ -140,6 +143,7 @@ message SetAutoReviewJoinGroupRequest {
 
 message SetAutoReviewJoinGroupReply {
   Result Result = 1;
+  bool IsReview = 2;
 }
 
 // -------------------- 分隔符 --------------------
@@ -352,7 +356,12 @@ message DeleteGroupReply {
 
 // -------------------- 分隔符 --------------------
 
-message GetSessionListRequest {}
+message GetSessionListRequest {
+  string SessionID = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+  string keywords = 4;
+}
 
 message GetSessionListReply {
   Result Result = 1;
@@ -474,16 +483,18 @@ message  GroupMessage {
 message Session {
   // 会话类型
   SessionType SessionType = 1;
+  // 会话ID（群组ID或者PeerID）
+  string SessionID = 2;
   // 头像 SHA1
-  string Avatar = 2;
+  string Avatar = 3;
   // 名称
-  string Name = 3;
+  string Name = 4;
   // 最新消息
-  string LastMessage = 4;
+  string LastMessage = 5;
   // 最新消息时间
-  int64 LastMessageTime = 5;
+  int64 LastMessageTime = 6;
   // 有未读消息
-  bool HaveUnreadMessage = 6;
+  bool HaveUnreadMessage = 7;
 }
 
 // 系统操作类型

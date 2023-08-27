@@ -15,7 +15,13 @@ var contactMessages []*proto.ContactMessage
 var systemMessage []*proto.SystemMessage
 
 func init() {
-	account = proto.Account{}
+	account = proto.Account{
+		PeerID:                  "peerID",
+		Avatar:                  "md5_4c6c2a483e5f2d06140c7313de06448f.jpg",
+		Name:                    "name",
+		AddContactWithoutReview: true,
+		JoinGroupWithoutReview:  true,
+	}
 	groups = make([]*proto.Group, 0)
 	groupMembers = make([]*proto.Contact, 0)
 	groupMessages = make([]*proto.GroupMessage, 0)

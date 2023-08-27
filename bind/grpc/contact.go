@@ -17,7 +17,7 @@ func (c *ContactSvc) AddContact(ctx context.Context, request *proto.AddContactRe
 
 	contacts = append(contacts, &proto.Contact{
 		PeerID: request.GetPeerID(),
-		Avatar: "avatar1",
+		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
 		Name:   "name1",
 		Alias:  "alias1",
 	})
@@ -86,12 +86,21 @@ func (c *ContactSvc) GetContactList(ctx context.Context, request *proto.GetConta
 }
 
 func (c *ContactSvc) GetNearbyContactList(context.Context, *proto.GetNearbyContactListRequest) (*proto.GetNearbyContactListReply, error) {
+
+	var contactsList []*proto.Contact
+	contactsList = append(contactsList, &proto.Contact{
+		PeerID: "peerID1",
+		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:   "name1",
+		Alias:  "name1",
+	})
+
 	reply := &proto.GetNearbyContactListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		ContactList: contacts,
+		ContactList: contactsList,
 	}
 	return reply, nil
 }

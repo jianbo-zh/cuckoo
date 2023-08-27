@@ -50,6 +50,7 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 			Code:    0,
 			Message: "ok",
 		},
+		Avatar: account.Avatar,
 	}
 	return reply, nil
 }
@@ -62,6 +63,7 @@ func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccou
 			Code:    0,
 			Message: "ok",
 		},
+		Name: account.Name,
 	}
 	return reply, nil
 }
@@ -74,6 +76,7 @@ func (a *AccountSvc) SetAutoReviewAddContact(ctx context.Context, request *proto
 			Code:    0,
 			Message: "ok",
 		},
+		IsReview: account.AddContactWithoutReview,
 	}
 	return reply, nil
 }
@@ -86,6 +89,7 @@ func (a *AccountSvc) SetAutoReviewJoinGroup(ctx context.Context, request *proto.
 			Code:    0,
 			Message: "ok",
 		},
+		IsReview: account.JoinGroupWithoutReview,
 	}
 	return reply, nil
 }
