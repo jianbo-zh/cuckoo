@@ -54,8 +54,10 @@ service GroupSvc {
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupReply) {}
   // 获取群列表
   rpc GetGroupList(GetGroupListRequest) returns (GetGroupListReply) {}
-  // 获取群信息
-  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
+  // 获取群基本信息
+  rpc GetGroupBase(GetGroupBaseRequest) returns (GetGroupBaseReply) {}
+  // 获取群完整信息
+  rpc GetGroupFull(GetGroupFullRequest) returns (GetGroupFullReply) {}
   // 获取聊天记录
   rpc GetGroupMessageList(GetGroupMessageListRequest) returns (GetGroupMessageListReply) {}
   // 发送消息
@@ -69,9 +71,9 @@ service GroupSvc {
   // 邀请群成员
   rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
   // 群成员列表
-  rpc GetMemberList(GetMemberListRequest) returns (GetMemberListReply) {}
+  rpc GetGroupMemberList(GetGroupMemberListRequest) returns (GetGroupMemberListReply) {}
   // 移除群成员
-  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberReply) {}
+  rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
   // 设置入群是否审核
   rpc SetJoinGroupReview(SetJoinGroupReviewRequest) returns (SetJoinGroupReviewReply) {}
   // 清空聊天记录
@@ -220,6 +222,7 @@ message SetContactAliasRequest {
 
 message SetContactAliasReply {
   Result Result = 1;
+  string Alias = 2;
 }
 
 message ClearContactMessageRequest {
@@ -254,18 +257,25 @@ message CreateGroupReply {
 message GetGroupListRequest {}
 message GetGroupListReply {
   Result Result = 1;
-  repeated Group groupList = 2;
+  repeated GroupBase groupList = 2;
 }
 
 
-message GetGroupRequest {
+message GetGroupBaseRequest {
   string GroupID = 1;
 }
-message GetGroupReply {
+message GetGroupBaseReply {
   Result Result = 1;
-  Group group = 2;
+  GroupBase group = 2;
 }
 
+message GetGroupFullRequest {
+  string GroupID = 1;
+}
+message GetGroupFullReply {
+  Result Result = 1;
+  GroupFull group = 2;
+}
 
 message GetGroupMessageListRequest {
   string GroupID = 1;
@@ -321,19 +331,22 @@ message InviteJoinGroupReply {
   Result Result = 1;
 }
 
-message GetMemberListRequest {
+message GetGroupMemberListRequest {
   string GroupID = 1;
+  int32 Offset = 2;
+  int32 Limit = 3;
+  string Keywords = 4;
 }
-message GetMemberListReply {
+message GetGroupMemberListReply {
   Result Result = 1;
-  repeated Contact memberList = 2;
+  repeated GroupMember memberList = 2;
 }
 
-message RemoveMemberRequest {
+message RemoveGroupMemberRequest {
   string GroupID = 1;
   string PeerID = 2;
 }
-message RemoveMemberReply {
+message RemoveGroupMemberReply {
   Result Result = 1;
 }
 
@@ -372,9 +385,9 @@ message DeleteGroupReply {
 
 message GetSessionListRequest {
   string SessionID = 1;
-  int32 offset = 2;
-  int32 limit = 3;
-  string keywords = 4;
+  int32 Offset = 2;
+  int32 Limit = 3;
+  string Keywords = 4;
 }
 
 message GetSessionListReply {
@@ -431,6 +444,10 @@ message Contact {
   string Name = 3;
   // 用户昵称
   string Alias = 4;
+  // 最新消息
+  string LastMessage = 5;
+  // 更新时间
+  int64 UpdateTime = 6;
 }
 
 // 联系人消息
@@ -452,7 +469,23 @@ message ContactMessage {
 }
 
 // 群
-message Group {
+message GroupBase {
+  // ID
+  string GroupID = 1;
+  // Avatar
+  string Avatar = 2;
+  // 名称
+  string Name = 3;
+  // 别名
+  string Alias = 4;
+  // 最新消息
+  string LastMessage = 5;
+  // 更新时间
+  int64 UpdateTime = 6;
+}
+
+// 群
+message GroupFull {
   // ID
   string GroupID = 1;
   // Avatar
@@ -465,14 +498,26 @@ message Group {
   string Notice = 5;
   // 管理员
   Contact Admin = 6;
-  // 群成员
-  repeated Contact Members = 7;
   // 是否需要审核入群
   bool JoinGroupWithoutReview = 8;
   // 创建时间
   int64 CreateTime = 9;
   // 更新时间
   int64 UpdateTime = 10;
+}
+
+// 群消息
+message  GroupMember {
+  // PeerID
+  string PeerID = 1;
+  // 群ID
+  string GroupID = 2;
+  // 头像SHA1
+  string Avatar = 3;
+  // 用户名称
+  string Name = 4;
+  // 用户昵称
+  string Alias = 5;
 }
 
 // 群消息

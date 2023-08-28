@@ -41,7 +41,7 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 		}
 	}
 
-	groups = append(groups, &proto.Group{
+	groups = append(groups, &proto.GroupFull{
 		GroupID: "groupID",
 		Avatar:  request.Avatar,
 		Name:    request.Name,
@@ -53,11 +53,20 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 			Name:   account.Name,
 			Alias:  account.Name,
 		},
-		Members:                members,
 		JoinGroupWithoutReview: true,
 		CreateTime:             time.Now().Unix(),
 		UpdateTime:             time.Now().Unix(),
 	})
+
+	for _, member := range members {
+		groupMembers = append(groupMembers, &proto.GroupMember{
+			GroupID: "groupID",
+			PeerID:  member.PeerID,
+			Avatar:  member.Avatar,
+			Name:    member.Name,
+			Alias:   member.Name,
+		})
+	}
 
 	reply := &proto.CreateGroupReply{
 		Result: &proto.Result{
@@ -70,7 +79,7 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 
 func (g *GroupSvc) DeleteGroup(ctx context.Context, request *proto.DeleteGroupRequest) (*proto.DeleteGroupReply, error) {
 
-	groups = make([]*proto.Group, 0)
+	groups = make([]*proto.GroupFull, 0)
 
 	reply := &proto.DeleteGroupReply{
 		Result: &proto.Result{
@@ -91,14 +100,38 @@ func (g *GroupSvc) ExitGroup(ctx context.Context, request *proto.ExitGroupReques
 	return reply, nil
 }
 
-func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest) (*proto.GetGroupReply, error) {
+func (g *GroupSvc) GetGroupBase(ctx context.Context, request *proto.GetGroupBaseRequest) (*proto.GetGroupBaseReply, error) {
 
-	var group *proto.Group
+	var group *proto.GroupBase
+	if len(groups) > 0 {
+		group = &proto.GroupBase{
+			GroupID:     groups[0].GroupID,
+			Avatar:      groups[0].Avatar,
+			Name:        groups[0].Name,
+			Alias:       groups[0].Alias,
+			LastMessage: "",
+			UpdateTime:  time.Now().Unix(),
+		}
+	}
+
+	reply := &proto.GetGroupBaseReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Group: group,
+	}
+	return reply, nil
+}
+
+func (g *GroupSvc) GetGroupFull(ctx context.Context, request *proto.GetGroupFullRequest) (*proto.GetGroupFullReply, error) {
+
+	var group *proto.GroupFull
 	if len(groups) > 0 {
 		group = groups[0]
 	}
 
-	reply := &proto.GetGroupReply{
+	reply := &proto.GetGroupFullReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -109,12 +142,23 @@ func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest)
 }
 
 func (g *GroupSvc) GetGroupList(ctx context.Context, request *proto.GetGroupListRequest) (*proto.GetGroupListReply, error) {
+
+	groupList := make([]*proto.GroupBase, 0)
+	for _, group := range groups {
+		groupList = append(groupList, &proto.GroupBase{
+			GroupID: group.GroupID,
+			Avatar:  group.Avatar,
+			Name:    group.Name,
+			Alias:   group.Alias,
+		})
+	}
+
 	reply := &proto.GetGroupListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		GroupList: groups,
+		GroupList: groupList,
 	}
 	return reply, nil
 }
@@ -130,8 +174,8 @@ func (g *GroupSvc) GetGroupMessageList(ctx context.Context, request *proto.GetGr
 	return reply, nil
 }
 
-func (g *GroupSvc) GetMemberList(ctx context.Context, request *proto.GetMemberListRequest) (*proto.GetMemberListReply, error) {
-	reply := &proto.GetMemberListReply{
+func (g *GroupSvc) GetGroupMemberList(ctx context.Context, request *proto.GetGroupMemberListRequest) (*proto.GetGroupMemberListReply, error) {
+	reply := &proto.GetGroupMemberListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -143,11 +187,12 @@ func (g *GroupSvc) GetMemberList(ctx context.Context, request *proto.GetMemberLi
 
 func (g *GroupSvc) InviteJoinGroup(ctx context.Context, request *proto.InviteJoinGroupRequest) (*proto.InviteJoinGroupReply, error) {
 
-	groupMembers = append(groupMembers, &proto.Contact{
-		PeerID: request.PeerID,
-		Avatar: "avatar1",
-		Name:   "name1",
-		Alias:  "alias1",
+	groupMembers = append(groupMembers, &proto.GroupMember{
+		GroupID: request.GroupID,
+		PeerID:  request.PeerID,
+		Avatar:  "avatar1",
+		Name:    "name1",
+		Alias:   "alias1",
 	})
 
 	reply := &proto.InviteJoinGroupReply{
@@ -159,13 +204,18 @@ func (g *GroupSvc) InviteJoinGroup(ctx context.Context, request *proto.InviteJoi
 	return reply, nil
 }
 
-func (g *GroupSvc) RemoveMember(ctx context.Context, request *proto.RemoveMemberRequest) (*proto.RemoveMemberReply, error) {
+func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveGroupMemberRequest) (*proto.RemoveGroupMemberReply, error) {
 
 	if len(groupMembers) > 0 {
-		groupMembers = make([]*proto.Contact, 0)
+		groupMembers2 := make([]*proto.GroupMember, 0)
+		for _, member := range groupMembers {
+			if member.PeerID == request.PeerID && member.GroupID == request.GroupID {
+				groupMembers2 = append(groupMembers2, member)
+			}
+		}
 	}
 
-	reply := &proto.RemoveMemberReply{
+	reply := &proto.RemoveGroupMemberReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

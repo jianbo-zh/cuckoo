@@ -19,10 +19,12 @@ type ContactSvc struct {
 func (c *ContactSvc) AddContact(ctx context.Context, request *proto.AddContactRequest) (*proto.AddContactReply, error) {
 
 	contacts = append(contacts, &proto.Contact{
-		PeerID: request.GetPeerID(),
-		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:   request.GetContent(),
-		Alias:  "alias1",
+		PeerID:      request.GetPeerID(),
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        request.GetContent(),
+		Alias:       "alias1",
+		LastMessage: "last message",
+		UpdateTime:  time.Now().Unix(),
 	})
 
 	reply := &proto.AddContactReply{
@@ -193,7 +195,11 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 func (c *ContactSvc) SetContactAlias(ctx context.Context, request *proto.SetContactAliasRequest) (*proto.SetContactAliasReply, error) {
 
 	if len(contacts) > 0 {
-		contacts[0].Alias = request.Alias
+		for i, contact := range contacts {
+			if contact.PeerID == request.PeerID {
+				contacts[i].Alias = request.Alias
+			}
+		}
 	}
 
 	reply := &proto.SetContactAliasReply{
@@ -201,6 +207,7 @@ func (c *ContactSvc) SetContactAlias(ctx context.Context, request *proto.SetCont
 			Code:    0,
 			Message: "ok",
 		},
+		Alias: request.Alias,
 	}
 	return reply, nil
 }

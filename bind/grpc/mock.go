@@ -7,8 +7,8 @@ import (
 )
 
 var account proto.Account
-var groups []*proto.Group
-var groupMembers []*proto.Contact
+var groups []*proto.GroupFull
+var groupMembers []*proto.GroupMember
 var groupMessages []*proto.GroupMessage
 var contacts []*proto.Contact
 var contactMessages []*proto.ContactMessage
@@ -22,8 +22,8 @@ func init() {
 		AddContactWithoutReview: true,
 		JoinGroupWithoutReview:  true,
 	}
-	groups = make([]*proto.Group, 0)
-	groupMembers = make([]*proto.Contact, 0)
+	groups = make([]*proto.GroupFull, 0)
+	groupMembers = make([]*proto.GroupMember, 0)
 	groupMessages = make([]*proto.GroupMessage, 0)
 	contacts = make([]*proto.Contact, 0)
 	contactMessages = make([]*proto.ContactMessage, 0)
