@@ -29,16 +29,21 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 
 	members := make([]*proto.Contact, 0)
 	for _, PeerID := range request.PeerIDs {
-		members = append(members, &proto.Contact{
-			PeerID: PeerID,
-			Avatar: "avatar1",
-			Name:   "name1",
-			Alias:  "alias1",
-		})
+		for _, contact := range contacts {
+			if contact.PeerID == PeerID {
+				members = append(members, &proto.Contact{
+					PeerID: contact.PeerID,
+					Avatar: contact.Avatar,
+					Name:   contact.Name,
+					Alias:  contact.Name,
+				})
+			}
+		}
 	}
 
 	groups = append(groups, &proto.Group{
 		GroupID: "groupID",
+		Avatar:  request.Avatar,
 		Name:    request.Name,
 		Alias:   request.Name,
 		Notice:  "",

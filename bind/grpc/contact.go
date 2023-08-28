@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
@@ -18,7 +21,7 @@ func (c *ContactSvc) AddContact(ctx context.Context, request *proto.AddContactRe
 	contacts = append(contacts, &proto.Contact{
 		PeerID: request.GetPeerID(),
 		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:   "name1",
+		Name:   request.GetContent(),
 		Alias:  "alias1",
 	})
 
@@ -75,12 +78,52 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 }
 
 func (c *ContactSvc) GetContactList(ctx context.Context, request *proto.GetContactListRequest) (*proto.GetContactListReply, error) {
+
+	var contactList []*proto.Contact
+	if request.Keywords == "" {
+		contactList = contacts
+
+	} else {
+		contactList = make([]*proto.Contact, 0)
+		for _, contact := range contacts {
+			if strings.Contains(contact.Name, request.Keywords) {
+				contactList = append(contactList, contact)
+			}
+		}
+	}
+
 	reply := &proto.GetContactListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		ContactList: contacts,
+		ContactList: contactList,
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) GetSpecifiedContactList(ctx context.Context, request *proto.GetSpecifiedContactListRequest) (*proto.GetSpecifiedContactListReply, error) {
+
+	contactList := make([]*proto.Contact, 0)
+	if len(request.PeerIDs) > 0 {
+		peersMap := make(map[string]struct{})
+		for _, peerID := range request.PeerIDs {
+			peersMap[peerID] = struct{}{}
+		}
+
+		for _, contact := range contacts {
+			if _, exists := peersMap[contact.PeerID]; exists {
+				contactList = append(contactList, contact)
+			}
+		}
+	}
+
+	reply := &proto.GetSpecifiedContactListReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		ContactList: contactList,
 	}
 	return reply, nil
 }
@@ -88,10 +131,11 @@ func (c *ContactSvc) GetContactList(ctx context.Context, request *proto.GetConta
 func (c *ContactSvc) GetNearbyContactList(context.Context, *proto.GetNearbyContactListRequest) (*proto.GetNearbyContactListReply, error) {
 
 	var contactsList []*proto.Contact
+	randid := rand.Intn(10000)
 	contactsList = append(contactsList, &proto.Contact{
-		PeerID: "peerID1",
+		PeerID: fmt.Sprintf("%s-%d", "peerID", randid),
 		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:   "name1",
+		Name:   fmt.Sprintf("%s-%d", "name", randid),
 		Alias:  "name1",
 	})
 

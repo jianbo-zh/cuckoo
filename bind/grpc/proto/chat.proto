@@ -31,6 +31,8 @@ service ContactSvc {
   // 获取联系人列表
   rpc GetContactList(GetContactListRequest) returns (GetContactListReply) {}
   // 获取联系人列表
+  rpc GetSpecifiedContactList(GetSpecifiedContactListRequest) returns (GetSpecifiedContactListReply) {}
+  // 获取联系人列表
   rpc GetNearbyContactList(GetNearbyContactListRequest) returns (GetNearbyContactListReply) {}
   // 联系人信息
   rpc GetContact(GetContactRequest) returns (GetContactReply) {}
@@ -155,9 +157,20 @@ message AddContactReply {
   Result Result = 1;
 }
 
-message GetContactListRequest {}
+message GetContactListRequest {
+  string keywords = 1;
+}
 
 message GetContactListReply {
+  Result Result = 1;
+  repeated Contact contactList = 2;
+}
+
+message GetSpecifiedContactListRequest {
+  repeated string PeerIDs = 1;
+}
+
+message GetSpecifiedContactListReply {
   Result Result = 1;
   repeated Contact contactList = 2;
 }
@@ -228,8 +241,9 @@ message DeleteContactReply {
 // -------------------- 分隔符 --------------------
 
 message CreateGroupRequest {
-  string Name = 1;
-  repeated string PeerIDs = 2;
+  string Avatar = 1;
+  string Name = 2;
+  repeated string PeerIDs = 3;
 }
 
 message CreateGroupReply {

@@ -306,15 +306,16 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ContactSvc_AddContact_FullMethodName            = "/chat.ContactSvc/AddContact"
-	ContactSvc_GetContactList_FullMethodName        = "/chat.ContactSvc/GetContactList"
-	ContactSvc_GetNearbyContactList_FullMethodName  = "/chat.ContactSvc/GetNearbyContactList"
-	ContactSvc_GetContact_FullMethodName            = "/chat.ContactSvc/GetContact"
-	ContactSvc_GetContactMessageList_FullMethodName = "/chat.ContactSvc/GetContactMessageList"
-	ContactSvc_SendContactMessage_FullMethodName    = "/chat.ContactSvc/SendContactMessage"
-	ContactSvc_SetContactAlias_FullMethodName       = "/chat.ContactSvc/SetContactAlias"
-	ContactSvc_ClearContactMessage_FullMethodName   = "/chat.ContactSvc/ClearContactMessage"
-	ContactSvc_DeleteContact_FullMethodName         = "/chat.ContactSvc/DeleteContact"
+	ContactSvc_AddContact_FullMethodName              = "/chat.ContactSvc/AddContact"
+	ContactSvc_GetContactList_FullMethodName          = "/chat.ContactSvc/GetContactList"
+	ContactSvc_GetSpecifiedContactList_FullMethodName = "/chat.ContactSvc/GetSpecifiedContactList"
+	ContactSvc_GetNearbyContactList_FullMethodName    = "/chat.ContactSvc/GetNearbyContactList"
+	ContactSvc_GetContact_FullMethodName              = "/chat.ContactSvc/GetContact"
+	ContactSvc_GetContactMessageList_FullMethodName   = "/chat.ContactSvc/GetContactMessageList"
+	ContactSvc_SendContactMessage_FullMethodName      = "/chat.ContactSvc/SendContactMessage"
+	ContactSvc_SetContactAlias_FullMethodName         = "/chat.ContactSvc/SetContactAlias"
+	ContactSvc_ClearContactMessage_FullMethodName     = "/chat.ContactSvc/ClearContactMessage"
+	ContactSvc_DeleteContact_FullMethodName           = "/chat.ContactSvc/DeleteContact"
 )
 
 // ContactSvcClient is the client API for ContactSvc service.
@@ -325,6 +326,8 @@ type ContactSvcClient interface {
 	AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactReply, error)
 	// 获取联系人列表
 	GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error)
+	// 获取联系人列表
+	GetSpecifiedContactList(ctx context.Context, in *GetSpecifiedContactListRequest, opts ...grpc.CallOption) (*GetSpecifiedContactListReply, error)
 	// 获取联系人列表
 	GetNearbyContactList(ctx context.Context, in *GetNearbyContactListRequest, opts ...grpc.CallOption) (*GetNearbyContactListReply, error)
 	// 联系人信息
@@ -361,6 +364,15 @@ func (c *contactSvcClient) AddContact(ctx context.Context, in *AddContactRequest
 func (c *contactSvcClient) GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error) {
 	out := new(GetContactListReply)
 	err := c.cc.Invoke(ctx, ContactSvc_GetContactList_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) GetSpecifiedContactList(ctx context.Context, in *GetSpecifiedContactListRequest, opts ...grpc.CallOption) (*GetSpecifiedContactListReply, error) {
+	out := new(GetSpecifiedContactListReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetSpecifiedContactList_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -439,6 +451,8 @@ type ContactSvcServer interface {
 	// 获取联系人列表
 	GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error)
 	// 获取联系人列表
+	GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error)
+	// 获取联系人列表
 	GetNearbyContactList(context.Context, *GetNearbyContactListRequest) (*GetNearbyContactListReply, error)
 	// 联系人信息
 	GetContact(context.Context, *GetContactRequest) (*GetContactReply, error)
@@ -464,6 +478,9 @@ func (UnimplementedContactSvcServer) AddContact(context.Context, *AddContactRequ
 }
 func (UnimplementedContactSvcServer) GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactList not implemented")
+}
+func (UnimplementedContactSvcServer) GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSpecifiedContactList not implemented")
 }
 func (UnimplementedContactSvcServer) GetNearbyContactList(context.Context, *GetNearbyContactListRequest) (*GetNearbyContactListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNearbyContactList not implemented")
@@ -531,6 +548,24 @@ func _ContactSvc_GetContactList_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ContactSvcServer).GetContactList(ctx, req.(*GetContactListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetSpecifiedContactList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSpecifiedContactListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetSpecifiedContactList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetSpecifiedContactList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetSpecifiedContactList(ctx, req.(*GetSpecifiedContactListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -675,6 +710,10 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContactList",
 			Handler:    _ContactSvc_GetContactList_Handler,
+		},
+		{
+			MethodName: "GetSpecifiedContactList",
+			Handler:    _ContactSvc_GetSpecifiedContactList_Handler,
 		},
 		{
 			MethodName: "GetNearbyContactList",
