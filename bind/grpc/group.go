@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
@@ -175,12 +176,38 @@ func (g *GroupSvc) GetGroupMessageList(ctx context.Context, request *proto.GetGr
 }
 
 func (g *GroupSvc) GetGroupMemberList(ctx context.Context, request *proto.GetGroupMemberListRequest) (*proto.GetGroupMemberListReply, error) {
+
+	filterMemberList := make([]*proto.GroupMember, 0)
+	for _, member := range groupMembers {
+		if strings.Contains(member.Name, request.Keywords) {
+			filterMemberList = append(filterMemberList, member)
+		}
+	}
+
+	if len(filterMemberList) > 0 {
+
+		offset := int(request.Offset)
+		limit := int(request.Limit)
+
+		if offset < 0 || offset >= len(filterMemberList) || limit <= 0 {
+			filterMemberList = make([]*proto.GroupMember, 0)
+
+		} else {
+			endOffset := offset + limit
+			if endOffset > len(filterMemberList) {
+				endOffset = len(filterMemberList)
+			}
+
+			filterMemberList = filterMemberList[offset:endOffset]
+		}
+	}
+
 	reply := &proto.GetGroupMemberListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		MemberList: groupMembers,
+		MemberList: filterMemberList,
 	}
 	return reply, nil
 }
@@ -213,6 +240,7 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 				groupMembers2 = append(groupMembers2, member)
 			}
 		}
+		groupMembers = groupMembers2
 	}
 
 	reply := &proto.RemoveGroupMemberReply{
@@ -291,6 +319,7 @@ func (g *GroupSvc) SetGroupNotice(ctx context.Context, request *proto.SetGroupNo
 			Code:    0,
 			Message: "ok",
 		},
+		Notice: request.Notice,
 	}
 	return reply, nil
 }
@@ -306,6 +335,7 @@ func (g *GroupSvc) SetJoinGroupReview(ctx context.Context, request *proto.SetJoi
 			Code:    0,
 			Message: "ok",
 		},
+		IsReview: request.IsReview,
 	}
 	return reply, nil
 }

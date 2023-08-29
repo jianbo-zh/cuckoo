@@ -308,6 +308,7 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 const (
 	ContactSvc_AddContact_FullMethodName              = "/chat.ContactSvc/AddContact"
 	ContactSvc_GetContactList_FullMethodName          = "/chat.ContactSvc/GetContactList"
+	ContactSvc_GetContactIDs_FullMethodName           = "/chat.ContactSvc/GetContactIDs"
 	ContactSvc_GetSpecifiedContactList_FullMethodName = "/chat.ContactSvc/GetSpecifiedContactList"
 	ContactSvc_GetNearbyContactList_FullMethodName    = "/chat.ContactSvc/GetNearbyContactList"
 	ContactSvc_GetContact_FullMethodName              = "/chat.ContactSvc/GetContact"
@@ -326,6 +327,8 @@ type ContactSvcClient interface {
 	AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactReply, error)
 	// 获取联系人列表
 	GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error)
+	// 获取联系人列表
+	GetContactIDs(ctx context.Context, in *GetContactIDsRequest, opts ...grpc.CallOption) (*GetContactIDsReply, error)
 	// 获取联系人列表
 	GetSpecifiedContactList(ctx context.Context, in *GetSpecifiedContactListRequest, opts ...grpc.CallOption) (*GetSpecifiedContactListReply, error)
 	// 获取联系人列表
@@ -364,6 +367,15 @@ func (c *contactSvcClient) AddContact(ctx context.Context, in *AddContactRequest
 func (c *contactSvcClient) GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error) {
 	out := new(GetContactListReply)
 	err := c.cc.Invoke(ctx, ContactSvc_GetContactList_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) GetContactIDs(ctx context.Context, in *GetContactIDsRequest, opts ...grpc.CallOption) (*GetContactIDsReply, error) {
+	out := new(GetContactIDsReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContactIDs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -451,6 +463,8 @@ type ContactSvcServer interface {
 	// 获取联系人列表
 	GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error)
 	// 获取联系人列表
+	GetContactIDs(context.Context, *GetContactIDsRequest) (*GetContactIDsReply, error)
+	// 获取联系人列表
 	GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error)
 	// 获取联系人列表
 	GetNearbyContactList(context.Context, *GetNearbyContactListRequest) (*GetNearbyContactListReply, error)
@@ -478,6 +492,9 @@ func (UnimplementedContactSvcServer) AddContact(context.Context, *AddContactRequ
 }
 func (UnimplementedContactSvcServer) GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactList not implemented")
+}
+func (UnimplementedContactSvcServer) GetContactIDs(context.Context, *GetContactIDsRequest) (*GetContactIDsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactIDs not implemented")
 }
 func (UnimplementedContactSvcServer) GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSpecifiedContactList not implemented")
@@ -548,6 +565,24 @@ func _ContactSvc_GetContactList_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ContactSvcServer).GetContactList(ctx, req.(*GetContactListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetContactIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetContactIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetContactIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetContactIDs(ctx, req.(*GetContactIDsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -710,6 +745,10 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContactList",
 			Handler:    _ContactSvc_GetContactList_Handler,
+		},
+		{
+			MethodName: "GetContactIDs",
+			Handler:    _ContactSvc_GetContactIDs_Handler,
 		},
 		{
 			MethodName: "GetSpecifiedContactList",

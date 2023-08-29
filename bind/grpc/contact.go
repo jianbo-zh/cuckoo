@@ -32,6 +32,7 @@ func (c *ContactSvc) AddContact(ctx context.Context, request *proto.AddContactRe
 			Code:    0,
 			Message: "ok",
 		},
+		PeerID: request.PeerID,
 	}
 	return reply, nil
 }
@@ -100,6 +101,23 @@ func (c *ContactSvc) GetContactList(ctx context.Context, request *proto.GetConta
 			Message: "ok",
 		},
 		ContactList: contactList,
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) GetContactIDs(ctx context.Context, request *proto.GetContactIDsRequest) (*proto.GetContactIDsReply, error) {
+
+	var peerIDs []string
+	for _, contact := range contacts {
+		peerIDs = append(peerIDs, contact.PeerID)
+	}
+
+	reply := &proto.GetContactIDsReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		PeerIDs: peerIDs,
 	}
 	return reply, nil
 }
