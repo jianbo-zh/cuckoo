@@ -203,9 +203,8 @@ message GetContactReply {
 
 message GetContactMessageListRequest {
   string PeerID = 1;
-  string OldestMessageID = 2;
-  string LatestMessageID = 3;
-  int32 Limit = 4;
+  int32 Offset = 2;
+  int32 Limit = 3;
 }
 
 message GetContactMessageListReply {
@@ -222,6 +221,7 @@ message SendContactMessageRequest {
 
 message SendContactMessageReply {
   Result Result = 1;
+  ContactMessage Message = 2;
 }
 
 message SetContactAliasRequest {
@@ -477,6 +477,8 @@ message ContactMessage {
   bytes Data = 6;
   // 消息时间
   int64 CreateTime = 7;
+  // 消息状态
+  string MsgState = 8;
 }
 
 // 群

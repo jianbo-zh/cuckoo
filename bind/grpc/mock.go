@@ -46,4 +46,24 @@ func init() {
 		Content:    "content",
 		CreateTime: int32(time.Now().Unix()),
 	})
+
+	contactMessages = append(contactMessages, &proto.ContactMessage{
+		ID: "id",
+		Sender: &proto.Contact{
+			PeerID: "peerID-8081",
+			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Name:   "name-8081",
+			Alias:  "",
+		},
+		Receiver: &proto.Contact{
+			PeerID: account.PeerID,
+			Avatar: account.Avatar,
+			Name:   account.Name,
+			Alias:  "",
+		},
+		MsgType:    proto.MsgType_TEXT_MSG,
+		MimeType:   "text/plain",
+		Data:       []byte("你好，大傻瓜"),
+		CreateTime: time.Now().Unix(),
+	})
 }

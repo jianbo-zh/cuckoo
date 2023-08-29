@@ -181,31 +181,36 @@ func (c *ContactSvc) GetContactMessageList(ctx context.Context, request *proto.G
 }
 
 func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.SendContactMessageRequest) (*proto.SendContactMessageReply, error) {
-	contactMessages = append(contactMessages, &proto.ContactMessage{
+
+	sendMsg := proto.ContactMessage{
 		ID: "id",
 		Sender: &proto.Contact{
-			PeerID: "peerID",
-			Avatar: "avatar",
-			Name:   "name",
-			Alias:  "alias",
+			PeerID: account.PeerID,
+			Avatar: account.Avatar,
+			Name:   account.Name,
+			Alias:  "",
 		},
 		Receiver: &proto.Contact{
-			PeerID: "peerID1",
-			Avatar: "avatar1",
-			Name:   "name1",
-			Alias:  "alias1",
+			PeerID: request.PeerID,
+			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Name:   "name-8081",
+			Alias:  "",
 		},
 		MsgType:    request.MsgType,
 		MimeType:   request.MimeType,
 		Data:       request.Data,
+		MsgState:   "sending",
 		CreateTime: time.Now().Unix(),
-	})
+	}
+
+	contactMessages = append(contactMessages, &sendMsg)
 
 	reply := &proto.SendContactMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
+		Message: &sendMsg,
 	}
 	return reply, nil
 }
