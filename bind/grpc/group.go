@@ -254,41 +254,45 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 
 func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGroupMessageRequest) (*proto.SendGroupMessageReply, error) {
 
-	groupMessages = append(groupMessages, &proto.GroupMessage{
+	sendMsg := proto.GroupMessage{
 		ID:      "id",
 		GroupID: request.GroupID,
 		Sender: &proto.Contact{
-			PeerID: "PeerID",
-			Avatar: "avatar",
-			Name:   "name",
-			Alias:  "alias",
+			PeerID: account.PeerID,
+			Avatar: account.Avatar,
+			Name:   account.Name,
+			Alias:  "",
 		},
 		MsgType:    request.MsgType,
 		MimeType:   request.MimeType,
 		Data:       request.Data,
 		CreateTime: time.Now().Unix(),
-	})
+	}
+
+	groupMessages = append(groupMessages, &sendMsg)
 
 	reply := &proto.SendGroupMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
+		Message: &sendMsg,
 	}
 	return reply, nil
 }
 
-func (g *GroupSvc) SetGroupAlias(ctx context.Context, request *proto.SetGroupAliasRequest) (*proto.SetGroupAliasReply, error) {
+func (g *GroupSvc) SetGroupName(ctx context.Context, request *proto.SetGroupNameRequest) (*proto.SetGroupNameReply, error) {
 
 	if len(groups) > 0 {
-		groups[0].Alias = request.Alias
+		groups[0].Name = request.Name
 	}
 
-	reply := &proto.SetGroupAliasReply{
+	reply := &proto.SetGroupNameReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
+		Name: request.Name,
 	}
 	return reply, nil
 }

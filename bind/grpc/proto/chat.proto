@@ -66,8 +66,8 @@ service GroupSvc {
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
   // 设置头像（管理员操作）
   rpc SetGroupAvatar(SetGroupAvatarRequest) returns (SetGroupAvatarReply) {}
-  // 设置别名
-  rpc SetGroupAlias(SetGroupAliasRequest) returns (SetGroupAliasReply) {}
+  // 设置名称
+  rpc SetGroupName(SetGroupNameRequest) returns (SetGroupNameReply) {}
   // 设置群公告
   rpc SetGroupNotice(SetGroupNoticeRequest) returns (SetGroupNoticeReply) {}
   // 邀请群成员
@@ -93,7 +93,7 @@ service SessionSvc {
 
 // 系统服务
 service SystemSvc {
-  rpc GetSystemMessageList(GetMessageListRequest) returns (GetMessageListReply) {}
+  rpc GetSystemMessageList(GetSystemMessageListRequest) returns (GetSystemMessageListReply) {}
   rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
 }
 
@@ -288,9 +288,8 @@ message GetGroupFullReply {
 
 message GetGroupMessageListRequest {
   string GroupID = 1;
-  string OldestMessageID = 2;
-  string LatestMessageID = 3;
-  int32 limit = 4;
+  int32 Offset = 2;
+  int32 Limit = 3;
 }
 message GetGroupMessageListReply {
   Result Result = 1;
@@ -306,6 +305,7 @@ message SendGroupMessageRequest {
 }
 message SendGroupMessageReply {
   Result Result = 1;
+  GroupMessage Message = 2;
 }
 
 message SetGroupAvatarRequest {
@@ -316,12 +316,13 @@ message SetGroupAvatarReply {
   Result Result = 1;
 }
 
-message SetGroupAliasRequest {
+message SetGroupNameRequest {
   string GroupID = 1;
-  string Alias = 2;
+  string Name = 2;
 }
-message SetGroupAliasReply {
+message SetGroupNameReply {
   Result Result = 1;
+  string Name = 2;
 }
 
 message SetGroupNoticeRequest {
@@ -407,8 +408,11 @@ message GetSessionListReply {
 }
 
 // -------------------- 分隔符 --------------------
-message GetMessageListRequest {}
-message GetMessageListReply {
+message GetSystemMessageListRequest {
+  int32 Offset = 1;
+  int32 Limit = 2;
+}
+message GetSystemMessageListReply {
   Result result = 1;
   repeated SystemMessage messageList = 2;
 }

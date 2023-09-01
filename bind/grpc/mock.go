@@ -33,7 +33,7 @@ func init() {
 		GroupID: "",
 		Sender: &proto.Contact{
 			PeerID: "PeerID1",
-			Avatar: "avatar1",
+			Avatar: "md5_4c6c2a483e5f2d06140c7313de06448f.jpg",
 			Name:   "name1",
 			Alias:  "alias1",
 		},
@@ -43,8 +43,9 @@ func init() {
 			Name:   "name",
 			Alias:  "alias",
 		},
-		Content:    "content",
-		CreateTime: int32(time.Now().Unix()),
+		SystemOperate: proto.SystemOperate_APPLY_ADD_CONTACT,
+		Content:       "content",
+		CreateTime:    int32(time.Now().Unix()),
 	})
 
 	contactMessages = append(contactMessages, &proto.ContactMessage{
@@ -65,5 +66,106 @@ func init() {
 		MimeType:   "text/plain",
 		Data:       []byte("你好，大傻瓜"),
 		CreateTime: time.Now().Unix(),
+	})
+
+	groupMessages = append(groupMessages, &proto.GroupMessage{
+		ID:      "id",
+		GroupID: "groupID",
+		Sender: &proto.Contact{
+			PeerID: "peerID-8081",
+			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Name:   "name-8081",
+			Alias:  "",
+		},
+		MsgType:    proto.MsgType_TEXT_MSG,
+		MimeType:   "text/plain",
+		Data:       []byte("hello 你好！"),
+		CreateTime: time.Now().Unix(),
+	})
+
+	contacts = append(contacts, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
+	}, &proto.Contact{
+		PeerID:      "peerID",
+		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Name:        "name-asdf",
+		Alias:       "name-alias",
+		LastMessage: "ssdfasfsss",
+		UpdateTime:  1234567890,
 	})
 }

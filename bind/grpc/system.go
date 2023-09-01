@@ -25,9 +25,9 @@ func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.Clear
 	return reply, nil
 }
 
-func (s *SystemSvc) GetSystemMessageList(ctx context.Context, request *proto.GetMessageListRequest) (*proto.GetMessageListReply, error) {
+func (s *SystemSvc) GetSystemMessageList(ctx context.Context, request *proto.GetSystemMessageListRequest) (*proto.GetSystemMessageListReply, error) {
 
-	reply := &proto.GetMessageListReply{
+	reply := &proto.GetSystemMessageListReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

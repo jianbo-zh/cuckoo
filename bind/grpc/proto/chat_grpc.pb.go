@@ -795,7 +795,7 @@ const (
 	GroupSvc_GetGroupMessageList_FullMethodName = "/chat.GroupSvc/GetGroupMessageList"
 	GroupSvc_SendGroupMessage_FullMethodName    = "/chat.GroupSvc/SendGroupMessage"
 	GroupSvc_SetGroupAvatar_FullMethodName      = "/chat.GroupSvc/SetGroupAvatar"
-	GroupSvc_SetGroupAlias_FullMethodName       = "/chat.GroupSvc/SetGroupAlias"
+	GroupSvc_SetGroupName_FullMethodName        = "/chat.GroupSvc/SetGroupName"
 	GroupSvc_SetGroupNotice_FullMethodName      = "/chat.GroupSvc/SetGroupNotice"
 	GroupSvc_InviteJoinGroup_FullMethodName     = "/chat.GroupSvc/InviteJoinGroup"
 	GroupSvc_GetGroupMemberList_FullMethodName  = "/chat.GroupSvc/GetGroupMemberList"
@@ -824,8 +824,8 @@ type GroupSvcClient interface {
 	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
 	// 设置头像（管理员操作）
 	SetGroupAvatar(ctx context.Context, in *SetGroupAvatarRequest, opts ...grpc.CallOption) (*SetGroupAvatarReply, error)
-	// 设置别名
-	SetGroupAlias(ctx context.Context, in *SetGroupAliasRequest, opts ...grpc.CallOption) (*SetGroupAliasReply, error)
+	// 设置名称
+	SetGroupName(ctx context.Context, in *SetGroupNameRequest, opts ...grpc.CallOption) (*SetGroupNameReply, error)
 	// 设置群公告
 	SetGroupNotice(ctx context.Context, in *SetGroupNoticeRequest, opts ...grpc.CallOption) (*SetGroupNoticeReply, error)
 	// 邀请群成员
@@ -915,9 +915,9 @@ func (c *groupSvcClient) SetGroupAvatar(ctx context.Context, in *SetGroupAvatarR
 	return out, nil
 }
 
-func (c *groupSvcClient) SetGroupAlias(ctx context.Context, in *SetGroupAliasRequest, opts ...grpc.CallOption) (*SetGroupAliasReply, error) {
-	out := new(SetGroupAliasReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SetGroupAlias_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) SetGroupName(ctx context.Context, in *SetGroupNameRequest, opts ...grpc.CallOption) (*SetGroupNameReply, error) {
+	out := new(SetGroupNameReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SetGroupName_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,8 +1014,8 @@ type GroupSvcServer interface {
 	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
 	// 设置头像（管理员操作）
 	SetGroupAvatar(context.Context, *SetGroupAvatarRequest) (*SetGroupAvatarReply, error)
-	// 设置别名
-	SetGroupAlias(context.Context, *SetGroupAliasRequest) (*SetGroupAliasReply, error)
+	// 设置名称
+	SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error)
 	// 设置群公告
 	SetGroupNotice(context.Context, *SetGroupNoticeRequest) (*SetGroupNoticeReply, error)
 	// 邀请群成员
@@ -1060,8 +1060,8 @@ func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupM
 func (UnimplementedGroupSvcServer) SetGroupAvatar(context.Context, *SetGroupAvatarRequest) (*SetGroupAvatarReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupAvatar not implemented")
 }
-func (UnimplementedGroupSvcServer) SetGroupAlias(context.Context, *SetGroupAliasRequest) (*SetGroupAliasReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetGroupAlias not implemented")
+func (UnimplementedGroupSvcServer) SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetGroupName not implemented")
 }
 func (UnimplementedGroupSvcServer) SetGroupNotice(context.Context, *SetGroupNoticeRequest) (*SetGroupNoticeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupNotice not implemented")
@@ -1226,20 +1226,20 @@ func _GroupSvc_SetGroupAvatar_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_SetGroupAlias_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetGroupAliasRequest)
+func _GroupSvc_SetGroupName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGroupNameRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).SetGroupAlias(ctx, in)
+		return srv.(GroupSvcServer).SetGroupName(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_SetGroupAlias_FullMethodName,
+		FullMethod: GroupSvc_SetGroupName_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SetGroupAlias(ctx, req.(*SetGroupAliasRequest))
+		return srv.(GroupSvcServer).SetGroupName(ctx, req.(*SetGroupNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1424,8 +1424,8 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_SetGroupAvatar_Handler,
 		},
 		{
-			MethodName: "SetGroupAlias",
-			Handler:    _GroupSvc_SetGroupAlias_Handler,
+			MethodName: "SetGroupName",
+			Handler:    _GroupSvc_SetGroupName_Handler,
 		},
 		{
 			MethodName: "SetGroupNotice",
@@ -1563,7 +1563,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SystemSvcClient interface {
-	GetSystemMessageList(ctx context.Context, in *GetMessageListRequest, opts ...grpc.CallOption) (*GetMessageListReply, error)
+	GetSystemMessageList(ctx context.Context, in *GetSystemMessageListRequest, opts ...grpc.CallOption) (*GetSystemMessageListReply, error)
 	ClearSystemMessage(ctx context.Context, in *ClearSystemMessageRequest, opts ...grpc.CallOption) (*ClearSystemMessageReply, error)
 }
 
@@ -1575,8 +1575,8 @@ func NewSystemSvcClient(cc grpc.ClientConnInterface) SystemSvcClient {
 	return &systemSvcClient{cc}
 }
 
-func (c *systemSvcClient) GetSystemMessageList(ctx context.Context, in *GetMessageListRequest, opts ...grpc.CallOption) (*GetMessageListReply, error) {
-	out := new(GetMessageListReply)
+func (c *systemSvcClient) GetSystemMessageList(ctx context.Context, in *GetSystemMessageListRequest, opts ...grpc.CallOption) (*GetSystemMessageListReply, error) {
+	out := new(GetSystemMessageListReply)
 	err := c.cc.Invoke(ctx, SystemSvc_GetSystemMessageList_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1597,7 +1597,7 @@ func (c *systemSvcClient) ClearSystemMessage(ctx context.Context, in *ClearSyste
 // All implementations must embed UnimplementedSystemSvcServer
 // for forward compatibility
 type SystemSvcServer interface {
-	GetSystemMessageList(context.Context, *GetMessageListRequest) (*GetMessageListReply, error)
+	GetSystemMessageList(context.Context, *GetSystemMessageListRequest) (*GetSystemMessageListReply, error)
 	ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error)
 	mustEmbedUnimplementedSystemSvcServer()
 }
@@ -1606,7 +1606,7 @@ type SystemSvcServer interface {
 type UnimplementedSystemSvcServer struct {
 }
 
-func (UnimplementedSystemSvcServer) GetSystemMessageList(context.Context, *GetMessageListRequest) (*GetMessageListReply, error) {
+func (UnimplementedSystemSvcServer) GetSystemMessageList(context.Context, *GetSystemMessageListRequest) (*GetSystemMessageListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSystemMessageList not implemented")
 }
 func (UnimplementedSystemSvcServer) ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error) {
@@ -1626,7 +1626,7 @@ func RegisterSystemSvcServer(s grpc.ServiceRegistrar, srv SystemSvcServer) {
 }
 
 func _SystemSvc_GetSystemMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMessageListRequest)
+	in := new(GetSystemMessageListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1638,7 +1638,7 @@ func _SystemSvc_GetSystemMessageList_Handler(srv interface{}, ctx context.Contex
 		FullMethod: SystemSvc_GetSystemMessageList_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SystemSvcServer).GetSystemMessageList(ctx, req.(*GetMessageListRequest))
+		return srv.(SystemSvcServer).GetSystemMessageList(ctx, req.(*GetSystemMessageListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
