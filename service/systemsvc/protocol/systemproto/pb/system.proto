@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package system.pb;
+
+message Peer {
+    bytes peer_id = 1;
+    string name = 2;
+    string avatar = 3;
+  }
+
+message SystemMsg {
+    enum Type {
+        ContactApply = 0;
+        ContactApplyAck = 1;
+    }
+
+    enum State {
+        IsSended = 0;
+        IsAgree = 1;
+        IsReject = 2;
+    }
+
+    string id = 1;
+    string ack_id = 2;
+    Type type = 3;
+    Peer from_peer = 4;
+    bytes to_peer_id = 5;
+    string content = 6;
+    State state = 7;
+    int64 ctime = 8;
+    int64 utime = 9;
+}
+

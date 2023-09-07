@@ -14,6 +14,7 @@ func Execute() {
 		Commands: []*cli.Command{
 			&DaemonCmd,
 			&InitCmd,
+			&CuckooCmd,
 		},
 		Action: func(ctx *cli.Context) error {
 			fmt.Printf("chat -> args: %v", ctx.Args())

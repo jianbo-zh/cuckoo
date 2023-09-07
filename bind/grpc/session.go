@@ -6,12 +6,20 @@ import (
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
+	"github.com/jianbo-zh/dchat/cuckoo"
 )
 
 var _ proto.SessionSvcServer = (*SessionSvc)(nil)
 
 type SessionSvc struct {
+	getter cuckoo.CuckooGetter
 	proto.UnimplementedSessionSvcServer
+}
+
+func NewSessionSvc(getter cuckoo.CuckooGetter) *SessionSvc {
+	return &SessionSvc{
+		getter: getter,
+	}
 }
 
 func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessionListRequest) (*proto.GetSessionListReply, error) {

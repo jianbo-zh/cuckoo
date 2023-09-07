@@ -1,7 +1,7 @@
 package event
 
 import (
-	admpb "github.com/jianbo-zh/dchat/service/group/protocol/admin/pb"
+	admpb "github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

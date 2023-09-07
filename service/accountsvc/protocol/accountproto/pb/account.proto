@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package account.pb;
+
+message AccountMsg {
+  bytes peer_id = 1;
+  string name = 2;
+  string avatar = 3;
+	bool auto_add_contact = 4;
+	bool auto_join_group = 5;
+}
+
+message PeerMsg {
+  bytes peer_id = 1;
+  string name = 2;
+  string avatar = 3;
+}

@@ -62,7 +62,6 @@ func (ia *inet) InterfaceAddrs() ([]net.Addr, error) {
 		fields[i] = addr.String()
 	}
 
-	ia.logger.Debug("driver interface resolved addrs", zap.Strings("addrs", fields))
 	return addrs, nil
 }
 

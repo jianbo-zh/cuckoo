@@ -2,16 +2,40 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
+	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/service/groupsvc"
 )
 
 var _ proto.GroupSvcServer = (*GroupSvc)(nil)
 
 type GroupSvc struct {
+	getter cuckoo.CuckooGetter
 	proto.UnimplementedGroupSvcServer
+}
+
+func NewGroupSvc(getter cuckoo.CuckooGetter) *GroupSvc {
+	return &GroupSvc{
+		getter: getter,
+	}
+}
+
+func (g *GroupSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
+	cuckoo, err := g.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return groupSvc, nil
 }
 
 func (g *GroupSvc) ClearGroupMessage(ctx context.Context, request *proto.ClearGroupMessageRequest) (*proto.ClearGroupMessageReply, error) {
@@ -54,9 +78,9 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 			Name:   account.Name,
 			Alias:  account.Name,
 		},
-		JoinGroupWithoutReview: true,
-		CreateTime:             time.Now().Unix(),
-		UpdateTime:             time.Now().Unix(),
+		AutoJoinGroup: true,
+		CreateTime:    time.Now().Unix(),
+		UpdateTime:    time.Now().Unix(),
 	})
 
 	for _, member := range members {
@@ -331,7 +355,7 @@ func (g *GroupSvc) SetGroupNotice(ctx context.Context, request *proto.SetGroupNo
 func (g *GroupSvc) SetJoinGroupReview(ctx context.Context, request *proto.SetJoinGroupReviewRequest) (*proto.SetJoinGroupReviewReply, error) {
 
 	if len(groups) > 0 {
-		groups[0].JoinGroupWithoutReview = request.IsReview
+		groups[0].AutoJoinGroup = request.IsReview
 	}
 
 	reply := &proto.SetJoinGroupReviewReply{

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	peersvc "github.com/jianbo-zh/dchat/service/peer"
+	peersvc "github.com/jianbo-zh/dchat/service/peersvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

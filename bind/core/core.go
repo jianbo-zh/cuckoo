@@ -6,60 +6,26 @@ import (
 
 	service "github.com/jianbo-zh/dchat/bind/grpc"
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
-	"github.com/jianbo-zh/go-anet"
-	"go.uber.org/zap"
+	"github.com/jianbo-zh/dchat/cuckoo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-func StartGrpcWithPort(nativedriver NativeNetDriver, hostport string) {
-	logx, _ := zap.NewDevelopment()
+type ServiceWrapper struct{}
 
-	inet := &inet{
-		net:    nativedriver,
-		logger: logx,
+func (s *ServiceWrapper) GetCuckoo() (*cuckoo.Cuckoo, error) {
+	if node == nil {
+		return nil, fmt.Errorf("node is nil, maybe not started")
 	}
 
-	anet.SetNetDriver(inet)
+	return node.GetCuckoo()
+}
 
-	interfaces, err := anet.Interfaces()
-	if err != nil {
-		fmt.Println("error: ", err)
-	}
-	fmt.Println("Interfaces", interfaces)
-
-	interfaceAddr, err := anet.InterfaceAddrs()
-	if err != nil {
-		fmt.Println("error: ", err)
-	}
-	fmt.Println("InterfaceAddrs: ", interfaceAddr)
-
+func StartGrpcWithPort(hostport string) {
 	go startGrpc("tcp", hostport)
 }
 
-func StartGrpc(nativedriver NativeNetDriver, socketpath string) {
-
-	logx, _ := zap.NewDevelopment()
-
-	inet := &inet{
-		net:    nativedriver,
-		logger: logx,
-	}
-
-	anet.SetNetDriver(inet)
-
-	interfaces, err := anet.Interfaces()
-	if err != nil {
-		fmt.Println("error: ", err)
-	}
-	fmt.Println("Interfaces", interfaces)
-
-	interfaceAddr, err := anet.InterfaceAddrs()
-	if err != nil {
-		fmt.Println("error: ", err)
-	}
-	fmt.Println("InterfaceAddrs: ", interfaceAddr)
-
+func StartGrpc(socketpath string) {
 	go startGrpc("unix", socketpath)
 }
 
@@ -72,11 +38,13 @@ func startGrpc(scheme string, socketpath string) {
 
 	s := grpc.NewServer()
 
-	proto.RegisterAccountSvcServer(s, &service.AccountSvc{})
-	proto.RegisterContactSvcServer(s, &service.ContactSvc{})
-	proto.RegisterGroupSvcServer(s, &service.GroupSvc{})
-	proto.RegisterSessionSvcServer(s, &service.SessionSvc{})
-	proto.RegisterSystemSvcServer(s, &service.SystemSvc{})
+	serviceWrapper := &ServiceWrapper{}
+
+	proto.RegisterAccountSvcServer(s, service.NewAccountSvc(serviceWrapper))
+	proto.RegisterContactSvcServer(s, service.NewContactSvc(serviceWrapper))
+	proto.RegisterGroupSvcServer(s, service.NewGroupSvc(serviceWrapper))
+	proto.RegisterSessionSvcServer(s, service.NewSessionSvc(serviceWrapper))
+	proto.RegisterSystemSvcServer(s, service.NewSystemSvc(serviceWrapper))
 
 	reflection.Register(s)
 

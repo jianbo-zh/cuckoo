@@ -22,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
@@ -105,16 +106,16 @@ func init() {
 
 			fmt.Println("PeerID: ", localnode.ID())
 
-			// ticker := time.NewTicker(5 * time.Second)
-			// defer ticker.Stop()
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
 
-			// for t := range ticker.C {
-			// 	fmt.Println()
-			// 	fmt.Printf("PeerInfo: %s", t)
-			// 	for _, addr := range localnode.Addrs() {
-			// 		fmt.Println(addr)
-			// 	}
-			// }
+			for t := range ticker.C {
+				fmt.Println()
+				fmt.Printf("PeerInfo: %s", t)
+				for _, addr := range localnode.Addrs() {
+					fmt.Println(addr)
+				}
+			}
 
 			// 启动HTTP服务
 			go func() {
@@ -146,7 +147,7 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 	}
 
 	var dualDHT *ddht.DHT
-	// peerChan := make(chan peer.AddrInfo)
+	peerChan := make(chan peer.AddrInfo)
 
 	// 创建host节点
 	localnode, err := libp2p.New(
@@ -164,31 +165,31 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 		}),
 		libp2p.EnableNATService(),
 		libp2p.EnableRelay(),
-		// libp2p.EnableAutoRelayWithPeerSource(
-		// 	func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
-		// 		r := make(chan peer.AddrInfo)
-		// 		go func() {
-		// 			defer close(r)
-		// 			for ; numPeers != 0; numPeers-- {
-		// 				select {
-		// 				case v, ok := <-peerChan:
-		// 					if !ok {
-		// 						return
-		// 					}
-		// 					select {
-		// 					case r <- v:
-		// 					case <-ctx.Done():
-		// 						return
-		// 					}
-		// 				case <-ctx.Done():
-		// 					return
-		// 				}
-		// 			}
-		// 		}()
-		// 		return r
-		// 	},
-		// 	autorelay.WithMinInterval(0),
-		// ),
+		libp2p.EnableAutoRelayWithPeerSource(
+			func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
+				r := make(chan peer.AddrInfo)
+				go func() {
+					defer close(r)
+					for ; numPeers != 0; numPeers-- {
+						select {
+						case v, ok := <-peerChan:
+							if !ok {
+								return
+							}
+							select {
+							case r <- v:
+							case <-ctx.Done():
+								return
+							}
+						case <-ctx.Done():
+							return
+						}
+					}
+				}()
+				return r
+			},
+			autorelay.WithMinInterval(0),
+		),
 	)
 	if err != nil {
 		panic(err)
@@ -197,8 +198,8 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 	// 初始化mdns服务
 	initMDNS(ctx, localnode)
 
-	// // 查找中继节点
-	// go autoRelayFeeder(ctx, localnode, dualDHT, conf.Peering, peerChan)
+	// 查找中继节点
+	go autoRelayFeeder(ctx, localnode, dualDHT, conf.Peering, peerChan)
 
 	// 连接引导节点
 	go func() {
@@ -207,6 +208,7 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 			pi, _ := peer.AddrInfoFromString(addr)
 			if err := localnode.Connect(ctx, *pi); err == nil {
 				isAnySucc = true
+				fmt.Println("connect peer: " + pi.String())
 			}
 		}
 
@@ -256,12 +258,15 @@ func autoRelayFeeder(ctx context.Context, h host.Host, dualDHT *ddht.DHT, cfgPee
 			continue
 		}
 
+		fmt.Println("do get closest peers")
 		closestPeers, err := dualDHT.WAN.GetClosestPeers(ctx, h.ID().String())
 		if err != nil {
 			// no-op: usually 'failed to find any peer in table' during startup
+			fmt.Println("dualDHT.WAN.GetClosestPeers error: ", err.Error())
 			continue
 		}
 
+		fmt.Printf("closest peers count: %d", len(closestPeers))
 		for _, p := range closestPeers {
 			addrs := h.Peerstore().Addrs(p)
 			if len(addrs) == 0 {

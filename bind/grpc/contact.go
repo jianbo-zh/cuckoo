@@ -3,24 +3,62 @@ package service
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
+	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/service/peersvc"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ proto.ContactSvcServer = (*ContactSvc)(nil)
 
 type ContactSvc struct {
+	getter cuckoo.CuckooGetter
 	proto.UnimplementedContactSvcServer
+}
+
+func NewContactSvc(getter cuckoo.CuckooGetter) *ContactSvc {
+	return &ContactSvc{
+		getter: getter,
+	}
+}
+
+func (c *ContactSvc) getPeerSvc() (peersvc.PeerServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	peerSvc, err := cuckoo.GetPeerSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return peerSvc, nil
 }
 
 func (c *ContactSvc) AddContact(ctx context.Context, request *proto.AddContactRequest) (*proto.AddContactReply, error) {
 
+	peerSvc, err := c.getPeerSvc()
+	if err != nil {
+		return nil, fmt.Errorf("getPeerSvc error: %s", err.Error())
+	}
+
+	peerID, err := peer.Decode(request.PeerID)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
+	}
+
+	err = peerSvc.ApplyAddContact(ctx, peerID, request.Content)
+	if err != nil {
+		return nil, fmt.Errorf("peerSvc.AddPeer error: %w", err)
+	}
+
 	contacts = append(contacts, &proto.Contact{
 		PeerID:      request.GetPeerID(),
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+		Avatar:      "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 		Name:        request.GetContent(),
 		Alias:       "alias1",
 		LastMessage: "last message",
@@ -62,6 +100,7 @@ func (c *ContactSvc) DeleteContact(ctx context.Context, request *proto.DeleteCon
 	}
 	return reply, nil
 }
+
 func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRequest) (*proto.GetContactReply, error) {
 
 	var contact *proto.Contact = nil
@@ -148,25 +187,55 @@ func (c *ContactSvc) GetSpecifiedContactList(ctx context.Context, request *proto
 	return reply, nil
 }
 
-func (c *ContactSvc) GetNearbyContactList(context.Context, *proto.GetNearbyContactListRequest) (*proto.GetNearbyContactListReply, error) {
-
-	var contactsList []*proto.Contact
-	randid := rand.Intn(10000)
-	contactsList = append(contactsList, &proto.Contact{
-		PeerID: fmt.Sprintf("%s-%d", "peerID", randid),
-		Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:   fmt.Sprintf("%s-%d", "name", randid),
-		Alias:  "name1",
-	})
-
-	reply := &proto.GetNearbyContactListReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		ContactList: contactsList,
+func (c *ContactSvc) GetNearbyContactList(request *proto.GetNearbyContactListRequest, server proto.ContactSvc_GetNearbyContactListServer) error {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return fmt.Errorf("c.getter.GetCuckoo error: %w", err)
 	}
-	return reply, nil
+
+	peerIDs, err := cuckoo.GetLanPeerIDs()
+	if err != nil {
+		return fmt.Errorf("cuckoo.GetLanPeerIDs error: %w", err)
+	}
+
+	if len(peerIDs) > 0 {
+		peerSvc, err := cuckoo.GetPeerSvc()
+		if err != nil {
+			return fmt.Errorf("cuckoo.GetAccountSvc error: %w", err)
+		}
+
+		ctx := context.Background()
+		for _, peerID := range peerIDs {
+			accountBase, err := peerSvc.GetPeer(ctx, peerID)
+			if err != nil {
+				fmt.Printf("accountSvc.GetPeerAccount error: %s", err.Error())
+				continue
+			}
+
+			err = peerSvc.DownloadPeerAvatar(ctx, peerID, accountBase.Avatar)
+			if err != nil {
+				fmt.Printf("accountSvc.DownloadPeerAvatar error: %s", err.Error())
+				continue
+			}
+
+			server.Send(&proto.GetNearbyContactListStreamReply{
+				Result: &proto.Result{
+					Code:    0,
+					Message: "ok",
+				},
+				Contact: &proto.Contact{
+					PeerID:      accountBase.PeerID.String(),
+					Name:        accountBase.Name,
+					Avatar:      accountBase.Avatar,
+					Alias:       "",
+					LastMessage: "",
+					UpdateTime:  time.Now().Unix(),
+				},
+			})
+		}
+	}
+
+	return nil
 }
 
 func (c *ContactSvc) GetContactMessageList(ctx context.Context, request *proto.GetContactMessageListRequest) (*proto.GetContactMessageListReply, error) {
@@ -192,7 +261,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		},
 		Receiver: &proto.Contact{
 			PeerID: request.PeerID,
-			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name-8081",
 			Alias:  "",
 		},

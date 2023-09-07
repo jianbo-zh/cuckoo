@@ -10,7 +10,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/jianbo-zh/go-anet v0.1.1
 	github.com/jianbo-zh/go-log v0.2.0
-	github.com/libp2p/go-libp2p v0.28.1
+	github.com/libp2p/go-libp2p v0.28.3
 	github.com/libp2p/go-libp2p-kad-dht v0.21.1
 	github.com/libp2p/go-msgio v0.3.0
 	github.com/libp2p/zeroconf/v2 v2.2.0
@@ -112,9 +112,9 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
-	github.com/quic-go/quic-go v0.33.0 // indirect
+	github.com/quic-go/qtls-go1-19 v0.3.3 // indirect
+	github.com/quic-go/qtls-go1-20 v0.2.3 // indirect
+	github.com/quic-go/quic-go v0.33.1 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
@@ -147,7 +147,4 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
-replace (
-	github.com/multiformats/go-multiaddr => github.com/gfanton/go-multiaddr v0.7.1-0.20221109002011-e39b3a49e793 // tmp, required for Android SDK30
-	golang.org/x/mobile => github.com/berty/mobile v0.0.9 // temporary, see https://github.com/golang/mobile/pull/58 and https://github.com/golang/mobile/pull/82
-)
+replace golang.org/x/mobile => github.com/berty/mobile v0.0.9 // temporary, see https://github.com/golang/mobile/pull/58 and https://github.com/golang/mobile/pull/82

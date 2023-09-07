@@ -15,13 +15,7 @@ var contactMessages []*proto.ContactMessage
 var systemMessage []*proto.SystemMessage
 
 func init() {
-	account = proto.Account{
-		PeerID:                  "peerID",
-		Avatar:                  "md5_4c6c2a483e5f2d06140c7313de06448f.jpg",
-		Name:                    "name",
-		AddContactWithoutReview: true,
-		JoinGroupWithoutReview:  true,
-	}
+	account = proto.Account{}
 	groups = make([]*proto.GroupFull, 0)
 	groupMembers = make([]*proto.GroupMember, 0)
 	groupMessages = make([]*proto.GroupMessage, 0)
@@ -33,7 +27,7 @@ func init() {
 		GroupID: "",
 		Sender: &proto.Contact{
 			PeerID: "PeerID1",
-			Avatar: "md5_4c6c2a483e5f2d06140c7313de06448f.jpg",
+			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name1",
 			Alias:  "alias1",
 		},
@@ -52,7 +46,7 @@ func init() {
 		ID: "id",
 		Sender: &proto.Contact{
 			PeerID: "peerID-8081",
-			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name-8081",
 			Alias:  "",
 		},
@@ -73,7 +67,7 @@ func init() {
 		GroupID: "groupID",
 		Sender: &proto.Contact{
 			PeerID: "peerID-8081",
-			Avatar: "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
+			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name-8081",
 			Alias:  "",
 		},
@@ -81,91 +75,5 @@ func init() {
 		MimeType:   "text/plain",
 		Data:       []byte("hello 你好！"),
 		CreateTime: time.Now().Unix(),
-	})
-
-	contacts = append(contacts, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
-	}, &proto.Contact{
-		PeerID:      "peerID",
-		Avatar:      "md5_490ecc5cbb75e4135eabfb2c7a7629bd.jpg",
-		Name:        "name-asdf",
-		Alias:       "name-alias",
-		LastMessage: "ssdfasfsss",
-		UpdateTime:  1234567890,
 	})
 }
