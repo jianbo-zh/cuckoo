@@ -50,9 +50,11 @@ func DefaultConfig() (*Config, error) {
 		DNS: DNS{
 			Resolvers: map[string]string{},
 		},
-		PeerMessage:  PeerMessageConfig{},
-		GroupMessage: GroupMessageConfig{},
-		DepositMessage: DepositMessageConfig{
+
+		AccountService: AccountServiceConfig{},
+		ContactService: ContactServiceConfig{},
+		GroupService:   GroupServiceConfig{},
+		DepositService: DepositServiceConfig{
 			EnableService: false,
 		},
 	}

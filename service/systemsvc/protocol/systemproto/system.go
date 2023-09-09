@@ -35,8 +35,9 @@ type SystemProto struct {
 
 func NewSystemProto(lhost host.Host, ids ipfsds.Batching, msgCh chan<- *pb.SystemMsg) (*SystemProto, error) {
 	systemProto := SystemProto{
-		host: lhost,
-		data: ds.Wrap(ids),
+		host:  lhost,
+		data:  ds.Wrap(ids),
+		msgCh: msgCh,
 	}
 
 	lhost.SetStreamHandler(ID, systemProto.Handler)
@@ -58,17 +59,14 @@ func (s *SystemProto) Handler(stream network.Stream) {
 	s.msgCh <- &msg
 }
 
-func (s *SystemProto) SaveMssage(ctx context.Context, msg *pb.SystemMsg) error {
-	msg.Id = fmt.Sprintf("%d-%s", time.Now().Unix(), s.host.ID().String())
-	msg.Ctime = time.Now().Unix()
-
+func (s *SystemProto) SaveMessage(ctx context.Context, msg *pb.SystemMsg) error {
 	if err := s.data.AddSystemMessage(ctx, msg); err != nil {
 		return fmt.Errorf("s.data.AddSystemMessage error: %w", err)
 	}
 	return nil
 }
 
-func (s *SystemProto) GetMssage(ctx context.Context, msgID string) (*pb.SystemMsg, error) {
+func (s *SystemProto) GetMessage(ctx context.Context, msgID string) (*pb.SystemMsg, error) {
 	msg, err := s.data.GetSystemMessage(ctx, msgID)
 	if err != nil {
 		return nil, fmt.Errorf("s.data.GetSystemMessage error: %w", err)
@@ -77,7 +75,7 @@ func (s *SystemProto) GetMssage(ctx context.Context, msgID string) (*pb.SystemMs
 	return msg, nil
 }
 
-func (s *SystemProto) GetMssageList(ctx context.Context, offset int, limit int) ([]*pb.SystemMsg, error) {
+func (s *SystemProto) GetMessageList(ctx context.Context, offset int, limit int) ([]*pb.SystemMsg, error) {
 	msgs, err := s.data.GetSystemMessageList(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("s.data.GetSystemMessageList error: %w", err)
@@ -95,9 +93,10 @@ func (s *SystemProto) UpdateMessageState(ctx context.Context, msgID string, stat
 	return nil
 }
 
-func (s *SystemProto) SendMessage(ctx context.Context, peerID peer.ID, msg *pb.SystemMsg) error {
+func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMsg) error {
 
-	stream, err := s.host.NewStream(ctx, peerID, ID)
+	fmt.Println("host.NewStream start")
+	stream, err := s.host.NewStream(ctx, peer.ID(msg.ToPeer.PeerId), ID)
 	if err != nil {
 		return fmt.Errorf("a.host.NewStream error: %w", err)
 	}
@@ -105,10 +104,10 @@ func (s *SystemProto) SendMessage(ctx context.Context, peerID peer.ID, msg *pb.S
 	wt := pbio.NewDelimitedWriter(stream)
 	defer wt.Close()
 
-	msg.ToPeerId = []byte(peerID)
 	if err = wt.WriteMsg(msg); err != nil {
 		return fmt.Errorf("wt.WriteMsg error: %w", err)
 	}
+	fmt.Println("wt.WriteMsg success")
 
 	return nil
 }

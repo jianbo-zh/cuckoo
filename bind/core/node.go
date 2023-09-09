@@ -3,12 +3,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/jianbo-zh/dchat/bind/utils"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	cuckooConfig "github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/go-anet"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"go.uber.org/zap"
 )
@@ -35,6 +37,13 @@ func (n *Node) GetCuckoo() (*cuckoo.Cuckoo, error) {
 func StartNode(config *NodeConfig) error {
 	locker.Lock()
 	defer locker.Unlock()
+
+	logging.SetupLogging(logging.Config{
+		Level:  logging.LevelDebug,
+		File:   filepath.Join(config.storageDir, "go.log"),
+		Stderr: true,
+		Stdout: true,
+	})
 
 	if node != nil {
 		return fmt.Errorf("node is started")
@@ -102,8 +111,6 @@ func StartNode(config *NodeConfig) error {
 			mdnslogger.Error("unable to start mdns service, no multicast interfaces found")
 		}
 	}
-
-	fmt.Println("xxxxxxxx")
 
 	// 全局变量
 	node = &Node{

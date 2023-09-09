@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	peersvc "github.com/jianbo-zh/dchat/service/peersvc"
+	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -17,7 +17,7 @@ var GetAddPeerHandler = func() fiber.Handler {
 
 		fmt.Println("peerID: ", peerID)
 
-		err := peersvc.Get().AddPeer(context.Background(), peerID, nickname)
+		err := contactsvc.Get().AddPeer(context.Background(), peerID, nickname)
 		if err != nil {
 			return err
 		}
@@ -29,7 +29,7 @@ var GetAddPeerHandler = func() fiber.Handler {
 var GetGetPeersHandler = func() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
-		peers, err := peersvc.Get().GetPeers(context.Background())
+		peers, err := contactsvc.Get().GetPeers(context.Background())
 		if err != nil {
 			return err
 		}

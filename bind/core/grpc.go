@@ -45,6 +45,7 @@ func startGrpc(scheme string, socketpath string) {
 	proto.RegisterGroupSvcServer(s, service.NewGroupSvc(serviceWrapper))
 	proto.RegisterSessionSvcServer(s, service.NewSessionSvc(serviceWrapper))
 	proto.RegisterSystemSvcServer(s, service.NewSystemSvc(serviceWrapper))
+	proto.RegisterSubscribeSvcServer(s, service.NewSubscribeSvc(serviceWrapper))
 
 	reflection.Register(s)
 

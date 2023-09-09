@@ -21,9 +21,10 @@ import (
 */
 
 type ContactServiceIface interface {
-	GetMessages(context.Context, peer.ID, int, int) ([]Message, error)
-	SendTextMessage(context.Context, peer.ID, string) error
-	SendGroupInviteMessage(context.Context, peer.ID, string) error
+	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*Message, error)
+	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]Message, error)
+	SendTextMessage(ctx context.Context, peerID peer.ID, content string) error
+	SendGroupInviteMessage(ctx context.Context, peerID peer.ID, content string) error
 
 	AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error
 	GetContact(ctx context.Context, peerID peer.ID) (*Contact, error)
@@ -43,9 +44,10 @@ const (
 
 type Message struct {
 	ID         string  `json:"id"`
-	Type       MsgType `json:"type"`
-	SenderID   peer.ID `json:"sender_id"`
-	ReceiverID peer.ID `json:"receiver_id"`
+	MsgType    MsgType `json:"msg_type"`
+	MimeType   string  `json:"mime_type"`
+	FromPeerID peer.ID `json:"from_peer_id"`
+	ToPeerID   peer.ID `json:"to_peer_id"`
 	Payload    []byte  `json:"payload"`
 	Timestamp  int64   `json:"timestamp"`
 	Lamportime uint64  `json:"lamportime"`

@@ -21,8 +21,8 @@ type ContactSvc struct {
 	contactProto *contactproto.ContactProto
 }
 
-func NewContactService(conf config.PeerMessageConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
-	rdiscvry *drouting.RoutingDiscovery, avatarDir string) (*ContactSvc, error) {
+func NewContactService(conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+	rdiscvry *drouting.RoutingDiscovery) (*ContactSvc, error) {
 
 	var err error
 
@@ -33,7 +33,7 @@ func NewContactService(conf config.PeerMessageConfig, lhost host.Host, ids ipfsd
 		return nil, fmt.Errorf("message.NewMessageSvc error: %s", err.Error())
 	}
 
-	contactsvc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus, avatarDir)
+	contactsvc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("contactproto.NewPeerSvc error: %s", err.Error())
 	}

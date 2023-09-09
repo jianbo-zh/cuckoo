@@ -73,11 +73,28 @@ func (m *MessageDS) SaveMessage(ctx context.Context, peerID peer.ID, msg *msgpb.
 	return batch.Commit(ctx)
 }
 
+func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*msgpb.Message, error) {
+	key := ipfsds.KeyWithNamespaces([]string{"dchat", "peer", peerID.String(), "message", "logs", msgID})
+
+	val, err := m.Get(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("m.Get error: %w", err)
+	}
+
+	var msg msgpb.Message
+	err = proto.Unmarshal(val, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+	}
+
+	return &msg, nil
+}
+
 // GetMessages 获取消息列表
 func (m *MessageDS) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*msgpb.Message, error) {
 	results, err := m.Query(ctx, query.Query{
 		Prefix: fmt.Sprintf("/dchat/peer/%s/message/logs", peerID.String()),
-		Orders: []query.Order{query.OrderByKey{}},
+		Orders: []query.Order{query.OrderByKeyDescending{}},
 		Offset: offset,
 		Limit:  limit,
 	})
@@ -100,7 +117,7 @@ func (m *MessageDS) GetMessages(ctx context.Context, peerID peer.ID, offset int,
 		msgs = append(msgs, &msg)
 	}
 
-	return msgs, nil
+	return reverse(msgs), nil
 }
 
 func parseMsgID(msgID string) (lamptime uint64, peerID string, err error) {
@@ -115,4 +132,11 @@ func parseMsgID(msgID string) (lamptime uint64, peerID string, err error) {
 	}
 
 	return lamptime, idArr[1], nil
+}
+
+func reverse[T any](s []T) []T {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
 }

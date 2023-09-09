@@ -306,12 +306,12 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ContactSvc_AddContact_FullMethodName              = "/chat.ContactSvc/AddContact"
 	ContactSvc_GetContactList_FullMethodName          = "/chat.ContactSvc/GetContactList"
 	ContactSvc_GetContactIDs_FullMethodName           = "/chat.ContactSvc/GetContactIDs"
 	ContactSvc_GetSpecifiedContactList_FullMethodName = "/chat.ContactSvc/GetSpecifiedContactList"
 	ContactSvc_GetNearbyContactList_FullMethodName    = "/chat.ContactSvc/GetNearbyContactList"
 	ContactSvc_GetContact_FullMethodName              = "/chat.ContactSvc/GetContact"
+	ContactSvc_GetContactMessage_FullMethodName       = "/chat.ContactSvc/GetContactMessage"
 	ContactSvc_GetContactMessageList_FullMethodName   = "/chat.ContactSvc/GetContactMessageList"
 	ContactSvc_SendContactMessage_FullMethodName      = "/chat.ContactSvc/SendContactMessage"
 	ContactSvc_SetContactAlias_FullMethodName         = "/chat.ContactSvc/SetContactAlias"
@@ -323,8 +323,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContactSvcClient interface {
-	// 添加联系人
-	AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactReply, error)
 	// 获取联系人列表
 	GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error)
 	// 获取联系人IDs
@@ -335,6 +333,8 @@ type ContactSvcClient interface {
 	GetNearbyContactList(ctx context.Context, in *GetNearbyContactListRequest, opts ...grpc.CallOption) (ContactSvc_GetNearbyContactListClient, error)
 	// 联系人信息
 	GetContact(ctx context.Context, in *GetContactRequest, opts ...grpc.CallOption) (*GetContactReply, error)
+	// 获取单条消息
+	GetContactMessage(ctx context.Context, in *GetContactMessageRequest, opts ...grpc.CallOption) (*GetContactMessageReply, error)
 	// 获取聊天记录
 	GetContactMessageList(ctx context.Context, in *GetContactMessageListRequest, opts ...grpc.CallOption) (*GetContactMessageListReply, error)
 	// 发送消息
@@ -353,15 +353,6 @@ type contactSvcClient struct {
 
 func NewContactSvcClient(cc grpc.ClientConnInterface) ContactSvcClient {
 	return &contactSvcClient{cc}
-}
-
-func (c *contactSvcClient) AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactReply, error) {
-	out := new(AddContactReply)
-	err := c.cc.Invoke(ctx, ContactSvc_AddContact_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *contactSvcClient) GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error) {
@@ -432,6 +423,15 @@ func (c *contactSvcClient) GetContact(ctx context.Context, in *GetContactRequest
 	return out, nil
 }
 
+func (c *contactSvcClient) GetContactMessage(ctx context.Context, in *GetContactMessageRequest, opts ...grpc.CallOption) (*GetContactMessageReply, error) {
+	out := new(GetContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContactMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *contactSvcClient) GetContactMessageList(ctx context.Context, in *GetContactMessageListRequest, opts ...grpc.CallOption) (*GetContactMessageListReply, error) {
 	out := new(GetContactMessageListReply)
 	err := c.cc.Invoke(ctx, ContactSvc_GetContactMessageList_FullMethodName, in, out, opts...)
@@ -481,8 +481,6 @@ func (c *contactSvcClient) DeleteContact(ctx context.Context, in *DeleteContactR
 // All implementations must embed UnimplementedContactSvcServer
 // for forward compatibility
 type ContactSvcServer interface {
-	// 添加联系人
-	AddContact(context.Context, *AddContactRequest) (*AddContactReply, error)
 	// 获取联系人列表
 	GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error)
 	// 获取联系人IDs
@@ -493,6 +491,8 @@ type ContactSvcServer interface {
 	GetNearbyContactList(*GetNearbyContactListRequest, ContactSvc_GetNearbyContactListServer) error
 	// 联系人信息
 	GetContact(context.Context, *GetContactRequest) (*GetContactReply, error)
+	// 获取单条消息
+	GetContactMessage(context.Context, *GetContactMessageRequest) (*GetContactMessageReply, error)
 	// 获取聊天记录
 	GetContactMessageList(context.Context, *GetContactMessageListRequest) (*GetContactMessageListReply, error)
 	// 发送消息
@@ -510,9 +510,6 @@ type ContactSvcServer interface {
 type UnimplementedContactSvcServer struct {
 }
 
-func (UnimplementedContactSvcServer) AddContact(context.Context, *AddContactRequest) (*AddContactReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddContact not implemented")
-}
 func (UnimplementedContactSvcServer) GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactList not implemented")
 }
@@ -527,6 +524,9 @@ func (UnimplementedContactSvcServer) GetNearbyContactList(*GetNearbyContactListR
 }
 func (UnimplementedContactSvcServer) GetContact(context.Context, *GetContactRequest) (*GetContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContact not implemented")
+}
+func (UnimplementedContactSvcServer) GetContactMessage(context.Context, *GetContactMessageRequest) (*GetContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessage not implemented")
 }
 func (UnimplementedContactSvcServer) GetContactMessageList(context.Context, *GetContactMessageListRequest) (*GetContactMessageListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessageList not implemented")
@@ -554,24 +554,6 @@ type UnsafeContactSvcServer interface {
 
 func RegisterContactSvcServer(s grpc.ServiceRegistrar, srv ContactSvcServer) {
 	s.RegisterService(&ContactSvc_ServiceDesc, srv)
-}
-
-func _ContactSvc_AddContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddContactRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).AddContact(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_AddContact_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).AddContact(ctx, req.(*AddContactRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _ContactSvc_GetContactList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -663,6 +645,24 @@ func _ContactSvc_GetContact_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ContactSvcServer).GetContact(ctx, req.(*GetContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetContactMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetContactMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetContactMessage(ctx, req.(*GetContactMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -765,10 +765,6 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ContactSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "AddContact",
-			Handler:    _ContactSvc_AddContact_Handler,
-		},
-		{
 			MethodName: "GetContactList",
 			Handler:    _ContactSvc_GetContactList_Handler,
 		},
@@ -783,6 +779,10 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContact",
 			Handler:    _ContactSvc_GetContact_Handler,
+		},
+		{
+			MethodName: "GetContactMessage",
+			Handler:    _ContactSvc_GetContactMessage_Handler,
 		},
 		{
 			MethodName: "GetContactMessageList",
@@ -1585,6 +1585,9 @@ var SessionSvc_ServiceDesc = grpc.ServiceDesc{
 const (
 	SystemSvc_GetSystemMessageList_FullMethodName = "/chat.SystemSvc/GetSystemMessageList"
 	SystemSvc_ClearSystemMessage_FullMethodName   = "/chat.SystemSvc/ClearSystemMessage"
+	SystemSvc_ApplyAddContact_FullMethodName      = "/chat.SystemSvc/ApplyAddContact"
+	SystemSvc_AgreeAddContact_FullMethodName      = "/chat.SystemSvc/AgreeAddContact"
+	SystemSvc_RejectAddContact_FullMethodName     = "/chat.SystemSvc/RejectAddContact"
 )
 
 // SystemSvcClient is the client API for SystemSvc service.
@@ -1593,6 +1596,9 @@ const (
 type SystemSvcClient interface {
 	GetSystemMessageList(ctx context.Context, in *GetSystemMessageListRequest, opts ...grpc.CallOption) (*GetSystemMessageListReply, error)
 	ClearSystemMessage(ctx context.Context, in *ClearSystemMessageRequest, opts ...grpc.CallOption) (*ClearSystemMessageReply, error)
+	ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error)
+	AgreeAddContact(ctx context.Context, in *AgreeAddContactRequest, opts ...grpc.CallOption) (*AgreeAddContactReply, error)
+	RejectAddContact(ctx context.Context, in *RejectAddContactRequest, opts ...grpc.CallOption) (*RejectAddContactReply, error)
 }
 
 type systemSvcClient struct {
@@ -1621,12 +1627,42 @@ func (c *systemSvcClient) ClearSystemMessage(ctx context.Context, in *ClearSyste
 	return out, nil
 }
 
+func (c *systemSvcClient) ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error) {
+	out := new(ApplyAddContactReply)
+	err := c.cc.Invoke(ctx, SystemSvc_ApplyAddContact_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *systemSvcClient) AgreeAddContact(ctx context.Context, in *AgreeAddContactRequest, opts ...grpc.CallOption) (*AgreeAddContactReply, error) {
+	out := new(AgreeAddContactReply)
+	err := c.cc.Invoke(ctx, SystemSvc_AgreeAddContact_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *systemSvcClient) RejectAddContact(ctx context.Context, in *RejectAddContactRequest, opts ...grpc.CallOption) (*RejectAddContactReply, error) {
+	out := new(RejectAddContactReply)
+	err := c.cc.Invoke(ctx, SystemSvc_RejectAddContact_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SystemSvcServer is the server API for SystemSvc service.
 // All implementations must embed UnimplementedSystemSvcServer
 // for forward compatibility
 type SystemSvcServer interface {
 	GetSystemMessageList(context.Context, *GetSystemMessageListRequest) (*GetSystemMessageListReply, error)
 	ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error)
+	ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error)
+	AgreeAddContact(context.Context, *AgreeAddContactRequest) (*AgreeAddContactReply, error)
+	RejectAddContact(context.Context, *RejectAddContactRequest) (*RejectAddContactReply, error)
 	mustEmbedUnimplementedSystemSvcServer()
 }
 
@@ -1639,6 +1675,15 @@ func (UnimplementedSystemSvcServer) GetSystemMessageList(context.Context, *GetSy
 }
 func (UnimplementedSystemSvcServer) ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearSystemMessage not implemented")
+}
+func (UnimplementedSystemSvcServer) ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApplyAddContact not implemented")
+}
+func (UnimplementedSystemSvcServer) AgreeAddContact(context.Context, *AgreeAddContactRequest) (*AgreeAddContactReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AgreeAddContact not implemented")
+}
+func (UnimplementedSystemSvcServer) RejectAddContact(context.Context, *RejectAddContactRequest) (*RejectAddContactReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RejectAddContact not implemented")
 }
 func (UnimplementedSystemSvcServer) mustEmbedUnimplementedSystemSvcServer() {}
 
@@ -1689,6 +1734,60 @@ func _SystemSvc_ClearSystemMessage_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SystemSvc_ApplyAddContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyAddContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemSvcServer).ApplyAddContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemSvc_ApplyAddContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemSvcServer).ApplyAddContact(ctx, req.(*ApplyAddContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SystemSvc_AgreeAddContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AgreeAddContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemSvcServer).AgreeAddContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemSvc_AgreeAddContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemSvcServer).AgreeAddContact(ctx, req.(*AgreeAddContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SystemSvc_RejectAddContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectAddContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemSvcServer).RejectAddContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemSvc_RejectAddContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemSvcServer).RejectAddContact(ctx, req.(*RejectAddContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SystemSvc_ServiceDesc is the grpc.ServiceDesc for SystemSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1704,7 +1803,136 @@ var SystemSvc_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ClearSystemMessage",
 			Handler:    _SystemSvc_ClearSystemMessage_Handler,
 		},
+		{
+			MethodName: "ApplyAddContact",
+			Handler:    _SystemSvc_ApplyAddContact_Handler,
+		},
+		{
+			MethodName: "AgreeAddContact",
+			Handler:    _SystemSvc_AgreeAddContact_Handler,
+		},
+		{
+			MethodName: "RejectAddContact",
+			Handler:    _SystemSvc_RejectAddContact_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
+	Metadata: "bind/grpc/proto/chat.proto",
+}
+
+const (
+	SubscribeSvc_SubscribeCommonEvent_FullMethodName = "/chat.SubscribeSvc/SubscribeCommonEvent"
+)
+
+// SubscribeSvcClient is the client API for SubscribeSvc service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type SubscribeSvcClient interface {
+	SubscribeCommonEvent(ctx context.Context, in *SubscribeCommonEventRequest, opts ...grpc.CallOption) (SubscribeSvc_SubscribeCommonEventClient, error)
+}
+
+type subscribeSvcClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewSubscribeSvcClient(cc grpc.ClientConnInterface) SubscribeSvcClient {
+	return &subscribeSvcClient{cc}
+}
+
+func (c *subscribeSvcClient) SubscribeCommonEvent(ctx context.Context, in *SubscribeCommonEventRequest, opts ...grpc.CallOption) (SubscribeSvc_SubscribeCommonEventClient, error) {
+	stream, err := c.cc.NewStream(ctx, &SubscribeSvc_ServiceDesc.Streams[0], SubscribeSvc_SubscribeCommonEvent_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &subscribeSvcSubscribeCommonEventClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type SubscribeSvc_SubscribeCommonEventClient interface {
+	Recv() (*SubscribeCommonEventReply, error)
+	grpc.ClientStream
+}
+
+type subscribeSvcSubscribeCommonEventClient struct {
+	grpc.ClientStream
+}
+
+func (x *subscribeSvcSubscribeCommonEventClient) Recv() (*SubscribeCommonEventReply, error) {
+	m := new(SubscribeCommonEventReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// SubscribeSvcServer is the server API for SubscribeSvc service.
+// All implementations must embed UnimplementedSubscribeSvcServer
+// for forward compatibility
+type SubscribeSvcServer interface {
+	SubscribeCommonEvent(*SubscribeCommonEventRequest, SubscribeSvc_SubscribeCommonEventServer) error
+	mustEmbedUnimplementedSubscribeSvcServer()
+}
+
+// UnimplementedSubscribeSvcServer must be embedded to have forward compatible implementations.
+type UnimplementedSubscribeSvcServer struct {
+}
+
+func (UnimplementedSubscribeSvcServer) SubscribeCommonEvent(*SubscribeCommonEventRequest, SubscribeSvc_SubscribeCommonEventServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeCommonEvent not implemented")
+}
+func (UnimplementedSubscribeSvcServer) mustEmbedUnimplementedSubscribeSvcServer() {}
+
+// UnsafeSubscribeSvcServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SubscribeSvcServer will
+// result in compilation errors.
+type UnsafeSubscribeSvcServer interface {
+	mustEmbedUnimplementedSubscribeSvcServer()
+}
+
+func RegisterSubscribeSvcServer(s grpc.ServiceRegistrar, srv SubscribeSvcServer) {
+	s.RegisterService(&SubscribeSvc_ServiceDesc, srv)
+}
+
+func _SubscribeSvc_SubscribeCommonEvent_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeCommonEventRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SubscribeSvcServer).SubscribeCommonEvent(m, &subscribeSvcSubscribeCommonEventServer{stream})
+}
+
+type SubscribeSvc_SubscribeCommonEventServer interface {
+	Send(*SubscribeCommonEventReply) error
+	grpc.ServerStream
+}
+
+type subscribeSvcSubscribeCommonEventServer struct {
+	grpc.ServerStream
+}
+
+func (x *subscribeSvcSubscribeCommonEventServer) Send(m *SubscribeCommonEventReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+// SubscribeSvc_ServiceDesc is the grpc.ServiceDesc for SubscribeSvc service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SubscribeSvc_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "chat.SubscribeSvc",
+	HandlerType: (*SubscribeSvcServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SubscribeCommonEvent",
+			Handler:       _SubscribeSvc_SubscribeCommonEvent_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "bind/grpc/proto/chat.proto",
 }

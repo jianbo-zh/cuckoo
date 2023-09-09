@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/service/contactsvc"
 )
 
 var _ proto.SessionSvcServer = (*SessionSvc)(nil)
@@ -20,6 +22,20 @@ func NewSessionSvc(getter cuckoo.CuckooGetter) *SessionSvc {
 	return &SessionSvc{
 		getter: getter,
 	}
+}
+
+func (c *SessionSvc) getContactSvc() (contactsvc.ContactServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return contactSvc, nil
 }
 
 func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessionListRequest) (*proto.GetSessionListReply, error) {
@@ -43,22 +59,30 @@ func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessi
 		}
 	}
 
-	if len(contacts) > 0 {
-		for i, contact := range contacts {
-			if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
-				continue
-			}
+	contactSvc, err := s.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
+	}
 
-			sessions = append(sessions, &proto.Session{
-				SessionType:       proto.SessionType_CONTACT_SESSION,
-				SessionID:         contact.PeerID,
-				Avatar:            contact.Avatar,
-				Name:              contact.Name,
-				LastMessage:       "lastmessage",
-				LastMessageTime:   time.Now().Unix(),
-				HaveUnreadMessage: i%2 == 1,
-			})
+	contacts, err := contactSvc.GetContacts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("contactSvc.GetContact error: %w", err)
+	}
+	fmt.Printf("get contacts size: %d\n", len(contacts))
+	for i, contact := range contacts {
+		if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
+			continue
 		}
+
+		sessions = append(sessions, &proto.Session{
+			SessionType:       proto.SessionType_CONTACT_SESSION,
+			SessionID:         contact.PeerID.String(),
+			Name:              contact.Name,
+			Avatar:            contact.Avatar,
+			LastMessage:       "",
+			LastMessageTime:   time.Now().Unix(),
+			HaveUnreadMessage: i%2 == 1,
+		})
 	}
 
 	var sessionList []*proto.Session

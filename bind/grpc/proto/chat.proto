@@ -26,8 +26,6 @@ service AccountSvc {
 
 // 联系人服务
 service ContactSvc {
-  // 添加联系人
-  rpc AddContact(AddContactRequest) returns (AddContactReply) {}
   // 获取联系人列表
   rpc GetContactList(GetContactListRequest) returns (GetContactListReply) {}
   // 获取联系人IDs
@@ -38,6 +36,8 @@ service ContactSvc {
   rpc GetNearbyContactList(GetNearbyContactListRequest) returns (stream GetNearbyContactListStreamReply) {}
   // 联系人信息
   rpc GetContact(GetContactRequest) returns (GetContactReply) {}
+  // 获取单条消息
+  rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageReply) {}
   // 获取聊天记录
   rpc GetContactMessageList(GetContactMessageListRequest) returns (GetContactMessageListReply) {}
   // 发送消息
@@ -95,6 +95,14 @@ service SessionSvc {
 service SystemSvc {
   rpc GetSystemMessageList(GetSystemMessageListRequest) returns (GetSystemMessageListReply) {}
   rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
+  rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
+  rpc AgreeAddContact(AgreeAddContactRequest) returns (AgreeAddContactReply) {}
+  rpc RejectAddContact(RejectAddContactRequest) returns (RejectAddContactReply) {}
+}
+
+// 消息订阅服务
+service SubscribeSvc {
+  rpc SubscribeCommonEvent(SubscribeCommonEventRequest) returns (stream SubscribeCommonEventReply) {}
 }
 
 // -------------------- 分隔符 --------------------
@@ -154,15 +162,6 @@ message SetAutoJoinGroupReply {
 }
 
 // -------------------- 分隔符 --------------------
-message AddContactRequest {
-  string PeerID = 1;
-  string Content = 2;
-}
-message AddContactReply {
-  Result Result = 1;
-  string PeerID = 2;
-}
-
 message GetContactListRequest {
   string keywords = 1;
 }
@@ -200,6 +199,15 @@ message GetContactRequest {
 message GetContactReply {
   Result Result = 1;
   Contact contact = 2;
+}
+
+message GetContactMessageRequest {
+  string PeerID = 1;
+  string MsgID = 2;
+}
+message GetContactMessageReply {
+  Result Result = 1;
+  ContactMessage Message = 2;
 }
 
 message GetContactMessageListRequest {
@@ -423,6 +431,37 @@ message ClearSystemMessageReply {
   Result result = 1;
 }
 
+message ApplyAddContactRequest {
+  string PeerID = 1;
+  string Name = 2;
+  string Avatar = 3;
+  string Content = 4;
+}
+message ApplyAddContactReply {
+  Result result = 1;
+}
+
+message AgreeAddContactRequest {
+  string AckMsgID = 1;
+}
+message AgreeAddContactReply {
+  Result result = 1;
+  string AckMsgID = 2;
+}
+
+message RejectAddContactRequest {
+  string AckMsgID = 1;
+}
+message RejectAddContactReply {
+  Result result = 1;
+  string AckMsgID = 2;
+}
+
+message SubscribeCommonEventRequest {}
+message SubscribeCommonEventReply {
+  CommonEvent Event = 1;
+}
+
 // -------------------- 分隔符 --------------------
 
 enum MsgType {
@@ -448,6 +487,16 @@ message Account {
   bool AutoAddContact = 4;
   // 入群是否需要审核
   bool AutoJoinGroup = 5;
+}
+
+// Peer
+message Peer {
+  // PeerID
+  string PeerID = 1;
+  // 用户名称
+  string Name = 2;
+  // 头像SHA1
+  string Avatar = 3;
 }
 
 // 联系人
@@ -575,23 +624,44 @@ message Session {
 }
 
 // 系统操作类型
-enum SystemOperate {
+enum SystemType {
   APPLY_ADD_CONTACT = 0;
-  AGREE_ADD_CONTACT = 1;
-  REJECT_ADD_CONTACT = 2;
-  INVITE_JOIN_GROUP = 3;
-  APPLY_JOIN_GROUP = 4;
-  AGREE_JOIN_GROUP = 5;
-  REJECT_JOIN_CONTACT = 6;
+  APPLY_JOIN_GROUP = 1;
+}
+
+// 系统操作类型
+enum SystemState {
+  IS_SENDED = 0;
+  IS_AGREE = 1;
+  IS_REJECT = 2;
 }
 
 // 系统消息
 message SystemMessage {
   string ID = 1;
-  SystemOperate SystemOperate = 2;
+  SystemType Type = 2;
   string GroupID = 3;
-  Contact Sender = 4;
-  Contact Receiver = 5;
+  Peer Sender = 4;
+  Peer Receiver = 5;
   string Content = 6;
-  int32 CreateTime = 7;
+  SystemState State = 7;
+  int64 Ctime = 8;
+  int64 Utime = 9;
+}
+
+
+// 外部(前端)订阅消息
+message CommonEvent {
+
+  enum EventType {
+    PeerMessage = 0;
+  }
+
+  message PayloadPeerMessage {
+    string msg_id = 1;
+    string from_peer_id = 2;
+  }
+
+  EventType Type = 1;
+  bytes Payload = 2;
 }

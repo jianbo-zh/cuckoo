@@ -7,18 +7,18 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/internal/host"
 	"github.com/jianbo-zh/dchat/protocolid"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/ds"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	ipeer "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
 )
 
@@ -47,8 +47,8 @@ func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, a
 		avatarDir: avatarDir,
 	}
 
-	lhost.SetStreamHandler(ID, accountProto.PeerHandler)
-	lhost.SetStreamHandler(AVATAR_ID, accountProto.PeerAvatarHandler)
+	lhost.SetStreamHandler(ID, accountProto.GetPeerHandler)
+	lhost.SetStreamHandler(AVATAR_ID, accountProto.DownloadPeerAvatarHandler)
 
 	return &accountProto, nil
 }
@@ -89,7 +89,7 @@ func (a *AccountProto) GetAccount(ctx context.Context) (*Account, error) {
 	}
 
 	return &Account{
-		PeerID:         ipeer.ID(pAccount.PeerId),
+		PeerID:         peer.ID(pAccount.PeerId),
 		Name:           pAccount.Name,
 		Avatar:         pAccount.Avatar,
 		AutoAddContact: pAccount.AutoAddContact,
@@ -135,15 +135,22 @@ func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*Peer, erro
 func (a *AccountProto) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
 
 	avatarPath := path.Join(a.avatarDir, avatar)
+	fmt.Println("avatar path: ", avatarPath)
 
 	// 检查文件在不在
-	if _, err := os.Stat(avatarPath); err == nil {
-		log.Warnf("os.Stat avatar file exists")
-		return nil
+	if fi, err := os.Stat(avatarPath); err == nil {
+		if fi.Size() > 0 {
+			log.Warnf("os.Stat avatar file exists")
+			fmt.Println("avatar path real exists")
+			return nil
+		}
+		fmt.Println("avatar path exists but size > 0")
 
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("os.Stat error: %w", err)
 	}
+
+	fmt.Println("avatar path not exists")
 
 	// 打开输入流下载文件
 	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, AVATAR_ID)
@@ -152,9 +159,15 @@ func (a *AccountProto) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, a
 	}
 	defer stream.Close()
 
+	fmt.Println("host.NewStream success")
+
 	bfwt := bufio.NewWriter(stream)
-	if _, err = bfwt.WriteString(avatar); err != nil {
+	if n, err := bfwt.WriteString(fmt.Sprintf("%s\n", avatar)); err != nil {
 		return fmt.Errorf("bfwt.WriteString error: %w", err)
+
+	} else {
+		bfwt.Flush()
+		fmt.Printf("sended avatar to stream %s, size: %d\n", avatar, n)
 	}
 
 	// 打开文件，接收下载文件
@@ -163,12 +176,15 @@ func (a *AccountProto) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, a
 		return fmt.Errorf("os.OpenFile error: %w", err)
 	}
 	defer file.Close()
+	fmt.Println("os open file to receive avatar data")
 
 	bfrd := bufio.NewReader(stream)
 
 	if n, err := bfrd.WriteTo(file); err != nil {
 		return fmt.Errorf("bfrd.WriteTo error: %s", err.Error())
+
 	} else {
+		fmt.Printf("write to avatar file size: %d\n", n)
 		log.Debugf("bfrd.WriteTo size :%d", n)
 	}
 
@@ -176,7 +192,7 @@ func (a *AccountProto) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, a
 }
 
 // PeerHandler 查询Peer信息
-func (a *AccountProto) PeerHandler(stream network.Stream) {
+func (a *AccountProto) GetPeerHandler(stream network.Stream) {
 
 	wt := pbio.NewDelimitedWriter(stream)
 	defer wt.Close()
@@ -198,18 +214,27 @@ func (a *AccountProto) PeerHandler(stream network.Stream) {
 }
 
 // AvatarHandler 下载账号头像
-func (a *AccountProto) PeerAvatarHandler(stream network.Stream) {
+func (a *AccountProto) DownloadPeerAvatarHandler(stream network.Stream) {
+
+	fmt.Println("handle download peer avatar")
 
 	defer stream.Close()
 	bfrd := bufio.NewReader(stream)
 	avatar, err := bfrd.ReadString('\n')
 	if err != nil {
+		fmt.Printf("bfrd.ReadString error: %s", err.Error())
 		log.Errorf("bfrd.ReadString error: %s", err.Error())
+		return
 	}
 
-	avatarPath := path.Join(a.avatarDir, avatar)
+	fmt.Printf("handle download avatar %s\n", avatar)
+	log.Debugf("handle download avatar %s", avatar)
+
+	avatarPath := path.Join(a.avatarDir, strings.TrimSpace(avatar))
 	file, err := os.Open(avatarPath)
 	if err != nil {
+		fmt.Printf("os open avatar error: %s\n", err.Error())
+		log.Errorf("os open avatar error: %s\n", err.Error())
 		return
 	}
 	defer file.Close()
@@ -217,8 +242,11 @@ func (a *AccountProto) PeerAvatarHandler(stream network.Stream) {
 	bfrw := bufio.NewWriter(stream)
 	n, err := bfrw.ReadFrom(file)
 	if err != nil {
+		fmt.Printf("bfrw.ReadFrom error: %s", err.Error())
 		log.Errorf("bfrw.ReadFrom error: %s", err.Error())
+		return
 	}
 	bfrw.Flush()
+	fmt.Printf("bfrw.ReadFrom size: %d", n)
 	log.Debugf("bfrw.ReadFrom size: %d", n)
 }

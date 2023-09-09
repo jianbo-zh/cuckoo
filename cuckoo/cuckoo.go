@@ -9,10 +9,13 @@ import (
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	myevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/datastore"
-	depositsvc "github.com/jianbo-zh/dchat/service/depositsvc"
-	groupsvc "github.com/jianbo-zh/dchat/service/groupsvc"
-	peersvc "github.com/jianbo-zh/dchat/service/peersvc"
+	"github.com/jianbo-zh/dchat/service/accountsvc"
+	"github.com/jianbo-zh/dchat/service/contactsvc"
+	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/jianbo-zh/dchat/service/groupsvc"
+	"github.com/jianbo-zh/dchat/service/systemsvc"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
@@ -26,10 +29,13 @@ type CuckooGetter interface {
 type Cuckoo struct {
 	host host.Host
 	ddht *dual.DHT
+	ebus event.Bus
 
-	peerSvc    peersvc.PeerServiceIface
+	accountSvc accountsvc.AccountServiceIface
+	contactSvc contactsvc.ContactServiceIface
 	groupSvc   groupsvc.GroupServiceIface
 	depositSvc depositsvc.DepositServiceIface
+	systemSvc  systemsvc.SystemServiceIface
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -38,18 +44,18 @@ type Cuckoo struct {
 
 func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 
+	ctx, ctxCancel := context.WithCancel(ctx)
+	cuckoo := &Cuckoo{
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
+	}
+
 	ebus := eventbus.NewBus()
 	bootEmitter, err := ebus.Emitter(&myevent.EvtHostBootComplete{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus.Emitter error: %s", err.Error())
 	}
-
-	ctx, ctxCancel := context.WithCancel(ctx)
-
-	cuckoo := &Cuckoo{
-		ctx:       ctx,
-		ctxCancel: ctxCancel,
-	}
+	cuckoo.ebus = ebus
 
 	localhost, ddht, err := NewHost(ctx, bootEmitter, conf)
 	if err != nil {
@@ -62,23 +68,33 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	routingDiscovery := drouting.NewRoutingDiscovery(ddht)
 
 	ds, err := datastore.New(datastore.Config{
-		Path: filepath.Join(conf.StorageDir, "leveldb2"),
+		Path: filepath.Join(conf.StorageDir, "leveldb"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("datastore.New error: %w", err)
 	}
 
-	cuckoo.peerSvc, err = peersvc.NewPeerService(conf.PeerMessage, cuckoo.host, ds, ebus, routingDiscovery, conf.AvatarDir)
+	cuckoo.accountSvc, err = accountsvc.NewAccountService(conf.AccountService, cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
-		return nil, fmt.Errorf("peer.NewPeerService error: %s", err.Error())
+		return nil, fmt.Errorf("accountsvc.NewAccountService error: %s", err.Error())
 	}
 
-	cuckoo.groupSvc, err = groupsvc.NewGroupService(conf.GroupMessage, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.contactSvc, err = contactsvc.NewContactService(conf.ContactService, cuckoo.host, ds, ebus, routingDiscovery)
+	if err != nil {
+		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
+	}
+
+	cuckoo.groupSvc, err = groupsvc.NewGroupService(conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
 		return nil, fmt.Errorf("group.NewGroupService error: %s", err.Error())
 	}
 
-	cuckoo.depositSvc, err = depositsvc.NewDepositService(conf.DepositMessage, cuckoo.host, ds, ebus, routingDiscovery)
+	// cuckoo.depositSvc, err = depositsvc.NewDepositService(conf.DepositService, cuckoo.host, ds, ebus, routingDiscovery)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
+	// }
+
+	cuckoo.systemSvc, err = systemsvc.NewSystemService(cuckoo.host, ds, cuckoo.accountSvc, cuckoo.contactSvc)
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
 	}
@@ -93,11 +109,18 @@ func (c *Cuckoo) GetHost() (host.Host, error) {
 	return c.host, nil
 }
 
-func (c *Cuckoo) GetPeerSvc() (peersvc.PeerServiceIface, error) {
-	if c.peerSvc == nil {
+func (c *Cuckoo) GetAccountSvc() (accountsvc.AccountServiceIface, error) {
+	if c.accountSvc == nil {
 		return nil, fmt.Errorf("peer service not start")
 	}
-	return c.peerSvc, nil
+	return c.accountSvc, nil
+}
+
+func (c *Cuckoo) GetContactSvc() (contactsvc.ContactServiceIface, error) {
+	if c.contactSvc == nil {
+		return nil, fmt.Errorf("peer service not start")
+	}
+	return c.contactSvc, nil
 }
 
 func (c *Cuckoo) GetGroupSvc() (groupsvc.GroupServiceIface, error) {
@@ -114,6 +137,13 @@ func (c *Cuckoo) GetDepositSvc() (depositsvc.DepositServiceIface, error) {
 	return c.depositSvc, nil
 }
 
+func (c *Cuckoo) GetSystemSvc() (systemsvc.SystemServiceIface, error) {
+	if c.systemSvc == nil {
+		return nil, fmt.Errorf("system service not start")
+	}
+	return c.systemSvc, nil
+}
+
 func (c *Cuckoo) GetLanPeerIDs() ([]peer.ID, error) {
 	if c.ddht == nil {
 		return nil, fmt.Errorf("ddht is nil")
@@ -122,14 +152,22 @@ func (c *Cuckoo) GetLanPeerIDs() ([]peer.ID, error) {
 	return c.ddht.LAN.RoutingTable().ListPeers(), nil
 }
 
+func (c *Cuckoo) GetEbus() (event.Bus, error) {
+	if c.ebus == nil {
+		return nil, fmt.Errorf("ebus is nil")
+	}
+
+	return c.ebus, nil
+}
+
 func (c *Cuckoo) Close() {
 	c.closeSync.Do(func() {
 		c.ctxCancel()
 		if c.host != nil {
 			c.host.Close()
 		}
-		if c.peerSvc != nil {
-			c.peerSvc.Close()
+		if c.accountSvc != nil {
+			c.accountSvc.Close()
 		}
 		if c.groupSvc != nil {
 			c.groupSvc.Close()

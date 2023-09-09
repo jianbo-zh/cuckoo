@@ -8,7 +8,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	"github.com/jianbo-zh/dchat/service/peersvc"
+	"github.com/jianbo-zh/dchat/service/accountsvc"
 )
 
 var _ proto.AccountSvcServer = (*AccountSvc)(nil)
@@ -24,35 +24,35 @@ func NewAccountSvc(getter cuckoo.CuckooGetter) *AccountSvc {
 	}
 }
 
-func (a *AccountSvc) getPeerSvc() (peersvc.PeerServiceIface, error) {
+func (a *AccountSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	cuckoo, err := a.getter.GetCuckoo()
 	if err != nil {
 		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
 	}
 
-	peerSvc, err := cuckoo.GetPeerSvc()
+	accountSvc, err := cuckoo.GetAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("cuckoo.GetAccountSvc error: %s", err.Error())
 	}
 
-	return peerSvc, nil
+	return accountSvc, nil
 }
 
 func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (*proto.CreateAccountReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	fullAccount, err := peerSvc.CreateAccount(ctx, peersvc.Account{
+	fullAccount, err := accountSvc.CreateAccount(ctx, accountsvc.Account{
 		Name:           request.Name,
 		Avatar:         request.Avatar,
 		AutoAddContact: true,
 		AutoJoinGroup:  true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("peerSvc.CreateAccount error: %w", err)
+		return nil, fmt.Errorf("accountSvc.CreateAccount error: %w", err)
 	}
 
 	account = proto.Account{
@@ -75,15 +75,15 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 
 func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRequest) (*proto.GetAccountReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
 	var protoAccount proto.Account
-	account, err := peerSvc.GetAccount(ctx)
+	account, err := accountSvc.GetAccount(ctx)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
-		return nil, fmt.Errorf("peerSvc.GetAccount error: %w", err)
+		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
 
 	} else if account != nil {
 		protoAccount = proto.Account{
@@ -108,14 +108,14 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 
 func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAccountAvatarRequest) (*proto.SetAccountAvatarReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = peerSvc.SetAccountAvatar(ctx, request.GetAvatar())
+	err = accountSvc.SetAccountAvatar(ctx, request.GetAvatar())
 	if err != nil {
-		return nil, fmt.Errorf("peerSvc.SetAvatar error: %w", err)
+		return nil, fmt.Errorf("accountSvc.SetAvatar error: %w", err)
 	}
 
 	reply := &proto.SetAccountAvatarReply{
@@ -130,14 +130,14 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 
 func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccountNameRequest) (*proto.SetAccountNameReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = peerSvc.SetAccountName(ctx, request.GetName())
+	err = accountSvc.SetAccountName(ctx, request.GetName())
 	if err != nil {
-		return nil, fmt.Errorf("peerSvc.SetName error: %w", err)
+		return nil, fmt.Errorf("accountSvc.SetName error: %w", err)
 	}
 
 	reply := &proto.SetAccountNameReply{
@@ -152,14 +152,14 @@ func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccou
 
 func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAutoAddContactRequest) (*proto.SetAutoAddContactReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = peerSvc.SetAccountAutoAddContact(ctx, request.GetIsReview())
+	err = accountSvc.SetAccountAutoAddContact(ctx, request.GetIsReview())
 	if err != nil {
-		return nil, fmt.Errorf("peerSvc.SetAutoAddContact error: %w", err)
+		return nil, fmt.Errorf("accountSvc.SetAutoAddContact error: %w", err)
 	}
 
 	reply := &proto.SetAutoAddContactReply{
@@ -174,14 +174,14 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 
 func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAutoJoinGroupRequest) (*proto.SetAutoJoinGroupReply, error) {
 
-	peerSvc, err := a.getPeerSvc()
+	accountSvc, err := a.getAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = peerSvc.SetAccountAutoJoinGroup(ctx, request.GetIsReview())
+	err = accountSvc.SetAccountAutoJoinGroup(ctx, request.GetIsReview())
 	if err != nil {
-		return nil, fmt.Errorf("peerSvc.SetAutoJoinGroup error: %w", err)
+		return nil, fmt.Errorf("accountSvc.SetAutoJoinGroup error: %w", err)
 	}
 
 	reply := &proto.SetAutoJoinGroupReply{

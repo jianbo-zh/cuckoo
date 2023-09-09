@@ -6,9 +6,9 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
-	"github.com/jianbo-zh/dchat/internal/host"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
@@ -17,14 +17,14 @@ type AccountSvc struct {
 	accountProto *accountproto.AccountProto
 }
 
-func NewAccountService(conf config.PeerMessageConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
-	rdiscvry *drouting.RoutingDiscovery, avatarDir string) (*AccountSvc, error) {
+func NewAccountService(conf config.AccountServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+	rdiscvry *drouting.RoutingDiscovery) (*AccountSvc, error) {
 
 	var err error
 
 	accountsvc := &AccountSvc{}
 
-	accountsvc.accountProto, err = accountproto.NewAccountProto(lhost, ids, ebus, avatarDir)
+	accountsvc.accountProto, err = accountproto.NewAccountProto(lhost, ids, ebus, conf.AvatarDir)
 	if err != nil {
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
@@ -41,8 +41,8 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, account Account) (*Accou
 		AutoAddContact: account.AutoAddContact,
 		AutoJoinGroup:  account.AutoJoinGroup,
 	})
-	if err != ipfsds.ErrNotFound {
-		return nil, fmt.Errorf("account is exists")
+	if err != nil {
+		return nil, fmt.Errorf("accountProto.CreateAccount error: %w", err)
 	}
 
 	return &Account{
@@ -60,6 +60,8 @@ func (a *AccountSvc) GetAccount(ctx context.Context) (*Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("a.accountProto.GetAccount error: %w", err)
 	}
+	fmt.Println("account name: ", pbAccount.Name)
+
 	return &Account{
 		PeerID:         pbAccount.PeerID,
 		Name:           pbAccount.Name,
@@ -122,3 +124,5 @@ func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*Peer, error)
 func (a *AccountSvc) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
 	return a.accountProto.DownloadPeerAvatar(ctx, peerID, avatar)
 }
+
+func (a *AccountSvc) Close() {}

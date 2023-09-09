@@ -2,10 +2,29 @@ package contactsvc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*Message, error) {
+	msg, err := c.msgSvc.GetMessage(ctx, peerID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("msgSvc.GetMessage error: %w", err)
+	}
+
+	return &Message{
+		ID:         msg.Id,
+		MsgType:    convMsgType(msg.MsgType),
+		MimeType:   msg.MimeType,
+		FromPeerID: peer.ID(msg.FromPeerId),
+		ToPeerID:   peer.ID(msg.ToPeerId),
+		Payload:    msg.Payload,
+		Timestamp:  msg.Timestamp,
+		Lamportime: msg.Lamportime,
+	}, nil
+}
 
 func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]Message, error) {
 	var peerMsgs []Message
@@ -18,9 +37,10 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	for _, msg := range msgs {
 		peerMsgs = append(peerMsgs, Message{
 			ID:         msg.Id,
-			Type:       convMsgType(msg.Type),
-			SenderID:   peer.ID(msg.SenderId),
-			ReceiverID: peer.ID(msg.ReceiverId),
+			MsgType:    convMsgType(msg.MsgType),
+			MimeType:   msg.MimeType,
+			FromPeerID: peer.ID(msg.FromPeerId),
+			ToPeerID:   peer.ID(msg.ToPeerId),
 			Payload:    msg.Payload,
 			Timestamp:  msg.Timestamp,
 			Lamportime: msg.Lamportime,
@@ -38,7 +58,7 @@ func (c *ContactSvc) SendGroupInviteMessage(ctx context.Context, peerID peer.ID,
 	return c.msgSvc.SendGroupInviteMessage(ctx, peerID, groupID)
 }
 
-func convMsgType(mtype pb.Message_Type) MsgType {
+func convMsgType(mtype pb.Message_MsgType) MsgType {
 	switch mtype {
 	case pb.Message_TEXT:
 		return MsgTypeText

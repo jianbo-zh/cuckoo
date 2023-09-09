@@ -20,21 +20,19 @@ var log = logging.Logger("peer")
 //go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/peer.proto=./pb pb/peer.proto
 
 type ContactProto struct {
-	host      host.Host
-	data      ds.PeerIface
-	avatarDir string
+	host host.Host
+	data ds.PeerIface
 
 	emitters struct {
 		evtSyncPeers event.Emitter
 	}
 }
 
-func NewContactProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, avatarDir string) (*ContactProto, error) {
+func NewContactProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*ContactProto, error) {
 	var err error
 	contactsvc := ContactProto{
-		host:      lhost,
-		data:      ds.Wrap(ids),
-		avatarDir: avatarDir,
+		host: lhost,
+		data: ds.Wrap(ids),
 	}
 
 	if contactsvc.emitters.evtSyncPeers, err = eventBus.Emitter(&gevent.EvtSyncPeers{}); err != nil {

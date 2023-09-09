@@ -5,7 +5,7 @@ package peermsg.pb;
 message Message {
 
   // 消息类型
-  enum Type {
+  enum MsgType {
     TEXT = 0; // 文本
     AUDIO = 1; // 语音
     VIDEO = 2; // 视频
@@ -14,17 +14,19 @@ message Message {
 
   string id = 1;
 
-  Type type = 2;
+  MsgType msg_type = 2;
 
-  bytes payload = 3;
+  string mime_type = 3;
 
-  bytes sender_id = 4;
+  bytes from_peer_id = 4;
 
-  bytes receiver_id = 5;
+  bytes to_peer_id = 5;
 
-  int64 timestamp = 6;
+  bytes payload = 6;
 
-  uint64 lamportime = 7;
+  int64 timestamp = 7;
+
+  uint64 lamportime = 8;
 
   bytes signature = 10;
 }

@@ -21,7 +21,7 @@ type GroupService struct {
 	networkSvc *network.NetworkService
 }
 
-func NewGroupService(conf config.GroupMessageConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery, opts ...Option) (*GroupService, error) {
+func NewGroupService(conf config.GroupServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery, opts ...Option) (*GroupService, error) {
 	var err error
 
 	groupsvc = &GroupService{}

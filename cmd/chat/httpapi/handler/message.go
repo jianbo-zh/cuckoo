@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
-	peersvc "github.com/jianbo-zh/dchat/service/peersvc"
+	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -23,7 +23,7 @@ var SendMsgHandler = func() fiber.Handler {
 		peerID, _ := peer.Decode(c.Params("peerid"))
 		msgtxt := c.Params("msgtxt")
 
-		err := peersvc.Get().SendTextMessage(context.Background(), peerID, msgtxt)
+		err := contactsvc.Get().SendTextMessage(context.Background(), peerID, msgtxt)
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ var GetMsgsHandler = func() fiber.Handler {
 
 		fmt.Println("peerID: ", peerID)
 
-		msgs, err := peersvc.Get().GetMessages(context.Background(), peerID, 0, 10)
+		msgs, err := contactsvc.Get().GetMessages(context.Background(), peerID, 0, 10)
 		if err != nil {
 			return err
 		}

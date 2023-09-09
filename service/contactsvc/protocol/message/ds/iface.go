@@ -11,13 +11,14 @@ import (
 type PeerMessageIface interface {
 	ds.Batching
 
-	SaveMessage(context.Context, peer.ID, *pb.Message) error
-	GetMessages(context.Context, peer.ID, int, int) ([]*pb.Message, error)
-	HasMessage(context.Context, peer.ID, string) (bool, error)
+	SaveMessage(ctx context.Context, peerID peer.ID, msg *pb.Message) error
+	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error)
+	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error)
+	HasMessage(ctx context.Context, peerID peer.ID, msgID string) (bool, error)
 
-	GetLamportTime(context.Context, peer.ID) (uint64, error)
-	TickLamportTime(context.Context, peer.ID) (uint64, error)
-	MergeLamportTime(context.Context, peer.ID, uint64) error
+	GetLamportTime(ctx context.Context, peerID peer.ID) (uint64, error)
+	TickLamportTime(ctx context.Context, peerID peer.ID) (uint64, error)
+	MergeLamportTime(ctx context.Context, peerID peer.ID, lamptime uint64) error
 
 	GetMessageHead(ctx context.Context, peerID peer.ID) (string, error)
 	GetMessageTail(ctx context.Context, peerID peer.ID) (string, error)

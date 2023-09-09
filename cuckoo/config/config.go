@@ -33,11 +33,12 @@ type Config struct {
 	Peering   Peering
 	DNS       DNS
 
-	AvatarDir      string
-	StorageDir     string
-	PeerMessage    PeerMessageConfig
-	GroupMessage   GroupMessageConfig
-	DepositMessage DepositMessageConfig
+	StorageDir string
+
+	AccountService AccountServiceConfig
+	ContactService ContactServiceConfig
+	GroupService   GroupServiceConfig
+	DepositService DepositServiceConfig
 }
 
 // Clone copies the config. Use when updating.

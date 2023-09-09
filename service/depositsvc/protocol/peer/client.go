@@ -72,7 +72,7 @@ func (pcli *PeerDepositClient) handleSubscribe(ctx context.Context, sub event.Su
 	for {
 		select {
 		case e, ok := <-sub.Out():
-			log.Debugf("get subscribe", ok)
+			log.Debugf("get subscribe: %v", ok)
 			if !ok {
 				return
 			}

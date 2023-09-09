@@ -18,7 +18,7 @@ type DepositService struct {
 	client  *peer.PeerDepositClient
 }
 
-func NewDepositService(conf config.DepositMessageConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery) (*DepositService, error) {
+func NewDepositService(conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery) (*DepositService, error) {
 
 	depositsvc = &DepositService{}
 

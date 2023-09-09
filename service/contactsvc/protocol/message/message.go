@@ -40,6 +40,7 @@ type PeerMessageSvc struct {
 	emitters struct {
 		evtPushOfflineMessage event.Emitter
 		evtPullOfflineMessage event.Emitter
+		evtReceiveMessage     event.Emitter
 	}
 }
 
@@ -61,6 +62,11 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	// 触发器：获取离线消息
 	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&gevent.PullOfflineMessageEvt{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
+	}
+
+	// 触发器：接收到消息
+	if msgsvc.emitters.evtReceiveMessage, err = eventBus.Emitter(&gevent.EvtReceivePeerMessage{}); err != nil {
+		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 订阅：同步Peer的消息
@@ -158,19 +164,30 @@ func (p *PeerMessageSvc) Handler(stream network.Stream) {
 
 	stream.SetReadDeadline(time.Time{})
 
-	err := p.data.SaveMessage(context.Background(), stream.Conn().RemotePeer(), &msg)
+	remotePeerID := stream.Conn().RemotePeer()
+
+	err := p.data.SaveMessage(context.Background(), remotePeerID, &msg)
 	if err != nil {
 		log.Errorf("store message error %v", err)
 		stream.Reset()
 		return
 	}
 
-	err = p.data.MergeLamportTime(context.Background(), stream.Conn().RemotePeer(), msg.Lamportime)
+	err = p.data.MergeLamportTime(context.Background(), remotePeerID, msg.Lamportime)
 	if err != nil {
 		log.Errorf("update lamport time error: %v", err)
 		stream.Reset()
 		return
 	}
+
+	p.emitters.evtReceiveMessage.Emit(gevent.EvtReceivePeerMessage{
+		MsgID:      msg.Id,
+		FromPeerID: peer.ID(msg.FromPeerId),
+		MsgType:    gevent.MsgTypeText,
+		MimeType:   "text/plain",
+		Payload:    msg.Payload,
+		Timestamp:  msg.Timestamp,
+	})
 
 	fmt.Println("receive ->", string(msg.Payload))
 }
@@ -206,10 +223,11 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 
 	pmsg := pb.Message{
 		Id:         msgID(lamportTime, hostID),
-		Type:       pb.Message_TEXT,
+		MsgType:    pb.Message_TEXT,
+		MimeType:   "text/plain",
+		FromPeerId: []byte(hostID),
+		ToPeerId:   []byte(peerID),
 		Payload:    []byte(msg),
-		SenderId:   []byte(hostID),
-		ReceiverId: []byte(peerID),
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportTime,
 	}
@@ -250,6 +268,10 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 	return nil
 }
 
+func (p *PeerMessageSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error) {
+	return p.data.GetMessage(ctx, peerID, msgID)
+}
+
 func (p *PeerMessageSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error) {
 	return p.data.GetMessages(ctx, peerID, offset, limit)
 }
@@ -273,10 +295,10 @@ func (p *PeerMessageSvc) SendGroupInviteMessage(ctx context.Context, peerID peer
 
 	pmsg := pb.Message{
 		Id:         msgID(lamportTime, hostID),
-		Type:       pb.Message_INVITE,
+		MsgType:    pb.Message_INVITE,
 		Payload:    []byte(groupID),
-		SenderId:   []byte(hostID),
-		ReceiverId: []byte(peerID),
+		FromPeerId: []byte(hostID),
+		ToPeerId:   []byte(peerID),
 		Lamportime: lamportTime,
 		Timestamp:  time.Now().Unix(),
 	}

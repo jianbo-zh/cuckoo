@@ -28,7 +28,7 @@ func LoadConfig(storageDir string, avatarDir string) (*config.Config, error) {
 			return nil, fmt.Errorf("config.DefaultConfig error: %s", err.Error())
 		}
 		conf.StorageDir = storageDir
-		conf.AvatarDir = avatarDir
+		conf.AccountService.AvatarDir = avatarDir
 
 		// marshal for write to file
 		bs, err = json.MarshalIndent(conf, "", "  ")
