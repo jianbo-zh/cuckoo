@@ -9,6 +9,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ proto.GroupSvcServer = (*GroupSvc)(nil)
@@ -52,45 +53,23 @@ func (g *GroupSvc) ClearGroupMessage(ctx context.Context, request *proto.ClearGr
 }
 func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRequest) (*proto.CreateGroupReply, error) {
 
-	members := make([]*proto.Contact, 0)
-	for _, PeerID := range request.PeerIDs {
-		for _, contact := range contacts {
-			if contact.PeerID == PeerID {
-				members = append(members, &proto.Contact{
-					PeerID: contact.PeerID,
-					Avatar: contact.Avatar,
-					Name:   contact.Name,
-					Alias:  contact.Name,
-				})
-			}
-		}
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
 	}
 
-	groups = append(groups, &proto.GroupFull{
-		GroupID: "groupID",
-		Avatar:  request.Avatar,
-		Name:    request.Name,
-		Alias:   request.Name,
-		Notice:  "",
-		Admin: &proto.Contact{
-			PeerID: account.PeerID,
-			Avatar: account.Avatar,
-			Name:   account.Name,
-			Alias:  account.Name,
-		},
-		AutoJoinGroup: true,
-		CreateTime:    time.Now().Unix(),
-		UpdateTime:    time.Now().Unix(),
-	})
+	var memberIDs []peer.ID
+	for _, pid := range request.MemberIds {
+		peerID, err := peer.Decode(pid)
+		if err != nil {
+			return nil, fmt.Errorf("peer.Decode error: %w", err)
+		}
+		memberIDs = append(memberIDs, peerID)
+	}
 
-	for _, member := range members {
-		groupMembers = append(groupMembers, &proto.GroupMember{
-			GroupID: "groupID",
-			PeerID:  member.PeerID,
-			Avatar:  member.Avatar,
-			Name:    member.Name,
-			Alias:   member.Name,
-		})
+	_, err = groupSvc.CreateGroup(ctx, request.Name, request.Avatar, memberIDs)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.CreateGroup error: %w", err)
 	}
 
 	reply := &proto.CreateGroupReply{
@@ -104,7 +83,15 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 
 func (g *GroupSvc) DeleteGroup(ctx context.Context, request *proto.DeleteGroupRequest) (*proto.DeleteGroupReply, error) {
 
-	groups = make([]*proto.GroupFull, 0)
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	err = groupSvc.DeleteGroup(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.DeleteGroup error: %w", err)
+	}
 
 	reply := &proto.DeleteGroupReply{
 		Result: &proto.Result{
@@ -125,21 +112,24 @@ func (g *GroupSvc) ExitGroup(ctx context.Context, request *proto.ExitGroupReques
 	return reply, nil
 }
 
-func (g *GroupSvc) GetGroupBase(ctx context.Context, request *proto.GetGroupBaseRequest) (*proto.GetGroupBaseReply, error) {
-
-	var group *proto.GroupBase
-	if len(groups) > 0 {
-		group = &proto.GroupBase{
-			GroupID:     groups[0].GroupID,
-			Avatar:      groups[0].Avatar,
-			Name:        groups[0].Name,
-			Alias:       groups[0].Alias,
-			LastMessage: "",
-			UpdateTime:  time.Now().Unix(),
-		}
+func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest) (*proto.GetGroupReply, error) {
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
 	}
 
-	reply := &proto.GetGroupBaseReply{
+	grp, err := groupSvc.GetGroup(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.GetGroup error: %w", err)
+	}
+
+	group := &proto.Group{
+		Id:     grp.ID,
+		Avatar: grp.Avatar,
+		Name:   grp.Name,
+	}
+
+	reply := &proto.GetGroupReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -151,9 +141,21 @@ func (g *GroupSvc) GetGroupBase(ctx context.Context, request *proto.GetGroupBase
 
 func (g *GroupSvc) GetGroupFull(ctx context.Context, request *proto.GetGroupFullRequest) (*proto.GetGroupFullReply, error) {
 
-	var group *proto.GroupFull
-	if len(groups) > 0 {
-		group = groups[0]
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	grp, err := groupSvc.GetGroup(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.GetGroup error: %w", err)
+	}
+
+	group := &proto.GroupFull{
+		GroupId:    grp.ID,
+		Avatar:     grp.Avatar,
+		Name:       grp.Name,
+		UpdateTime: time.Now().Unix(),
 	}
 
 	reply := &proto.GetGroupFullReply{
@@ -166,40 +168,69 @@ func (g *GroupSvc) GetGroupFull(ctx context.Context, request *proto.GetGroupFull
 	return reply, nil
 }
 
-func (g *GroupSvc) GetGroupList(ctx context.Context, request *proto.GetGroupListRequest) (*proto.GetGroupListReply, error) {
+func (g *GroupSvc) GetGroups(ctx context.Context, request *proto.GetGroupsRequest) (*proto.GetGroupsReply, error) {
 
-	groupList := make([]*proto.GroupBase, 0)
+	groupList := make([]*proto.Group, 0)
 	for _, group := range groups {
-		groupList = append(groupList, &proto.GroupBase{
-			GroupID: group.GroupID,
-			Avatar:  group.Avatar,
-			Name:    group.Name,
-			Alias:   group.Alias,
+		groupList = append(groupList, &proto.Group{
+			Id:     group.GroupId,
+			Avatar: group.Avatar,
+			Name:   group.Name,
 		})
 	}
 
-	reply := &proto.GetGroupListReply{
+	reply := &proto.GetGroupsReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		GroupList: groupList,
+		Groups: groupList,
 	}
 	return reply, nil
 }
 
-func (g *GroupSvc) GetGroupMessageList(ctx context.Context, request *proto.GetGroupMessageListRequest) (*proto.GetGroupMessageListReply, error) {
-	reply := &proto.GetGroupMessageListReply{
+func (g *GroupSvc) GetGroupMessages(ctx context.Context, request *proto.GetGroupMessagesRequest) (*proto.GetGroupMessagesReply, error) {
+
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	msgs, err := groupSvc.ListMessages(ctx, request.GroupId, int(request.Offset), int(request.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.ListMessage error: %w", err)
+	}
+
+	fmt.Printf("list message size: %d\n", len(msgs))
+
+	var msglist []*proto.GroupMessage
+	for _, msg := range msgs {
+		msglist = append(msglist, &proto.GroupMessage{
+			Id:      msg.ID,
+			GroupId: msg.GroupID,
+			Sender: &proto.Peer{
+				Id:     msg.FromPeer.PeerID.String(),
+				Name:   msg.FromPeer.Name,
+				Avatar: msg.FromPeer.Avatar,
+			},
+			MsgType:    "text",
+			MimeType:   msg.MimeType,
+			Payload:    msg.Payload,
+			CreateTime: msg.Timestamp,
+		})
+	}
+
+	reply := &proto.GetGroupMessagesReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		MessageList: groupMessages,
+		Messages: msglist,
 	}
 	return reply, nil
 }
 
-func (g *GroupSvc) GetGroupMemberList(ctx context.Context, request *proto.GetGroupMemberListRequest) (*proto.GetGroupMemberListReply, error) {
+func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupMembersRequest) (*proto.GetGroupMembersReply, error) {
 
 	filterMemberList := make([]*proto.GroupMember, 0)
 	for _, member := range groupMembers {
@@ -226,12 +257,12 @@ func (g *GroupSvc) GetGroupMemberList(ctx context.Context, request *proto.GetGro
 		}
 	}
 
-	reply := &proto.GetGroupMemberListReply{
+	reply := &proto.GetGroupMembersReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		MemberList: filterMemberList,
+		Members: filterMemberList,
 	}
 	return reply, nil
 }
@@ -239,11 +270,10 @@ func (g *GroupSvc) GetGroupMemberList(ctx context.Context, request *proto.GetGro
 func (g *GroupSvc) InviteJoinGroup(ctx context.Context, request *proto.InviteJoinGroupRequest) (*proto.InviteJoinGroupReply, error) {
 
 	groupMembers = append(groupMembers, &proto.GroupMember{
-		GroupID: request.GroupID,
-		PeerID:  request.PeerID,
+		GroupId: request.GroupId,
+		PeerId:  request.ContactId,
 		Avatar:  "avatar1",
 		Name:    "name1",
-		Alias:   "alias1",
 	})
 
 	reply := &proto.InviteJoinGroupReply{
@@ -260,7 +290,7 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 	if len(groupMembers) > 0 {
 		groupMembers2 := make([]*proto.GroupMember, 0)
 		for _, member := range groupMembers {
-			if member.PeerID == request.PeerID && member.GroupID == request.GroupID {
+			if member.PeerId == request.MemberId && member.GroupId == request.GroupId {
 				groupMembers2 = append(groupMembers2, member)
 			}
 		}
@@ -278,22 +308,31 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 
 func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGroupMessageRequest) (*proto.SendGroupMessageReply, error) {
 
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	err = groupSvc.SendMessage(ctx, request.GroupId, request.MsgType, request.MimeType, request.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.SendMessge error: %w", err)
+	}
+
 	sendMsg := proto.GroupMessage{
-		ID:      "id",
-		GroupID: request.GroupID,
-		Sender: &proto.Contact{
-			PeerID: account.PeerID,
+		Id:      "id",
+		GroupId: request.GroupId,
+		Sender: &proto.Peer{
+			Id:     account.PeerId,
 			Avatar: account.Avatar,
 			Name:   account.Name,
-			Alias:  "",
 		},
 		MsgType:    request.MsgType,
 		MimeType:   request.MimeType,
-		Data:       request.Data,
+		Payload:    request.Payload,
 		CreateTime: time.Now().Unix(),
 	}
 
-	groupMessages = append(groupMessages, &sendMsg)
+	// groupMessages = append(groupMessages, &sendMsg)
 
 	reply := &proto.SendGroupMessageReply{
 		Result: &proto.Result{
@@ -355,7 +394,7 @@ func (g *GroupSvc) SetGroupNotice(ctx context.Context, request *proto.SetGroupNo
 func (g *GroupSvc) SetJoinGroupReview(ctx context.Context, request *proto.SetJoinGroupReviewRequest) (*proto.SetJoinGroupReviewReply, error) {
 
 	if len(groups) > 0 {
-		groups[0].AutoJoinGroup = request.IsReview
+		groups[0].AutoJoinGroup = request.IsAuto
 	}
 
 	reply := &proto.SetJoinGroupReviewReply{
@@ -363,7 +402,7 @@ func (g *GroupSvc) SetJoinGroupReview(ctx context.Context, request *proto.SetJoi
 			Code:    0,
 			Message: "ok",
 		},
-		IsReview: request.IsReview,
+		IsAuto: request.IsAuto,
 	}
 	return reply, nil
 }

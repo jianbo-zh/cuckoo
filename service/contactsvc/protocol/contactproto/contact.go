@@ -116,6 +116,26 @@ func (c *ContactProto) GetContact(ctx context.Context, peerID peer.ID) (*Contact
 	}, nil
 }
 
+func (c *ContactProto) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]*ContactEntiy, error) {
+	contacts, err := c.data.GetContactsByIDs(ctx, peerIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var peers []*ContactEntiy
+	for _, peeri := range contacts {
+		peers = append(peers, &ContactEntiy{
+			PeerID:   peer.ID(peeri.PeerId),
+			Name:     peeri.Name,
+			Avatar:   peeri.Avatar,
+			AddTs:    peeri.AddTs,
+			AccessTs: peeri.AccessTs,
+		})
+	}
+
+	return peers, nil
+}
+
 func (c *ContactProto) GetContacts(ctx context.Context) ([]*ContactEntiy, error) {
 	contacts, err := c.data.GetContacts(ctx)
 	if err != nil {

@@ -30,6 +30,29 @@ func (filter GroupMemberFilter) Filter(e query.Entry) bool {
 	return false
 }
 
+type IDRangeFilter struct {
+	StartID string
+	EndID   string
+}
+
+func NewIDRangeFilter(startMsgID string, endMsgID string) *IDRangeFilter {
+	return &IDRangeFilter{
+		StartID: startMsgID,
+		EndID:   endMsgID,
+	}
+}
+
+func (f *IDRangeFilter) Filter(e query.Entry) bool {
+	keys := strings.Split(e.Key, "/")
+	msgID := keys[len(keys)-1]
+
+	if msgID >= f.StartID && msgID <= f.EndID {
+		return true
+	}
+
+	return false
+}
+
 // GroupOrderByKey
 type GroupOrderByKeyDescending struct{}
 
@@ -66,25 +89,19 @@ func (GroupOrderByKeyDescending) String() string {
 	return "desc(GroupKEY)"
 }
 
-type IDRangeFilter struct {
-	StartID string
-	EndID   string
+// GroupOrderByValueTime
+type GroupOrderByValueTimeDescending struct{}
+
+func (o GroupOrderByValueTimeDescending) Compare(a, b query.Entry) int {
+	a1, _ := strconv.ParseInt(string(a.Value), 10, 64)
+	b1, _ := strconv.ParseInt(string(b.Value), 10, 64)
+
+	if a1 <= b1 {
+		return 1
+	}
+	return -1
 }
 
-func NewIDRangeFilter(startMsgID string, endMsgID string) *IDRangeFilter {
-	return &IDRangeFilter{
-		StartID: startMsgID,
-		EndID:   endMsgID,
-	}
-}
-
-func (f *IDRangeFilter) Filter(e query.Entry) bool {
-	keys := strings.Split(e.Key, "/")
-	msgID := keys[len(keys)-1]
-
-	if msgID >= f.StartID && msgID <= f.EndID {
-		return true
-	}
-
-	return false
+func (GroupOrderByValueTimeDescending) String() string {
+	return "desc(ValueTime)"
 }

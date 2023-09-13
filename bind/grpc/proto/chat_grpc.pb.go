@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	AccountSvc_CreateAccount_FullMethodName     = "/chat.AccountSvc/CreateAccount"
 	AccountSvc_GetAccount_FullMethodName        = "/chat.AccountSvc/GetAccount"
-	AccountSvc_SetAccountAvatar_FullMethodName  = "/chat.AccountSvc/SetAccountAvatar"
 	AccountSvc_SetAccountName_FullMethodName    = "/chat.AccountSvc/SetAccountName"
+	AccountSvc_SetAccountAvatar_FullMethodName  = "/chat.AccountSvc/SetAccountAvatar"
 	AccountSvc_SetAutoAddContact_FullMethodName = "/chat.AccountSvc/SetAutoAddContact"
 	AccountSvc_SetAutoJoinGroup_FullMethodName  = "/chat.AccountSvc/SetAutoJoinGroup"
 )
@@ -35,10 +35,10 @@ type AccountSvcClient interface {
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountReply, error)
 	// 账号信息
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountReply, error)
-	// 更新头像
-	SetAccountAvatar(ctx context.Context, in *SetAccountAvatarRequest, opts ...grpc.CallOption) (*SetAccountAvatarReply, error)
 	// 更新名称
 	SetAccountName(ctx context.Context, in *SetAccountNameRequest, opts ...grpc.CallOption) (*SetAccountNameReply, error)
+	// 更新头像
+	SetAccountAvatar(ctx context.Context, in *SetAccountAvatarRequest, opts ...grpc.CallOption) (*SetAccountAvatarReply, error)
 	// 设置加人是否审核
 	SetAutoAddContact(ctx context.Context, in *SetAutoAddContactRequest, opts ...grpc.CallOption) (*SetAutoAddContactReply, error)
 	// 设置入群是否审核
@@ -71,18 +71,18 @@ func (c *accountSvcClient) GetAccount(ctx context.Context, in *GetAccountRequest
 	return out, nil
 }
 
-func (c *accountSvcClient) SetAccountAvatar(ctx context.Context, in *SetAccountAvatarRequest, opts ...grpc.CallOption) (*SetAccountAvatarReply, error) {
-	out := new(SetAccountAvatarReply)
-	err := c.cc.Invoke(ctx, AccountSvc_SetAccountAvatar_FullMethodName, in, out, opts...)
+func (c *accountSvcClient) SetAccountName(ctx context.Context, in *SetAccountNameRequest, opts ...grpc.CallOption) (*SetAccountNameReply, error) {
+	out := new(SetAccountNameReply)
+	err := c.cc.Invoke(ctx, AccountSvc_SetAccountName_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *accountSvcClient) SetAccountName(ctx context.Context, in *SetAccountNameRequest, opts ...grpc.CallOption) (*SetAccountNameReply, error) {
-	out := new(SetAccountNameReply)
-	err := c.cc.Invoke(ctx, AccountSvc_SetAccountName_FullMethodName, in, out, opts...)
+func (c *accountSvcClient) SetAccountAvatar(ctx context.Context, in *SetAccountAvatarRequest, opts ...grpc.CallOption) (*SetAccountAvatarReply, error) {
+	out := new(SetAccountAvatarReply)
+	err := c.cc.Invoke(ctx, AccountSvc_SetAccountAvatar_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +115,10 @@ type AccountSvcServer interface {
 	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountReply, error)
 	// 账号信息
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountReply, error)
-	// 更新头像
-	SetAccountAvatar(context.Context, *SetAccountAvatarRequest) (*SetAccountAvatarReply, error)
 	// 更新名称
 	SetAccountName(context.Context, *SetAccountNameRequest) (*SetAccountNameReply, error)
+	// 更新头像
+	SetAccountAvatar(context.Context, *SetAccountAvatarRequest) (*SetAccountAvatarReply, error)
 	// 设置加人是否审核
 	SetAutoAddContact(context.Context, *SetAutoAddContactRequest) (*SetAutoAddContactReply, error)
 	// 设置入群是否审核
@@ -136,11 +136,11 @@ func (UnimplementedAccountSvcServer) CreateAccount(context.Context, *CreateAccou
 func (UnimplementedAccountSvcServer) GetAccount(context.Context, *GetAccountRequest) (*GetAccountReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccount not implemented")
 }
-func (UnimplementedAccountSvcServer) SetAccountAvatar(context.Context, *SetAccountAvatarRequest) (*SetAccountAvatarReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetAccountAvatar not implemented")
-}
 func (UnimplementedAccountSvcServer) SetAccountName(context.Context, *SetAccountNameRequest) (*SetAccountNameReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAccountName not implemented")
+}
+func (UnimplementedAccountSvcServer) SetAccountAvatar(context.Context, *SetAccountAvatarRequest) (*SetAccountAvatarReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetAccountAvatar not implemented")
 }
 func (UnimplementedAccountSvcServer) SetAutoAddContact(context.Context, *SetAutoAddContactRequest) (*SetAutoAddContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAutoAddContact not implemented")
@@ -197,24 +197,6 @@ func _AccountSvc_GetAccount_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AccountSvc_SetAccountAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetAccountAvatarRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccountSvcServer).SetAccountAvatar(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccountSvc_SetAccountAvatar_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountSvcServer).SetAccountAvatar(ctx, req.(*SetAccountAvatarRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AccountSvc_SetAccountName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetAccountNameRequest)
 	if err := dec(in); err != nil {
@@ -229,6 +211,24 @@ func _AccountSvc_SetAccountName_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AccountSvcServer).SetAccountName(ctx, req.(*SetAccountNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountSvc_SetAccountAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAccountAvatarRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountSvcServer).SetAccountAvatar(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountSvc_SetAccountAvatar_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountSvcServer).SetAccountAvatar(ctx, req.(*SetAccountAvatarRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -285,12 +285,12 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AccountSvc_GetAccount_Handler,
 		},
 		{
-			MethodName: "SetAccountAvatar",
-			Handler:    _AccountSvc_SetAccountAvatar_Handler,
-		},
-		{
 			MethodName: "SetAccountName",
 			Handler:    _AccountSvc_SetAccountName_Handler,
+		},
+		{
+			MethodName: "SetAccountAvatar",
+			Handler:    _AccountSvc_SetAccountAvatar_Handler,
 		},
 		{
 			MethodName: "SetAutoAddContact",
@@ -306,41 +306,41 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ContactSvc_GetContactList_FullMethodName          = "/chat.ContactSvc/GetContactList"
-	ContactSvc_GetContactIDs_FullMethodName           = "/chat.ContactSvc/GetContactIDs"
-	ContactSvc_GetSpecifiedContactList_FullMethodName = "/chat.ContactSvc/GetSpecifiedContactList"
-	ContactSvc_GetNearbyContactList_FullMethodName    = "/chat.ContactSvc/GetNearbyContactList"
-	ContactSvc_GetContact_FullMethodName              = "/chat.ContactSvc/GetContact"
-	ContactSvc_GetContactMessage_FullMethodName       = "/chat.ContactSvc/GetContactMessage"
-	ContactSvc_GetContactMessageList_FullMethodName   = "/chat.ContactSvc/GetContactMessageList"
-	ContactSvc_SendContactMessage_FullMethodName      = "/chat.ContactSvc/SendContactMessage"
-	ContactSvc_SetContactAlias_FullMethodName         = "/chat.ContactSvc/SetContactAlias"
-	ContactSvc_ClearContactMessage_FullMethodName     = "/chat.ContactSvc/ClearContactMessage"
-	ContactSvc_DeleteContact_FullMethodName           = "/chat.ContactSvc/DeleteContact"
+	ContactSvc_GetContact_FullMethodName           = "/chat.ContactSvc/GetContact"
+	ContactSvc_GetContactIds_FullMethodName        = "/chat.ContactSvc/GetContactIds"
+	ContactSvc_GetContacts_FullMethodName          = "/chat.ContactSvc/GetContacts"
+	ContactSvc_GetSpecifiedContacts_FullMethodName = "/chat.ContactSvc/GetSpecifiedContacts"
+	ContactSvc_GetNearbyContacts_FullMethodName    = "/chat.ContactSvc/GetNearbyContacts"
+	ContactSvc_GetContactMessage_FullMethodName    = "/chat.ContactSvc/GetContactMessage"
+	ContactSvc_GetContactMessages_FullMethodName   = "/chat.ContactSvc/GetContactMessages"
+	ContactSvc_SendContactMessage_FullMethodName   = "/chat.ContactSvc/SendContactMessage"
+	ContactSvc_SetContactName_FullMethodName       = "/chat.ContactSvc/SetContactName"
+	ContactSvc_ClearContactMessage_FullMethodName  = "/chat.ContactSvc/ClearContactMessage"
+	ContactSvc_DeleteContact_FullMethodName        = "/chat.ContactSvc/DeleteContact"
 )
 
 // ContactSvcClient is the client API for ContactSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContactSvcClient interface {
-	// 获取联系人列表
-	GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error)
-	// 获取联系人IDs
-	GetContactIDs(ctx context.Context, in *GetContactIDsRequest, opts ...grpc.CallOption) (*GetContactIDsReply, error)
-	// 获取指定联系人列表
-	GetSpecifiedContactList(ctx context.Context, in *GetSpecifiedContactListRequest, opts ...grpc.CallOption) (*GetSpecifiedContactListReply, error)
-	// 获取附近的人
-	GetNearbyContactList(ctx context.Context, in *GetNearbyContactListRequest, opts ...grpc.CallOption) (ContactSvc_GetNearbyContactListClient, error)
 	// 联系人信息
 	GetContact(ctx context.Context, in *GetContactRequest, opts ...grpc.CallOption) (*GetContactReply, error)
+	// 获取联系人ids
+	GetContactIds(ctx context.Context, in *GetContactIdsRequest, opts ...grpc.CallOption) (*GetContactIdsReply, error)
+	// 获取联系人列表
+	GetContacts(ctx context.Context, in *GetContactsRequest, opts ...grpc.CallOption) (*GetContactsReply, error)
+	// 获取指定联系人列表
+	GetSpecifiedContacts(ctx context.Context, in *GetSpecifiedContactsRequest, opts ...grpc.CallOption) (*GetSpecifiedContactsReply, error)
+	// 获取附近的人
+	GetNearbyContacts(ctx context.Context, in *GetNearbyContactsRequest, opts ...grpc.CallOption) (ContactSvc_GetNearbyContactsClient, error)
 	// 获取单条消息
 	GetContactMessage(ctx context.Context, in *GetContactMessageRequest, opts ...grpc.CallOption) (*GetContactMessageReply, error)
 	// 获取聊天记录
-	GetContactMessageList(ctx context.Context, in *GetContactMessageListRequest, opts ...grpc.CallOption) (*GetContactMessageListReply, error)
+	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesReply, error)
 	// 发送消息
 	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
 	// 设置联系人别名
-	SetContactAlias(ctx context.Context, in *SetContactAliasRequest, opts ...grpc.CallOption) (*SetContactAliasReply, error)
+	SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error)
 	// 清空聊天记录
 	ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error)
 	// 删除联系人
@@ -355,39 +355,48 @@ func NewContactSvcClient(cc grpc.ClientConnInterface) ContactSvcClient {
 	return &contactSvcClient{cc}
 }
 
-func (c *contactSvcClient) GetContactList(ctx context.Context, in *GetContactListRequest, opts ...grpc.CallOption) (*GetContactListReply, error) {
-	out := new(GetContactListReply)
-	err := c.cc.Invoke(ctx, ContactSvc_GetContactList_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) GetContact(ctx context.Context, in *GetContactRequest, opts ...grpc.CallOption) (*GetContactReply, error) {
+	out := new(GetContactReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContact_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *contactSvcClient) GetContactIDs(ctx context.Context, in *GetContactIDsRequest, opts ...grpc.CallOption) (*GetContactIDsReply, error) {
-	out := new(GetContactIDsReply)
-	err := c.cc.Invoke(ctx, ContactSvc_GetContactIDs_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) GetContactIds(ctx context.Context, in *GetContactIdsRequest, opts ...grpc.CallOption) (*GetContactIdsReply, error) {
+	out := new(GetContactIdsReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContactIds_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *contactSvcClient) GetSpecifiedContactList(ctx context.Context, in *GetSpecifiedContactListRequest, opts ...grpc.CallOption) (*GetSpecifiedContactListReply, error) {
-	out := new(GetSpecifiedContactListReply)
-	err := c.cc.Invoke(ctx, ContactSvc_GetSpecifiedContactList_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) GetContacts(ctx context.Context, in *GetContactsRequest, opts ...grpc.CallOption) (*GetContactsReply, error) {
+	out := new(GetContactsReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContacts_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *contactSvcClient) GetNearbyContactList(ctx context.Context, in *GetNearbyContactListRequest, opts ...grpc.CallOption) (ContactSvc_GetNearbyContactListClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[0], ContactSvc_GetNearbyContactList_FullMethodName, opts...)
+func (c *contactSvcClient) GetSpecifiedContacts(ctx context.Context, in *GetSpecifiedContactsRequest, opts ...grpc.CallOption) (*GetSpecifiedContactsReply, error) {
+	out := new(GetSpecifiedContactsReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetSpecifiedContacts_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &contactSvcGetNearbyContactListClient{stream}
+	return out, nil
+}
+
+func (c *contactSvcClient) GetNearbyContacts(ctx context.Context, in *GetNearbyContactsRequest, opts ...grpc.CallOption) (ContactSvc_GetNearbyContactsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[0], ContactSvc_GetNearbyContacts_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &contactSvcGetNearbyContactsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -397,30 +406,21 @@ func (c *contactSvcClient) GetNearbyContactList(ctx context.Context, in *GetNear
 	return x, nil
 }
 
-type ContactSvc_GetNearbyContactListClient interface {
-	Recv() (*GetNearbyContactListStreamReply, error)
+type ContactSvc_GetNearbyContactsClient interface {
+	Recv() (*GetNearbyContactsStreamReply, error)
 	grpc.ClientStream
 }
 
-type contactSvcGetNearbyContactListClient struct {
+type contactSvcGetNearbyContactsClient struct {
 	grpc.ClientStream
 }
 
-func (x *contactSvcGetNearbyContactListClient) Recv() (*GetNearbyContactListStreamReply, error) {
-	m := new(GetNearbyContactListStreamReply)
+func (x *contactSvcGetNearbyContactsClient) Recv() (*GetNearbyContactsStreamReply, error) {
+	m := new(GetNearbyContactsStreamReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
-}
-
-func (c *contactSvcClient) GetContact(ctx context.Context, in *GetContactRequest, opts ...grpc.CallOption) (*GetContactReply, error) {
-	out := new(GetContactReply)
-	err := c.cc.Invoke(ctx, ContactSvc_GetContact_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *contactSvcClient) GetContactMessage(ctx context.Context, in *GetContactMessageRequest, opts ...grpc.CallOption) (*GetContactMessageReply, error) {
@@ -432,9 +432,9 @@ func (c *contactSvcClient) GetContactMessage(ctx context.Context, in *GetContact
 	return out, nil
 }
 
-func (c *contactSvcClient) GetContactMessageList(ctx context.Context, in *GetContactMessageListRequest, opts ...grpc.CallOption) (*GetContactMessageListReply, error) {
-	out := new(GetContactMessageListReply)
-	err := c.cc.Invoke(ctx, ContactSvc_GetContactMessageList_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesReply, error) {
+	out := new(GetContactMessagesReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContactMessages_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -450,9 +450,9 @@ func (c *contactSvcClient) SendContactMessage(ctx context.Context, in *SendConta
 	return out, nil
 }
 
-func (c *contactSvcClient) SetContactAlias(ctx context.Context, in *SetContactAliasRequest, opts ...grpc.CallOption) (*SetContactAliasReply, error) {
-	out := new(SetContactAliasReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SetContactAlias_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error) {
+	out := new(SetContactNameReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SetContactName_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -481,24 +481,24 @@ func (c *contactSvcClient) DeleteContact(ctx context.Context, in *DeleteContactR
 // All implementations must embed UnimplementedContactSvcServer
 // for forward compatibility
 type ContactSvcServer interface {
-	// 获取联系人列表
-	GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error)
-	// 获取联系人IDs
-	GetContactIDs(context.Context, *GetContactIDsRequest) (*GetContactIDsReply, error)
-	// 获取指定联系人列表
-	GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error)
-	// 获取附近的人
-	GetNearbyContactList(*GetNearbyContactListRequest, ContactSvc_GetNearbyContactListServer) error
 	// 联系人信息
 	GetContact(context.Context, *GetContactRequest) (*GetContactReply, error)
+	// 获取联系人ids
+	GetContactIds(context.Context, *GetContactIdsRequest) (*GetContactIdsReply, error)
+	// 获取联系人列表
+	GetContacts(context.Context, *GetContactsRequest) (*GetContactsReply, error)
+	// 获取指定联系人列表
+	GetSpecifiedContacts(context.Context, *GetSpecifiedContactsRequest) (*GetSpecifiedContactsReply, error)
+	// 获取附近的人
+	GetNearbyContacts(*GetNearbyContactsRequest, ContactSvc_GetNearbyContactsServer) error
 	// 获取单条消息
 	GetContactMessage(context.Context, *GetContactMessageRequest) (*GetContactMessageReply, error)
 	// 获取聊天记录
-	GetContactMessageList(context.Context, *GetContactMessageListRequest) (*GetContactMessageListReply, error)
+	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesReply, error)
 	// 发送消息
 	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error)
 	// 设置联系人别名
-	SetContactAlias(context.Context, *SetContactAliasRequest) (*SetContactAliasReply, error)
+	SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error)
 	// 清空聊天记录
 	ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error)
 	// 删除联系人
@@ -510,32 +510,32 @@ type ContactSvcServer interface {
 type UnimplementedContactSvcServer struct {
 }
 
-func (UnimplementedContactSvcServer) GetContactList(context.Context, *GetContactListRequest) (*GetContactListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetContactList not implemented")
-}
-func (UnimplementedContactSvcServer) GetContactIDs(context.Context, *GetContactIDsRequest) (*GetContactIDsReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetContactIDs not implemented")
-}
-func (UnimplementedContactSvcServer) GetSpecifiedContactList(context.Context, *GetSpecifiedContactListRequest) (*GetSpecifiedContactListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSpecifiedContactList not implemented")
-}
-func (UnimplementedContactSvcServer) GetNearbyContactList(*GetNearbyContactListRequest, ContactSvc_GetNearbyContactListServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetNearbyContactList not implemented")
-}
 func (UnimplementedContactSvcServer) GetContact(context.Context, *GetContactRequest) (*GetContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContact not implemented")
+}
+func (UnimplementedContactSvcServer) GetContactIds(context.Context, *GetContactIdsRequest) (*GetContactIdsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactIds not implemented")
+}
+func (UnimplementedContactSvcServer) GetContacts(context.Context, *GetContactsRequest) (*GetContactsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContacts not implemented")
+}
+func (UnimplementedContactSvcServer) GetSpecifiedContacts(context.Context, *GetSpecifiedContactsRequest) (*GetSpecifiedContactsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSpecifiedContacts not implemented")
+}
+func (UnimplementedContactSvcServer) GetNearbyContacts(*GetNearbyContactsRequest, ContactSvc_GetNearbyContactsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetNearbyContacts not implemented")
 }
 func (UnimplementedContactSvcServer) GetContactMessage(context.Context, *GetContactMessageRequest) (*GetContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessage not implemented")
 }
-func (UnimplementedContactSvcServer) GetContactMessageList(context.Context, *GetContactMessageListRequest) (*GetContactMessageListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessageList not implemented")
+func (UnimplementedContactSvcServer) GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessages not implemented")
 }
 func (UnimplementedContactSvcServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendContactMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SetContactAlias(context.Context, *SetContactAliasRequest) (*SetContactAliasReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetContactAlias not implemented")
+func (UnimplementedContactSvcServer) SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetContactName not implemented")
 }
 func (UnimplementedContactSvcServer) ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearContactMessage not implemented")
@@ -556,81 +556,6 @@ func RegisterContactSvcServer(s grpc.ServiceRegistrar, srv ContactSvcServer) {
 	s.RegisterService(&ContactSvc_ServiceDesc, srv)
 }
 
-func _ContactSvc_GetContactList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetContactListRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).GetContactList(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_GetContactList_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).GetContactList(ctx, req.(*GetContactListRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ContactSvc_GetContactIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetContactIDsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).GetContactIDs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_GetContactIDs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).GetContactIDs(ctx, req.(*GetContactIDsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ContactSvc_GetSpecifiedContactList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSpecifiedContactListRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).GetSpecifiedContactList(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_GetSpecifiedContactList_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).GetSpecifiedContactList(ctx, req.(*GetSpecifiedContactListRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ContactSvc_GetNearbyContactList_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetNearbyContactListRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ContactSvcServer).GetNearbyContactList(m, &contactSvcGetNearbyContactListServer{stream})
-}
-
-type ContactSvc_GetNearbyContactListServer interface {
-	Send(*GetNearbyContactListStreamReply) error
-	grpc.ServerStream
-}
-
-type contactSvcGetNearbyContactListServer struct {
-	grpc.ServerStream
-}
-
-func (x *contactSvcGetNearbyContactListServer) Send(m *GetNearbyContactListStreamReply) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _ContactSvc_GetContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetContactRequest)
 	if err := dec(in); err != nil {
@@ -647,6 +572,81 @@ func _ContactSvc_GetContact_Handler(srv interface{}, ctx context.Context, dec fu
 		return srv.(ContactSvcServer).GetContact(ctx, req.(*GetContactRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetContactIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactIdsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetContactIds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetContactIds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetContactIds(ctx, req.(*GetContactIdsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetContacts(ctx, req.(*GetContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetSpecifiedContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSpecifiedContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetSpecifiedContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetSpecifiedContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetSpecifiedContacts(ctx, req.(*GetSpecifiedContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_GetNearbyContacts_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetNearbyContactsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ContactSvcServer).GetNearbyContacts(m, &contactSvcGetNearbyContactsServer{stream})
+}
+
+type ContactSvc_GetNearbyContactsServer interface {
+	Send(*GetNearbyContactsStreamReply) error
+	grpc.ServerStream
+}
+
+type contactSvcGetNearbyContactsServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcGetNearbyContactsServer) Send(m *GetNearbyContactsStreamReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _ContactSvc_GetContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -667,20 +667,20 @@ func _ContactSvc_GetContactMessage_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContactSvc_GetContactMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetContactMessageListRequest)
+func _ContactSvc_GetContactMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactMessagesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ContactSvcServer).GetContactMessageList(ctx, in)
+		return srv.(ContactSvcServer).GetContactMessages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ContactSvc_GetContactMessageList_FullMethodName,
+		FullMethod: ContactSvc_GetContactMessages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).GetContactMessageList(ctx, req.(*GetContactMessageListRequest))
+		return srv.(ContactSvcServer).GetContactMessages(ctx, req.(*GetContactMessagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -703,20 +703,20 @@ func _ContactSvc_SendContactMessage_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContactSvc_SetContactAlias_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetContactAliasRequest)
+func _ContactSvc_SetContactName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetContactNameRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ContactSvcServer).SetContactAlias(ctx, in)
+		return srv.(ContactSvcServer).SetContactName(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ContactSvc_SetContactAlias_FullMethodName,
+		FullMethod: ContactSvc_SetContactName_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SetContactAlias(ctx, req.(*SetContactAliasRequest))
+		return srv.(ContactSvcServer).SetContactName(ctx, req.(*SetContactNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -765,36 +765,36 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ContactSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetContactList",
-			Handler:    _ContactSvc_GetContactList_Handler,
-		},
-		{
-			MethodName: "GetContactIDs",
-			Handler:    _ContactSvc_GetContactIDs_Handler,
-		},
-		{
-			MethodName: "GetSpecifiedContactList",
-			Handler:    _ContactSvc_GetSpecifiedContactList_Handler,
-		},
-		{
 			MethodName: "GetContact",
 			Handler:    _ContactSvc_GetContact_Handler,
+		},
+		{
+			MethodName: "GetContactIds",
+			Handler:    _ContactSvc_GetContactIds_Handler,
+		},
+		{
+			MethodName: "GetContacts",
+			Handler:    _ContactSvc_GetContacts_Handler,
+		},
+		{
+			MethodName: "GetSpecifiedContacts",
+			Handler:    _ContactSvc_GetSpecifiedContacts_Handler,
 		},
 		{
 			MethodName: "GetContactMessage",
 			Handler:    _ContactSvc_GetContactMessage_Handler,
 		},
 		{
-			MethodName: "GetContactMessageList",
-			Handler:    _ContactSvc_GetContactMessageList_Handler,
+			MethodName: "GetContactMessages",
+			Handler:    _ContactSvc_GetContactMessages_Handler,
 		},
 		{
 			MethodName: "SendContactMessage",
 			Handler:    _ContactSvc_SendContactMessage_Handler,
 		},
 		{
-			MethodName: "SetContactAlias",
-			Handler:    _ContactSvc_SetContactAlias_Handler,
+			MethodName: "SetContactName",
+			Handler:    _ContactSvc_SetContactName_Handler,
 		},
 		{
 			MethodName: "ClearContactMessage",
@@ -807,8 +807,8 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetNearbyContactList",
-			Handler:       _ContactSvc_GetNearbyContactList_Handler,
+			StreamName:    "GetNearbyContacts",
+			Handler:       _ContactSvc_GetNearbyContacts_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -816,22 +816,22 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	GroupSvc_CreateGroup_FullMethodName         = "/chat.GroupSvc/CreateGroup"
-	GroupSvc_GetGroupList_FullMethodName        = "/chat.GroupSvc/GetGroupList"
-	GroupSvc_GetGroupBase_FullMethodName        = "/chat.GroupSvc/GetGroupBase"
-	GroupSvc_GetGroupFull_FullMethodName        = "/chat.GroupSvc/GetGroupFull"
-	GroupSvc_GetGroupMessageList_FullMethodName = "/chat.GroupSvc/GetGroupMessageList"
-	GroupSvc_SendGroupMessage_FullMethodName    = "/chat.GroupSvc/SendGroupMessage"
-	GroupSvc_SetGroupAvatar_FullMethodName      = "/chat.GroupSvc/SetGroupAvatar"
-	GroupSvc_SetGroupName_FullMethodName        = "/chat.GroupSvc/SetGroupName"
-	GroupSvc_SetGroupNotice_FullMethodName      = "/chat.GroupSvc/SetGroupNotice"
-	GroupSvc_InviteJoinGroup_FullMethodName     = "/chat.GroupSvc/InviteJoinGroup"
-	GroupSvc_GetGroupMemberList_FullMethodName  = "/chat.GroupSvc/GetGroupMemberList"
-	GroupSvc_RemoveGroupMember_FullMethodName   = "/chat.GroupSvc/RemoveGroupMember"
-	GroupSvc_SetJoinGroupReview_FullMethodName  = "/chat.GroupSvc/SetJoinGroupReview"
-	GroupSvc_ClearGroupMessage_FullMethodName   = "/chat.GroupSvc/ClearGroupMessage"
-	GroupSvc_ExitGroup_FullMethodName           = "/chat.GroupSvc/ExitGroup"
-	GroupSvc_DeleteGroup_FullMethodName         = "/chat.GroupSvc/DeleteGroup"
+	GroupSvc_CreateGroup_FullMethodName        = "/chat.GroupSvc/CreateGroup"
+	GroupSvc_GetGroup_FullMethodName           = "/chat.GroupSvc/GetGroup"
+	GroupSvc_GetGroupFull_FullMethodName       = "/chat.GroupSvc/GetGroupFull"
+	GroupSvc_GetGroups_FullMethodName          = "/chat.GroupSvc/GetGroups"
+	GroupSvc_GetGroupMessages_FullMethodName   = "/chat.GroupSvc/GetGroupMessages"
+	GroupSvc_SendGroupMessage_FullMethodName   = "/chat.GroupSvc/SendGroupMessage"
+	GroupSvc_SetGroupAvatar_FullMethodName     = "/chat.GroupSvc/SetGroupAvatar"
+	GroupSvc_SetGroupName_FullMethodName       = "/chat.GroupSvc/SetGroupName"
+	GroupSvc_SetGroupNotice_FullMethodName     = "/chat.GroupSvc/SetGroupNotice"
+	GroupSvc_InviteJoinGroup_FullMethodName    = "/chat.GroupSvc/InviteJoinGroup"
+	GroupSvc_GetGroupMembers_FullMethodName    = "/chat.GroupSvc/GetGroupMembers"
+	GroupSvc_RemoveGroupMember_FullMethodName  = "/chat.GroupSvc/RemoveGroupMember"
+	GroupSvc_SetJoinGroupReview_FullMethodName = "/chat.GroupSvc/SetJoinGroupReview"
+	GroupSvc_ClearGroupMessage_FullMethodName  = "/chat.GroupSvc/ClearGroupMessage"
+	GroupSvc_ExitGroup_FullMethodName          = "/chat.GroupSvc/ExitGroup"
+	GroupSvc_DeleteGroup_FullMethodName        = "/chat.GroupSvc/DeleteGroup"
 )
 
 // GroupSvcClient is the client API for GroupSvc service.
@@ -840,14 +840,14 @@ const (
 type GroupSvcClient interface {
 	// 创建群
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupReply, error)
-	// 获取群列表
-	GetGroupList(ctx context.Context, in *GetGroupListRequest, opts ...grpc.CallOption) (*GetGroupListReply, error)
-	// 获取群基本信息
-	GetGroupBase(ctx context.Context, in *GetGroupBaseRequest, opts ...grpc.CallOption) (*GetGroupBaseReply, error)
-	// 获取群完整信息
+	// 获取群详情
+	GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error)
+	// 获取群详情
 	GetGroupFull(ctx context.Context, in *GetGroupFullRequest, opts ...grpc.CallOption) (*GetGroupFullReply, error)
+	// 获取群列表
+	GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error)
 	// 获取聊天记录
-	GetGroupMessageList(ctx context.Context, in *GetGroupMessageListRequest, opts ...grpc.CallOption) (*GetGroupMessageListReply, error)
+	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
 	// 发送消息
 	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
 	// 设置头像（管理员操作）
@@ -859,7 +859,7 @@ type GroupSvcClient interface {
 	// 邀请群成员
 	InviteJoinGroup(ctx context.Context, in *InviteJoinGroupRequest, opts ...grpc.CallOption) (*InviteJoinGroupReply, error)
 	// 群成员列表
-	GetGroupMemberList(ctx context.Context, in *GetGroupMemberListRequest, opts ...grpc.CallOption) (*GetGroupMemberListReply, error)
+	GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberReply, error)
 	// 设置入群是否审核
@@ -889,18 +889,9 @@ func (c *groupSvcClient) CreateGroup(ctx context.Context, in *CreateGroupRequest
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroupList(ctx context.Context, in *GetGroupListRequest, opts ...grpc.CallOption) (*GetGroupListReply, error) {
-	out := new(GetGroupListReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupList_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) GetGroupBase(ctx context.Context, in *GetGroupBaseRequest, opts ...grpc.CallOption) (*GetGroupBaseReply, error) {
-	out := new(GetGroupBaseReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupBase_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error) {
+	out := new(GetGroupReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -916,9 +907,18 @@ func (c *groupSvcClient) GetGroupFull(ctx context.Context, in *GetGroupFullReque
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroupMessageList(ctx context.Context, in *GetGroupMessageListRequest, opts ...grpc.CallOption) (*GetGroupMessageListReply, error) {
-	out := new(GetGroupMessageListReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessageList_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error) {
+	out := new(GetGroupsReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroups_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error) {
+	out := new(GetGroupMessagesReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessages_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -970,9 +970,9 @@ func (c *groupSvcClient) InviteJoinGroup(ctx context.Context, in *InviteJoinGrou
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroupMemberList(ctx context.Context, in *GetGroupMemberListRequest, opts ...grpc.CallOption) (*GetGroupMemberListReply, error) {
-	out := new(GetGroupMemberListReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMemberList_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error) {
+	out := new(GetGroupMembersReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMembers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,14 +1030,14 @@ func (c *groupSvcClient) DeleteGroup(ctx context.Context, in *DeleteGroupRequest
 type GroupSvcServer interface {
 	// 创建群
 	CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupReply, error)
-	// 获取群列表
-	GetGroupList(context.Context, *GetGroupListRequest) (*GetGroupListReply, error)
-	// 获取群基本信息
-	GetGroupBase(context.Context, *GetGroupBaseRequest) (*GetGroupBaseReply, error)
-	// 获取群完整信息
+	// 获取群详情
+	GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error)
+	// 获取群详情
 	GetGroupFull(context.Context, *GetGroupFullRequest) (*GetGroupFullReply, error)
+	// 获取群列表
+	GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error)
 	// 获取聊天记录
-	GetGroupMessageList(context.Context, *GetGroupMessageListRequest) (*GetGroupMessageListReply, error)
+	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
 	// 发送消息
 	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
 	// 设置头像（管理员操作）
@@ -1049,7 +1049,7 @@ type GroupSvcServer interface {
 	// 邀请群成员
 	InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error)
 	// 群成员列表
-	GetGroupMemberList(context.Context, *GetGroupMemberListRequest) (*GetGroupMemberListReply, error)
+	GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error)
 	// 设置入群是否审核
@@ -1070,17 +1070,17 @@ type UnimplementedGroupSvcServer struct {
 func (UnimplementedGroupSvcServer) CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateGroup not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroupList(context.Context, *GetGroupListRequest) (*GetGroupListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupList not implemented")
-}
-func (UnimplementedGroupSvcServer) GetGroupBase(context.Context, *GetGroupBaseRequest) (*GetGroupBaseReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupBase not implemented")
+func (UnimplementedGroupSvcServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroup not implemented")
 }
 func (UnimplementedGroupSvcServer) GetGroupFull(context.Context, *GetGroupFullRequest) (*GetGroupFullReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupFull not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroupMessageList(context.Context, *GetGroupMessageListRequest) (*GetGroupMessageListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessageList not implemented")
+func (UnimplementedGroupSvcServer) GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroups not implemented")
+}
+func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessages not implemented")
 }
 func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
@@ -1097,8 +1097,8 @@ func (UnimplementedGroupSvcServer) SetGroupNotice(context.Context, *SetGroupNoti
 func (UnimplementedGroupSvcServer) InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteJoinGroup not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroupMemberList(context.Context, *GetGroupMemberListRequest) (*GetGroupMemberListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMemberList not implemented")
+func (UnimplementedGroupSvcServer) GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMembers not implemented")
 }
 func (UnimplementedGroupSvcServer) RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMember not implemented")
@@ -1146,38 +1146,20 @@ func _GroupSvc_CreateGroup_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroupList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupListRequest)
+func _GroupSvc_GetGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupList(ctx, in)
+		return srv.(GroupSvcServer).GetGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroupList_FullMethodName,
+		FullMethod: GroupSvc_GetGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupList(ctx, req.(*GetGroupListRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_GetGroupBase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupBaseRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupBase(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_GetGroupBase_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupBase(ctx, req.(*GetGroupBaseRequest))
+		return srv.(GroupSvcServer).GetGroup(ctx, req.(*GetGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1200,20 +1182,38 @@ func _GroupSvc_GetGroupFull_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroupMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupMessageListRequest)
+func _GroupSvc_GetGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupMessageList(ctx, in)
+		return srv.(GroupSvcServer).GetGroups(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroupMessageList_FullMethodName,
+		FullMethod: GroupSvc_GetGroups_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupMessageList(ctx, req.(*GetGroupMessageListRequest))
+		return srv.(GroupSvcServer).GetGroups(ctx, req.(*GetGroupsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_GetGroupMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).GetGroupMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_GetGroupMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).GetGroupMessages(ctx, req.(*GetGroupMessagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1308,20 +1308,20 @@ func _GroupSvc_InviteJoinGroup_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroupMemberList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupMemberListRequest)
+func _GroupSvc_GetGroupMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMembersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupMemberList(ctx, in)
+		return srv.(GroupSvcServer).GetGroupMembers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroupMemberList_FullMethodName,
+		FullMethod: GroupSvc_GetGroupMembers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupMemberList(ctx, req.(*GetGroupMemberListRequest))
+		return srv.(GroupSvcServer).GetGroupMembers(ctx, req.(*GetGroupMembersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1428,20 +1428,20 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_CreateGroup_Handler,
 		},
 		{
-			MethodName: "GetGroupList",
-			Handler:    _GroupSvc_GetGroupList_Handler,
-		},
-		{
-			MethodName: "GetGroupBase",
-			Handler:    _GroupSvc_GetGroupBase_Handler,
+			MethodName: "GetGroup",
+			Handler:    _GroupSvc_GetGroup_Handler,
 		},
 		{
 			MethodName: "GetGroupFull",
 			Handler:    _GroupSvc_GetGroupFull_Handler,
 		},
 		{
-			MethodName: "GetGroupMessageList",
-			Handler:    _GroupSvc_GetGroupMessageList_Handler,
+			MethodName: "GetGroups",
+			Handler:    _GroupSvc_GetGroups_Handler,
+		},
+		{
+			MethodName: "GetGroupMessages",
+			Handler:    _GroupSvc_GetGroupMessages_Handler,
 		},
 		{
 			MethodName: "SendGroupMessage",
@@ -1464,8 +1464,8 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_InviteJoinGroup_Handler,
 		},
 		{
-			MethodName: "GetGroupMemberList",
-			Handler:    _GroupSvc_GetGroupMemberList_Handler,
+			MethodName: "GetGroupMembers",
+			Handler:    _GroupSvc_GetGroupMembers_Handler,
 		},
 		{
 			MethodName: "RemoveGroupMember",
@@ -1493,14 +1493,14 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	SessionSvc_GetSessionList_FullMethodName = "/chat.SessionSvc/GetSessionList"
+	SessionSvc_GetSessions_FullMethodName = "/chat.SessionSvc/GetSessions"
 )
 
 // SessionSvcClient is the client API for SessionSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SessionSvcClient interface {
-	GetSessionList(ctx context.Context, in *GetSessionListRequest, opts ...grpc.CallOption) (*GetSessionListReply, error)
+	GetSessions(ctx context.Context, in *GetSessionsRequest, opts ...grpc.CallOption) (*GetSessionsReply, error)
 }
 
 type sessionSvcClient struct {
@@ -1511,9 +1511,9 @@ func NewSessionSvcClient(cc grpc.ClientConnInterface) SessionSvcClient {
 	return &sessionSvcClient{cc}
 }
 
-func (c *sessionSvcClient) GetSessionList(ctx context.Context, in *GetSessionListRequest, opts ...grpc.CallOption) (*GetSessionListReply, error) {
-	out := new(GetSessionListReply)
-	err := c.cc.Invoke(ctx, SessionSvc_GetSessionList_FullMethodName, in, out, opts...)
+func (c *sessionSvcClient) GetSessions(ctx context.Context, in *GetSessionsRequest, opts ...grpc.CallOption) (*GetSessionsReply, error) {
+	out := new(GetSessionsReply)
+	err := c.cc.Invoke(ctx, SessionSvc_GetSessions_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1524,7 +1524,7 @@ func (c *sessionSvcClient) GetSessionList(ctx context.Context, in *GetSessionLis
 // All implementations must embed UnimplementedSessionSvcServer
 // for forward compatibility
 type SessionSvcServer interface {
-	GetSessionList(context.Context, *GetSessionListRequest) (*GetSessionListReply, error)
+	GetSessions(context.Context, *GetSessionsRequest) (*GetSessionsReply, error)
 	mustEmbedUnimplementedSessionSvcServer()
 }
 
@@ -1532,8 +1532,8 @@ type SessionSvcServer interface {
 type UnimplementedSessionSvcServer struct {
 }
 
-func (UnimplementedSessionSvcServer) GetSessionList(context.Context, *GetSessionListRequest) (*GetSessionListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSessionList not implemented")
+func (UnimplementedSessionSvcServer) GetSessions(context.Context, *GetSessionsRequest) (*GetSessionsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSessions not implemented")
 }
 func (UnimplementedSessionSvcServer) mustEmbedUnimplementedSessionSvcServer() {}
 
@@ -1548,20 +1548,20 @@ func RegisterSessionSvcServer(s grpc.ServiceRegistrar, srv SessionSvcServer) {
 	s.RegisterService(&SessionSvc_ServiceDesc, srv)
 }
 
-func _SessionSvc_GetSessionList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSessionListRequest)
+func _SessionSvc_GetSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSessionsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionSvcServer).GetSessionList(ctx, in)
+		return srv.(SessionSvcServer).GetSessions(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SessionSvc_GetSessionList_FullMethodName,
+		FullMethod: SessionSvc_GetSessions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionSvcServer).GetSessionList(ctx, req.(*GetSessionListRequest))
+		return srv.(SessionSvcServer).GetSessions(ctx, req.(*GetSessionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1574,8 +1574,8 @@ var SessionSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SessionSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetSessionList",
-			Handler:    _SessionSvc_GetSessionList_Handler,
+			MethodName: "GetSessions",
+			Handler:    _SessionSvc_GetSessions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1583,18 +1583,18 @@ var SessionSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	SystemSvc_GetSystemMessageList_FullMethodName = "/chat.SystemSvc/GetSystemMessageList"
-	SystemSvc_ClearSystemMessage_FullMethodName   = "/chat.SystemSvc/ClearSystemMessage"
-	SystemSvc_ApplyAddContact_FullMethodName      = "/chat.SystemSvc/ApplyAddContact"
-	SystemSvc_AgreeAddContact_FullMethodName      = "/chat.SystemSvc/AgreeAddContact"
-	SystemSvc_RejectAddContact_FullMethodName     = "/chat.SystemSvc/RejectAddContact"
+	SystemSvc_GetSystemMessages_FullMethodName  = "/chat.SystemSvc/GetSystemMessages"
+	SystemSvc_ClearSystemMessage_FullMethodName = "/chat.SystemSvc/ClearSystemMessage"
+	SystemSvc_ApplyAddContact_FullMethodName    = "/chat.SystemSvc/ApplyAddContact"
+	SystemSvc_AgreeAddContact_FullMethodName    = "/chat.SystemSvc/AgreeAddContact"
+	SystemSvc_RejectAddContact_FullMethodName   = "/chat.SystemSvc/RejectAddContact"
 )
 
 // SystemSvcClient is the client API for SystemSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SystemSvcClient interface {
-	GetSystemMessageList(ctx context.Context, in *GetSystemMessageListRequest, opts ...grpc.CallOption) (*GetSystemMessageListReply, error)
+	GetSystemMessages(ctx context.Context, in *GetSystemMessagesRequest, opts ...grpc.CallOption) (*GetSystemMessagesReply, error)
 	ClearSystemMessage(ctx context.Context, in *ClearSystemMessageRequest, opts ...grpc.CallOption) (*ClearSystemMessageReply, error)
 	ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error)
 	AgreeAddContact(ctx context.Context, in *AgreeAddContactRequest, opts ...grpc.CallOption) (*AgreeAddContactReply, error)
@@ -1609,9 +1609,9 @@ func NewSystemSvcClient(cc grpc.ClientConnInterface) SystemSvcClient {
 	return &systemSvcClient{cc}
 }
 
-func (c *systemSvcClient) GetSystemMessageList(ctx context.Context, in *GetSystemMessageListRequest, opts ...grpc.CallOption) (*GetSystemMessageListReply, error) {
-	out := new(GetSystemMessageListReply)
-	err := c.cc.Invoke(ctx, SystemSvc_GetSystemMessageList_FullMethodName, in, out, opts...)
+func (c *systemSvcClient) GetSystemMessages(ctx context.Context, in *GetSystemMessagesRequest, opts ...grpc.CallOption) (*GetSystemMessagesReply, error) {
+	out := new(GetSystemMessagesReply)
+	err := c.cc.Invoke(ctx, SystemSvc_GetSystemMessages_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1658,7 +1658,7 @@ func (c *systemSvcClient) RejectAddContact(ctx context.Context, in *RejectAddCon
 // All implementations must embed UnimplementedSystemSvcServer
 // for forward compatibility
 type SystemSvcServer interface {
-	GetSystemMessageList(context.Context, *GetSystemMessageListRequest) (*GetSystemMessageListReply, error)
+	GetSystemMessages(context.Context, *GetSystemMessagesRequest) (*GetSystemMessagesReply, error)
 	ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error)
 	ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error)
 	AgreeAddContact(context.Context, *AgreeAddContactRequest) (*AgreeAddContactReply, error)
@@ -1670,8 +1670,8 @@ type SystemSvcServer interface {
 type UnimplementedSystemSvcServer struct {
 }
 
-func (UnimplementedSystemSvcServer) GetSystemMessageList(context.Context, *GetSystemMessageListRequest) (*GetSystemMessageListReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSystemMessageList not implemented")
+func (UnimplementedSystemSvcServer) GetSystemMessages(context.Context, *GetSystemMessagesRequest) (*GetSystemMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSystemMessages not implemented")
 }
 func (UnimplementedSystemSvcServer) ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearSystemMessage not implemented")
@@ -1698,20 +1698,20 @@ func RegisterSystemSvcServer(s grpc.ServiceRegistrar, srv SystemSvcServer) {
 	s.RegisterService(&SystemSvc_ServiceDesc, srv)
 }
 
-func _SystemSvc_GetSystemMessageList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSystemMessageListRequest)
+func _SystemSvc_GetSystemMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSystemMessagesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SystemSvcServer).GetSystemMessageList(ctx, in)
+		return srv.(SystemSvcServer).GetSystemMessages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SystemSvc_GetSystemMessageList_FullMethodName,
+		FullMethod: SystemSvc_GetSystemMessages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SystemSvcServer).GetSystemMessageList(ctx, req.(*GetSystemMessageListRequest))
+		return srv.(SystemSvcServer).GetSystemMessages(ctx, req.(*GetSystemMessagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1796,8 +1796,8 @@ var SystemSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SystemSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetSystemMessageList",
-			Handler:    _SystemSvc_GetSystemMessageList_Handler,
+			MethodName: "GetSystemMessages",
+			Handler:    _SystemSvc_GetSystemMessages_Handler,
 		},
 		{
 			MethodName: "ClearSystemMessage",

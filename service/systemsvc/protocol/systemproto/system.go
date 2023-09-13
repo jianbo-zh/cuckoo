@@ -98,7 +98,7 @@ func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMsg) error 
 	fmt.Println("host.NewStream start")
 	stream, err := s.host.NewStream(ctx, peer.ID(msg.ToPeer.PeerId), ID)
 	if err != nil {
-		return fmt.Errorf("a.host.NewStream error: %w", err)
+		return fmt.Errorf("a.host.NewStream error: %w,%s", err, peer.ID(msg.ToPeer.PeerId).String())
 	}
 
 	wt := pbio.NewDelimitedWriter(stream)

@@ -17,7 +17,7 @@ type AccountSvc struct {
 	accountProto *accountproto.AccountProto
 }
 
-func NewAccountService(conf config.AccountServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery) (*AccountSvc, error) {
 
 	var err error

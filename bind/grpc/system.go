@@ -55,7 +55,7 @@ func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAdd
 		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
 	}
 
-	peerID, err := peer.Decode(request.PeerID)
+	peerID, err := peer.Decode(request.PeerId)
 	if err != nil {
 		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
 	}
@@ -82,7 +82,7 @@ func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAdd
 		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
 	}
 
-	err = systemSvc.AgreeAddContact(ctx, request.AckMsgID)
+	err = systemSvc.AgreeAddContact(ctx, request.AckMsgId)
 	if err != nil {
 		return nil, fmt.Errorf("systemSvc.AgreeAddContact error: %w", err)
 	}
@@ -92,7 +92,7 @@ func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAdd
 			Code:    0,
 			Message: "ok",
 		},
-		AckMsgID: request.AckMsgID,
+		AckMsgId: request.AckMsgId,
 	}
 	return reply, nil
 }
@@ -104,7 +104,7 @@ func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectA
 		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
 	}
 
-	err = systemSvc.RejectAddContact(ctx, request.AckMsgID)
+	err = systemSvc.RejectAddContact(ctx, request.AckMsgId)
 	if err != nil {
 		return nil, fmt.Errorf("systemSvc.RejectAddContact error: %w", err)
 	}
@@ -114,12 +114,12 @@ func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectA
 			Code:    0,
 			Message: "ok",
 		},
-		AckMsgID: request.AckMsgID,
+		AckMsgId: request.AckMsgId,
 	}
 	return reply, nil
 }
 
-func (s *SystemSvc) GetSystemMessageList(ctx context.Context, request *proto.GetSystemMessageListRequest) (*proto.GetSystemMessageListReply, error) {
+func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSystemMessagesRequest) (*proto.GetSystemMessagesReply, error) {
 
 	systemSvc, err := s.getSystemSvc()
 	if err != nil {
@@ -128,58 +128,42 @@ func (s *SystemSvc) GetSystemMessageList(ctx context.Context, request *proto.Get
 
 	msgs, err := systemSvc.GetSystemMessageList(ctx, int(request.Offset), int(request.Limit))
 	if err != nil {
-		return nil, fmt.Errorf("systemSvc.GetSystemMessageList error: %w", err)
+		return nil, fmt.Errorf("systemSvc.GetSystemMessages error: %w", err)
 	}
 
 	var msglist []*proto.SystemMessage
 	for _, msg := range msgs {
-		var msgType proto.SystemType
+		var msgType proto.SystemMessage_MsgType
 		switch msg.Type {
 		case systemsvc.TypeContactApply:
-			msgType = proto.SystemType_APPLY_ADD_CONTACT
+			msgType = proto.SystemMessage_ApplyAddContact
 		default:
-			msgType = proto.SystemType_APPLY_JOIN_GROUP
-		}
-
-		var msgState proto.SystemState
-		switch msg.State {
-		case systemsvc.StateIsSended:
-			msgState = proto.SystemState_IS_SENDED
-		case systemsvc.StateIsAgree:
-			msgState = proto.SystemState_IS_AGREE
-		case systemsvc.StateIsReject:
-			msgState = proto.SystemState_IS_REJECT
-		default:
-			// nothing
+			msgType = proto.SystemMessage_InviteJoinGroup
 		}
 
 		msglist = append(msglist, &proto.SystemMessage{
-			ID:      msg.ID,
+			Id:      msg.ID,
 			Type:    msgType,
-			GroupID: msg.GroupID,
-			Sender: &proto.Peer{
-				PeerID: msg.Sender.PeerID.String(),
+			GroupId: msg.GroupID,
+			FromPeer: &proto.Peer{
+				Id:     msg.Sender.PeerID.String(),
 				Name:   msg.Sender.Name,
 				Avatar: msg.Sender.Avatar,
 			},
-			Receiver: &proto.Peer{
-				PeerID: msg.Receiver.PeerID.String(),
-				Name:   msg.Receiver.Name,
-				Avatar: msg.Receiver.Avatar,
-			},
-			Content: msg.Content,
-			State:   msgState,
-			Ctime:   msg.Ctime,
-			Utime:   msg.Utime,
+			ToPeerId:   msg.Receiver.PeerID.String(),
+			Content:    msg.Content,
+			State:      string(msg.State),
+			CreateTime: msg.Ctime,
+			UpdateTime: msg.Utime,
 		})
 	}
 
-	reply := &proto.GetSystemMessageListReply{
+	reply := &proto.GetSystemMessagesReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		MessageList: msglist,
+		Messages: msglist,
 	}
 	return reply, nil
 }

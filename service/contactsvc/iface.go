@@ -28,7 +28,8 @@ type ContactServiceIface interface {
 
 	AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error
 	GetContact(ctx context.Context, peerID peer.ID) (*Contact, error)
-	GetContacts(context.Context) ([]Contact, error)
+	GetContacts(ctx context.Context) ([]Contact, error)
+	GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]Contact, error)
 
 	Close()
 }

@@ -14,10 +14,10 @@ service AccountSvc {
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply) {}
   // 账号信息
   rpc GetAccount(GetAccountRequest) returns (GetAccountReply) {}
-  // 更新头像
-  rpc SetAccountAvatar(SetAccountAvatarRequest) returns (SetAccountAvatarReply) {}
   // 更新名称
   rpc SetAccountName(SetAccountNameRequest) returns (SetAccountNameReply) {}
+  // 更新头像
+  rpc SetAccountAvatar(SetAccountAvatarRequest) returns (SetAccountAvatarReply) {}
   // 设置加人是否审核
   rpc SetAutoAddContact(SetAutoAddContactRequest) returns (SetAutoAddContactReply) {}
   // 设置入群是否审核
@@ -26,24 +26,24 @@ service AccountSvc {
 
 // 联系人服务
 service ContactSvc {
-  // 获取联系人列表
-  rpc GetContactList(GetContactListRequest) returns (GetContactListReply) {}
-  // 获取联系人IDs
-  rpc GetContactIDs(GetContactIDsRequest) returns (GetContactIDsReply) {}
-  // 获取指定联系人列表
-  rpc GetSpecifiedContactList(GetSpecifiedContactListRequest) returns (GetSpecifiedContactListReply) {}
-  // 获取附近的人
-  rpc GetNearbyContactList(GetNearbyContactListRequest) returns (stream GetNearbyContactListStreamReply) {}
   // 联系人信息
   rpc GetContact(GetContactRequest) returns (GetContactReply) {}
+  // 获取联系人ids
+  rpc GetContactIds(GetContactIdsRequest) returns (GetContactIdsReply) {}
+  // 获取联系人列表
+  rpc GetContacts(GetContactsRequest) returns (GetContactsReply) {}
+  // 获取指定联系人列表
+  rpc GetSpecifiedContacts(GetSpecifiedContactsRequest) returns (GetSpecifiedContactsReply) {}
+  // 获取附近的人
+  rpc GetNearbyContacts(GetNearbyContactsRequest) returns (stream GetNearbyContactsStreamReply) {}
   // 获取单条消息
   rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageReply) {}
   // 获取聊天记录
-  rpc GetContactMessageList(GetContactMessageListRequest) returns (GetContactMessageListReply) {}
+  rpc GetContactMessages(GetContactMessagesRequest) returns (GetContactMessagesReply) {}
   // 发送消息
   rpc SendContactMessage(SendContactMessageRequest) returns (SendContactMessageReply) {}
   // 设置联系人别名
-  rpc SetContactAlias(SetContactAliasRequest) returns (SetContactAliasReply) {}
+  rpc SetContactName(SetContactNameRequest) returns (SetContactNameReply) {}
   // 清空聊天记录
   rpc ClearContactMessage(ClearContactMessageRequest) returns (ClearContactMessageReply) {}
   // 删除联系人
@@ -54,14 +54,14 @@ service ContactSvc {
 service GroupSvc {
   // 创建群
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupReply) {}
-  // 获取群列表
-  rpc GetGroupList(GetGroupListRequest) returns (GetGroupListReply) {}
-  // 获取群基本信息
-  rpc GetGroupBase(GetGroupBaseRequest) returns (GetGroupBaseReply) {}
-  // 获取群完整信息
+  // 获取群详情
+  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
+  // 获取群详情
   rpc GetGroupFull(GetGroupFullRequest) returns (GetGroupFullReply) {}
+  // 获取群列表
+  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
   // 获取聊天记录
-  rpc GetGroupMessageList(GetGroupMessageListRequest) returns (GetGroupMessageListReply) {}
+  rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 发送消息
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
   // 设置头像（管理员操作）
@@ -73,7 +73,7 @@ service GroupSvc {
   // 邀请群成员
   rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
   // 群成员列表
-  rpc GetGroupMemberList(GetGroupMemberListRequest) returns (GetGroupMemberListReply) {}
+  rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
   // 移除群成员
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
   // 设置入群是否审核
@@ -88,12 +88,12 @@ service GroupSvc {
 
 // 会话服务
 service SessionSvc {
-  rpc GetSessionList(GetSessionListRequest) returns (GetSessionListReply) {}
+  rpc GetSessions(GetSessionsRequest) returns (GetSessionsReply) {}
 }
 
 // 系统服务
 service SystemSvc {
-  rpc GetSystemMessageList(GetSystemMessageListRequest) returns (GetSystemMessageListReply) {}
+  rpc GetSystemMessages(GetSystemMessagesRequest) returns (GetSystemMessagesReply) {}
   rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
   rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
   rpc AgreeAddContact(AgreeAddContactRequest) returns (AgreeAddContactReply) {}
@@ -107,323 +107,314 @@ service SubscribeSvc {
 
 // -------------------- 分隔符 --------------------
 message Result {
-  int32 Code = 1;
-  string Message = 2;
+  int32 code = 1;
+  string message = 2;
 }
 
 message CreateAccountRequest {
-  string Avatar = 1;
-  string name = 2;
+  string name = 1;
+  string avatar = 2;
 }
 message CreateAccountReply {
-  Result Result = 1;
-  Account Account = 2;
+  Result result = 1;
+  Account account = 2;
 }
 
 message GetAccountRequest {}
-
 message GetAccountReply {
-  Result Result = 1;
+  Result result = 1;
   Account account = 2;
 }
 
 message SetAccountAvatarRequest{
-  string Avatar = 1;
+  string avatar = 1;
 }
 message SetAccountAvatarReply{
-    Result Result = 1;
-    string Avatar = 2;
+    Result result = 1;
+    string avatar = 2;
 }
 
 message SetAccountNameRequest {
-  string Name = 1;
+  string name = 1;
 }
 message SetAccountNameReply {
-  Result Result = 1;
-  string Name = 2;
+  Result result = 1;
+  string name = 2;
 }
 
 message SetAutoAddContactRequest {
-  bool IsReview = 1;
+  bool isAuto = 1;
 }
 
 message SetAutoAddContactReply {
-  Result Result = 1;
-  bool IsReview = 2;
+  Result result = 1;
+  bool isAuto = 2;
 }
 
 message SetAutoJoinGroupRequest {
-  bool IsReview = 1;
+  bool isAuto = 1;
 }
 
 message SetAutoJoinGroupReply {
-  Result Result = 1;
-  bool IsReview = 2;
+  Result result = 1;
+  bool isAuto = 2;
 }
 
 // -------------------- 分隔符 --------------------
-message GetContactListRequest {
-  string keywords = 1;
+message GetContactRequest {
+  string contactId = 1;
 }
-message GetContactListReply {
-  Result Result = 1;
-  repeated Contact contactList = 2;
-}
-
-message GetContactIDsRequest {
-}
-message GetContactIDsReply {
-  Result Result = 1;
-  repeated string PeerIDs = 2;
-}
-
-message GetSpecifiedContactListRequest {
-  repeated string PeerIDs = 1;
-}
-
-message GetSpecifiedContactListReply {
-  Result Result = 1;
-  repeated Contact contactList = 2;
-}
-
-message GetNearbyContactListRequest {}
-
-message GetNearbyContactListStreamReply {
-  Result Result = 1;
+message GetContactReply {
+  Result result = 1;
   Contact contact = 2;
 }
 
-message GetContactRequest {
-  string PeerID = 1;
+message GetContactIdsRequest {}
+message GetContactIdsReply {
+  Result result = 1;
+  repeated string contactIds = 2;
 }
-message GetContactReply {
-  Result Result = 1;
+
+message GetContactsRequest {
+  string keywords = 1;
+}
+message GetContactsReply {
+  Result result = 1;
+  repeated Contact contacts = 2;
+}
+
+message GetSpecifiedContactsRequest {
+  repeated string contactIds = 1;
+}
+message GetSpecifiedContactsReply {
+  Result result = 1;
+  repeated Contact contacts = 2;
+}
+
+message GetNearbyContactsRequest {}
+message GetNearbyContactsStreamReply {
+  Result result = 1;
   Contact contact = 2;
 }
 
 message GetContactMessageRequest {
-  string PeerID = 1;
-  string MsgID = 2;
+  string contactId = 1;
+  string MsgId = 2;
 }
 message GetContactMessageReply {
-  Result Result = 1;
-  ContactMessage Message = 2;
+  Result result = 1;
+  ContactMessage message = 2;
 }
 
-message GetContactMessageListRequest {
-  string PeerID = 1;
-  int32 Offset = 2;
-  int32 Limit = 3;
+message GetContactMessagesRequest {
+  string contactId = 1;
+  int32 offset = 2;
+  int32 limit = 3;
 }
 
-message GetContactMessageListReply {
-  Result Result = 1;
-  repeated ContactMessage MessageList = 2;
+message GetContactMessagesReply {
+  Result result = 1;
+  repeated ContactMessage messages = 2;
 }
 
 message SendContactMessageRequest {
-  string PeerID = 1;
-  MsgType MsgType = 2;
-  string MimeType = 3;
+  string contactId = 1;
+  string msgType = 2;
+  string mimeType = 3;
   bytes data = 4;
 }
 
 message SendContactMessageReply {
-  Result Result = 1;
-  ContactMessage Message = 2;
+  Result result = 1;
+  ContactMessage message = 2;
 }
 
-message SetContactAliasRequest {
-  string PeerID = 1;
-  string Alias = 2;
+message SetContactNameRequest {
+  string contactId = 1;
+  string name = 2;
 }
 
-message SetContactAliasReply {
-  Result Result = 1;
-  string Alias = 2;
+message SetContactNameReply {
+  Result result = 1;
+  string name = 2;
 }
 
 message ClearContactMessageRequest {
-  string PeerID = 1;
+  string contactId = 1;
 }
 
 message ClearContactMessageReply {
-  Result Result = 1;
+  Result result = 1;
 }
 
 message DeleteContactRequest {
-  string PeerID = 1;
+  string contactId = 1;
 }
 
 message DeleteContactReply {
-  Result Result = 1;
+  Result result = 1;
 }
 
 // -------------------- 分隔符 --------------------
 
 message CreateGroupRequest {
-  string Avatar = 1;
-  string Name = 2;
-  repeated string PeerIDs = 3;
+  string name = 1;
+  string avatar = 2;
+  repeated string memberIds = 3;
 }
-
 message CreateGroupReply {
-  Result Result = 1;
+  Result result = 1;
+  Group group = 2;
 }
 
-
-message GetGroupListRequest {}
-message GetGroupListReply {
-  Result Result = 1;
-  repeated GroupBase groupList = 2;
+message GetGroupRequest {
+  string groupId = 1;
 }
-
-
-message GetGroupBaseRequest {
-  string GroupID = 1;
-}
-message GetGroupBaseReply {
-  Result Result = 1;
-  GroupBase group = 2;
+message GetGroupReply {
+  Result result = 1;
+  Group group = 2;
 }
 
 message GetGroupFullRequest {
-  string GroupID = 1;
+  string groupId = 1;
 }
 message GetGroupFullReply {
-  Result Result = 1;
+  Result result = 1;
   GroupFull group = 2;
 }
 
-message GetGroupMessageListRequest {
-  string GroupID = 1;
-  int32 Offset = 2;
-  int32 Limit = 3;
-}
-message GetGroupMessageListReply {
-  Result Result = 1;
-  repeated GroupMessage MessageList = 2;
+message GetGroupsRequest {}
+message GetGroupsReply {
+  Result result = 1;
+  repeated Group groups = 2;
 }
 
+message GetGroupMessagesRequest {
+  string groupId = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+}
+message GetGroupMessagesReply {
+  Result result = 1;
+  repeated GroupMessage messages = 2;
+}
 
 message SendGroupMessageRequest {
-  string GroupID = 1;
-  MsgType MsgType = 2;
-  string MimeType = 3;
-  bytes data = 4;
+  string groupId = 1;
+  string msgType = 2;
+  string mimeType = 3;
+  bytes payload = 4;
 }
 message SendGroupMessageReply {
-  Result Result = 1;
-  GroupMessage Message = 2;
+  Result result = 1;
+  GroupMessage message = 2;
 }
 
 message SetGroupAvatarRequest {
-  string GroupID = 1;
-  string Avatar = 2;
+  string groupId = 1;
+  string avatar = 2;
 }
 message SetGroupAvatarReply {
-  Result Result = 1;
+  Result result = 1;
 }
 
 message SetGroupNameRequest {
-  string GroupID = 1;
-  string Name = 2;
+  string groupId = 1;
+  string name = 2;
 }
 message SetGroupNameReply {
-  Result Result = 1;
-  string Name = 2;
+  Result result = 1;
+  string name = 2;
 }
 
 message SetGroupNoticeRequest {
-  string GroupID = 1;
-  string Notice = 2;
+  string groupId = 1;
+  string notice = 2;
 }
 message SetGroupNoticeReply {
-  Result Result = 1;
-  string Notice = 2;
+  Result result = 1;
+  string notice = 2;
 }
 
 message InviteJoinGroupRequest {
-  string GroupID = 1;
-  string PeerID = 2;
+  string groupId = 1;
+  string contactId = 2;
 }
 message InviteJoinGroupReply {
-  Result Result = 1;
+  Result result = 1;
 }
 
-message GetGroupMemberListRequest {
-  string GroupID = 1;
-  int32 Offset = 2;
-  int32 Limit = 3;
-  string Keywords = 4;
+message GetGroupMembersRequest {
+  string groupId = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+  string keywords = 4;
 }
-message GetGroupMemberListReply {
-  Result Result = 1;
-  repeated GroupMember memberList = 2;
+message GetGroupMembersReply {
+  Result result = 1;
+  repeated GroupMember members = 2;
 }
 
 message RemoveGroupMemberRequest {
-  string GroupID = 1;
-  string PeerID = 2;
+  string groupId = 1;
+  string memberId = 2;
 }
 message RemoveGroupMemberReply {
-  Result Result = 1;
+  Result result = 1;
 }
 
 message SetJoinGroupReviewRequest {
-  string GroupID = 1;
-  bool IsReview = 2;
+  string groupId = 1;
+  bool isAuto = 2;
 }
 message SetJoinGroupReviewReply {
-  Result Result = 1;
-  bool IsReview = 2;
+  Result result = 1;
+  bool isAuto = 2;
 }
 
 message ClearGroupMessageRequest {
-  string GroupID = 1;
+  string groupId = 1;
 }
 message ClearGroupMessageReply {
-  Result Result = 1;
+  Result result = 1;
 }
-
 
 message ExitGroupRequest {
-  string GroupID = 1;
+  string groupId = 1;
 }
 message ExitGroupReply {
-  Result Result = 1;
+  Result result = 1;
 }
-
 
 message DeleteGroupRequest {
-  string GroupID = 1;
+  string groupId = 1;
 }
 message DeleteGroupReply {
-  Result Result = 1;
-}
-
-// -------------------- 分隔符 --------------------
-
-message GetSessionListRequest {
-  string SessionID = 1;
-  int32 Offset = 2;
-  int32 Limit = 3;
-  string Keywords = 4;
-}
-
-message GetSessionListReply {
-  Result Result = 1;
-  repeated Session sessionList = 2;
-}
-
-// -------------------- 分隔符 --------------------
-message GetSystemMessageListRequest {
-  int32 Offset = 1;
-  int32 Limit = 2;
-}
-message GetSystemMessageListReply {
   Result result = 1;
-  repeated SystemMessage messageList = 2;
+}
+
+// -------------------- 分隔符 --------------------
+
+message GetSessionsRequest {
+  string sessionId = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+  string keywords = 4;
+}
+
+message GetSessionsReply {
+  Result result = 1;
+  repeated Session sessions = 2;
+}
+
+// -------------------- 分隔符 --------------------
+message GetSystemMessagesRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+message GetSystemMessagesReply {
+  Result result = 1;
+  repeated SystemMessage messages = 2;
 }
 
 message ClearSystemMessageRequest {}
@@ -432,236 +423,228 @@ message ClearSystemMessageReply {
 }
 
 message ApplyAddContactRequest {
-  string PeerID = 1;
-  string Name = 2;
-  string Avatar = 3;
-  string Content = 4;
+  string peerId = 1;
+  string name = 2;
+  string avatar = 3;
+  string content = 4;
 }
 message ApplyAddContactReply {
   Result result = 1;
 }
 
 message AgreeAddContactRequest {
-  string AckMsgID = 1;
+  string ackMsgId = 1;
 }
 message AgreeAddContactReply {
   Result result = 1;
-  string AckMsgID = 2;
+  string ackMsgId = 2;
 }
 
 message RejectAddContactRequest {
-  string AckMsgID = 1;
+  string ackMsgId = 1;
 }
 message RejectAddContactReply {
   Result result = 1;
-  string AckMsgID = 2;
+  string ackMsgId = 2;
 }
 
 message SubscribeCommonEventRequest {}
 message SubscribeCommonEventReply {
-  CommonEvent Event = 1;
+  CommonEvent event = 1;
 }
 
 // -------------------- 分隔符 --------------------
 
-enum MsgType {
-  TEXT_MSG = 0;
-  IMAGE_MSG = 1;
-  AUDIO_MSG = 2;
-  VIDEO_MSG = 3;
-}
-
-enum SessionType {
-  CONTACT_SESSION = 0;
-  GROUP_SESSION = 1;
-}
-
 message Account {
-  // PeerID
-  string PeerID = 1;
+  // PeerId
+  string peerId = 1;
   // 用户名称
-  string Name = 2;
+  string name = 2;
   // 头像SHA1
-  string Avatar = 3;
+  string avatar = 3;
   // 加人是否需要审核
-  bool AutoAddContact = 4;
+  bool autoAddContact = 4;
   // 入群是否需要审核
-  bool AutoJoinGroup = 5;
+  bool autoJoinGroup = 5;
 }
 
-// Peer
+// Peer（陌生人）
 message Peer {
-  // PeerID
-  string PeerID = 1;
+  // PeerId
+  string id = 1;
   // 用户名称
-  string Name = 2;
+  string name = 2;
   // 头像SHA1
-  string Avatar = 3;
+  string avatar = 3;
 }
 
 // 联系人
 message Contact {
-  // PeerID
-  string PeerID = 1;
+  // PeerId
+  string id = 1;
   // 用户名称
-  string Name = 2;
+  string name = 2;
   // 头像SHA1
-  string Avatar = 3;
-  // 用户昵称
-  string Alias = 4;
-  // 最新消息
-  string LastMessage = 5;
-  // 更新时间
-  int64 UpdateTime = 6;
+  string avatar = 3;
 }
 
 // 联系人消息
 message ContactMessage {
   // 消息ID
-  string ID = 1;
+  string id = 1;
   // 发送者
-  Contact Sender = 2;
+  Contact fromPeer = 2;
   // 接收者
-  Contact Receiver = 3;
+  string toPeerId = 3;
   // 消息类型
-  MsgType MsgType = 4;
+  string msgType = 4;
   // MIME-Type
-  string MimeType = 5;
+  string mimeType = 5;
   // 消息内容
-  bytes Data = 6;
-  // 消息时间
-  int64 CreateTime = 7;
+  bytes payload = 6;
   // 消息状态
-  string MsgState = 8;
+  string state = 7;
+  // 消息时间
+  int64 createTime = 8;
 }
 
 // 群
-message GroupBase {
+message Group {
   // ID
-  string GroupID = 1;
+  string id = 1;
   // 名称
-  string Name = 2;
+  string name = 2;
   // Avatar
-  string Avatar = 3;
-  // 别名
-  string Alias = 4;
+  string avatar = 3;
+}
+
+// 群会话
+message GroupSession {
+  // ID
+  string groupId = 1;
+  // 名称
+  string name = 2;
+  // Avatar
+  string avatar = 3;
   // 最新消息
-  string LastMessage = 5;
+  string lastMessage = 4;
   // 更新时间
-  int64 UpdateTime = 6;
+  int64 updateTime = 5;
 }
 
 // 群
 message GroupFull {
   // ID
-  string GroupID = 1;
+  string groupId = 1;
   // 名称
-  string Name = 2;
+  string name = 2;
   // Avatar
-  string Avatar = 3;
-  // 别名
-  string Alias = 4;
+  string avatar = 3;
   // 通知公告
-  string Notice = 5;
-  // 管理员
-  Contact Admin = 6;
+  string notice = 4;
   // 是否需要审核入群
-  bool AutoJoinGroup = 8;
+  bool autoJoinGroup = 5;
   // 创建时间
-  int64 CreateTime = 9;
+  int64 createTime = 6;
   // 更新时间
-  int64 UpdateTime = 10;
+  int64 updateTime = 7;
 }
 
 // 群消息
 message  GroupMember {
-  // PeerID
-  string PeerID = 1;
+  // PeerId
+  string peerId = 1;
   // 群ID
-  string GroupID = 2;
+  string groupId = 2;
   // 用户名称
-  string Name = 3;
+  string name = 3;
   // 头像SHA1
-  string Avatar = 4;
-  // 用户昵称
-  string Alias = 5;
+  string avatar = 4;
 }
 
 // 群消息
 message  GroupMessage {
   // 消息ID
-  string ID = 1;
+  string id = 1;
   // 群ID
-  string GroupID = 2;
+  string groupId = 2;
   // 发送者
-  Contact Sender = 3;
+  Peer sender = 3;
   // 消息类型
-  MsgType MsgType = 4;
-  // MIME-Type
-  string MimeType = 5;
+  string msgType = 4;
+  // MIME类型
+  string mimeType = 5;
   // 内容
-  bytes Data = 6;
+  bytes payload = 6;
   // 消息时间
-  int64 CreateTime = 7;
+  int64 createTime = 7;
 }
 
 // 会话信息
 message Session {
   // 会话类型
-  SessionType SessionType = 1;
-  // 会话ID（群组ID或者PeerID）
-  string SessionID = 2;
+  enum SessionType {
+    // 联系人会话
+    ContactSession = 0;
+    // 群会话
+    GroupSession = 1;
+  }
+
+  // 会话类型
+  SessionType type = 1;
+  // 会话id（群组id或者PeerId）
+  string sessionId = 2;
   // 名称
-  string Name = 3;
+  string name = 3;
   // 头像 SHA1
-  string Avatar = 4;
+  string avatar = 4;
   // 最新消息
-  string LastMessage = 5;
+  string lastMessage = 5;
   // 最新消息时间
-  int64 LastMessageTime = 6;
+  int64 lastMessageTime = 6;
   // 有未读消息
-  bool HaveUnreadMessage = 7;
-}
-
-// 系统操作类型
-enum SystemType {
-  APPLY_ADD_CONTACT = 0;
-  APPLY_JOIN_GROUP = 1;
-}
-
-// 系统操作类型
-enum SystemState {
-  IS_SENDED = 0;
-  IS_AGREE = 1;
-  IS_REJECT = 2;
+  bool haveUnreadMessage = 7;
 }
 
 // 系统消息
 message SystemMessage {
-  string ID = 1;
-  SystemType Type = 2;
-  string GroupID = 3;
-  Peer Sender = 4;
-  Peer Receiver = 5;
-  string Content = 6;
-  SystemState State = 7;
-  int64 Ctime = 8;
-  int64 Utime = 9;
-}
+  // 系统操作类型
+  enum MsgType {
+    // 申请加联系人
+    ApplyAddContact = 0;
+    // 邀请加群组
+    InviteJoinGroup = 1;
+  }
 
+  string id = 1;
+  MsgType type = 2;
+  string groupId = 3;
+  Peer fromPeer = 4;
+  string toPeerId = 5;
+  string content = 6;
+  string State = 7;
+  int64 createTime = 8;
+  int64 updateTime = 9;
+}
 
 // 外部(前端)订阅消息
 message CommonEvent {
 
   enum EventType {
     PeerMessage = 0;
+    GroupMessage = 1;
   }
 
   message PayloadPeerMessage {
-    string msg_id = 1;
-    string from_peer_id = 2;
+    string msgId = 1;
+    string fromPeerId = 2;
   }
 
-  EventType Type = 1;
+  message PayloadGroupMessage {
+    string msgId = 1;
+    string groupId = 2;
+  }
+
+  EventType type = 1;
   bytes Payload = 2;
 }

@@ -1,6 +1,8 @@
 package depositsvc
 
 import (
+	"context"
+
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/peer"
@@ -18,7 +20,7 @@ type DepositService struct {
 	client  *peer.PeerDepositClient
 }
 
-func NewDepositService(conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery) (*DepositService, error) {
+func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery) (*DepositService, error) {
 
 	depositsvc = &DepositService{}
 

@@ -21,7 +21,7 @@ type ContactSvc struct {
 	contactProto *contactproto.ContactProto
 }
 
-func NewContactService(conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery) (*ContactSvc, error) {
 
 	var err error
@@ -45,6 +45,27 @@ func (c *ContactSvc) Close() {}
 
 func (c *ContactSvc) AgreeAddContact(ctx context.Context, peerID peer.ID, ackID string) error {
 	return nil
+}
+
+func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]Contact, error) {
+	var contacts []Contact
+
+	result, err := c.contactProto.GetContactsByPeerIDs(ctx, peerIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pi := range result {
+		contacts = append(contacts, Contact{
+			PeerID:   pi.PeerID,
+			Name:     pi.Name,
+			Avatar:   pi.Avatar,
+			AddTs:    pi.AddTs,
+			AccessTs: pi.AccessTs,
+		})
+	}
+
+	return contacts, nil
 }
 
 func (c *ContactSvc) GetContacts(ctx context.Context) ([]Contact, error) {

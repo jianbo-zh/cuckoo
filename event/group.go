@@ -21,19 +21,17 @@ type EvtGroupConnectChange struct {
 	IsConnected bool
 }
 
+type Groups struct {
+	GroupID string
+	PeerIDs []peer.ID
+}
 type EvtGroupsInit struct {
-	Groups []struct {
-		GroupID string
-		PeerIDs []peer.ID
-	}
+	Groups []Groups
 }
 
 type EvtGroupsChange struct {
 	DeleteGroups []string
-	AddGroups    []struct {
-		GroupID string
-		PeerIDs []peer.ID
-	}
+	AddGroups    []Groups
 }
 
 type EvtGroupMemberChange struct {

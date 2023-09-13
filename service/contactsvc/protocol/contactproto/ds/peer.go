@@ -47,6 +47,24 @@ func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.ContactMsg
 	return &info, nil
 }
 
+func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.ContactMsg, error) {
+	var contacts []*pb.ContactMsg
+	for _, peerID := range peerIDs {
+		value, err := p.Get(ctx, ipfsds.NewKey("/dchat/peer/peer/"+peerID.String()))
+		if err != nil {
+			return nil, err
+		}
+
+		var contact pb.ContactMsg
+		if err := proto.Unmarshal(value, &contact); err != nil {
+			return nil, err
+		}
+		contacts = append(contacts, &contact)
+	}
+
+	return contacts, nil
+}
+
 func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 	results, err := p.Query(ctx, query.Query{
 		Prefix: "/dchat/peer/peer/",

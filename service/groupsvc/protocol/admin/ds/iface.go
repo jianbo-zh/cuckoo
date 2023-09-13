@@ -17,11 +17,20 @@ type AdminIface interface {
 
 	SaveLog(context.Context, peer.ID, GroupID, *pb.Log) error
 	ListGroups(context.Context) ([]Group, error)
+	GetGroupIDs(context.Context) ([]string, error)
+
+	JoinGroupSaveLog(context.Context, peer.ID, GroupID, *pb.Log) error
+	JoinGroup(ctx context.Context, groupID string, name string, avatar string) error
+	DeleteGroup(ctx context.Context, groupID string) error
+	GetGroup(ctx context.Context, groupID string) (*Group, error)
 
 	GroupName(context.Context, GroupID) (string, error)
-	GroupRemark(context.Context, GroupID) (string, error)
+	GroupLocalName(context.Context, GroupID) (string, error)
+	GroupAvatar(context.Context, GroupID) (string, error)
+	GroupLocalAvatar(context.Context, GroupID) (string, error)
 	GroupNotice(context.Context, GroupID) (string, error)
-	SetGroupRemark(context.Context, GroupID, string) error
+	SetGroupLocalName(context.Context, GroupID, string) error
+	SetGroupLocalAvatar(context.Context, GroupID, string) error
 	GroupMemberLogs(context.Context, GroupID) ([]*pb.Log, error)
 
 	GetMessageHead(context.Context, GroupID) (string, error)

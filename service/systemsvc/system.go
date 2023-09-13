@@ -6,13 +6,17 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	myevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
+	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/pb"
 	logging "github.com/jianbo-zh/go-log"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
 
 var log = logging.Logger("system")
@@ -24,12 +28,13 @@ type SystemSvc struct {
 
 	accountSvc accountsvc.AccountServiceIface
 	contactSvc contactsvc.ContactServiceIface
+	groupSvc   groupsvc.GroupServiceIface
 
 	msgCh chan *pb.SystemMsg
 }
 
-func NewSystemService(lhost host.Host, ids ipfsds.Batching,
-	accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface) (*SystemSvc, error) {
+func NewSystemService(ctx context.Context, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+	accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface, groupSvc groupsvc.GroupServiceIface) (*SystemSvc, error) {
 
 	var err error
 
@@ -38,6 +43,7 @@ func NewSystemService(lhost host.Host, ids ipfsds.Batching,
 		msgCh:      make(chan *pb.SystemMsg, 5),
 		accountSvc: accountSvc,
 		contactSvc: contactSvc,
+		groupSvc:   groupSvc,
 	}
 
 	systemsvc.systemProto, err = systemproto.NewSystemProto(lhost, ids, systemsvc.msgCh)
@@ -45,10 +51,79 @@ func NewSystemService(lhost host.Host, ids ipfsds.Batching,
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
 
-	// 后台处理系统消息
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtInviteJoinGroup)}, eventbus.Name("system_message"))
+	if err != nil {
+		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
+	}
+
+	go systemsvc.goSubscribeHandler(ctx, sub)
+
+	// 后台处理系统消息 todo: add context
 	go systemsvc.goHandleMessage()
 
 	return systemsvc, nil
+}
+
+// goSubscribeHandler 发送系统消息的监听订阅
+func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				return
+			}
+
+			evt := e.(myevent.EvtInviteJoinGroup)
+
+			account, err := s.accountSvc.GetAccount(ctx)
+			if err != nil {
+				log.Errorf("get account error: %s", err.Error())
+				continue
+			}
+
+			for _, peerID := range evt.PeerIDs {
+
+				msg := pb.SystemMsg{
+					Id:            GenMsgID(account.PeerID),
+					AckId:         "",
+					Type:          pb.SystemMsg_InviteJoinGroup,
+					GroupId:       evt.GroupID,
+					GroupName:     evt.GroupName,
+					GroupAvatar:   evt.GroupAvatar,
+					GroupLamptime: evt.GroupLamptime,
+					FromPeer: &pb.Peer{
+						PeerId: []byte(account.PeerID),
+						Name:   account.Name,
+						Avatar: account.Avatar,
+					},
+					ToPeer: &pb.Peer{
+						PeerId: []byte(peerID),
+						Name:   "",
+						Avatar: "",
+					},
+					Content: "",
+					State:   pb.SystemMsg_IsSended,
+					Ctime:   time.Now().Unix(),
+					Utime:   time.Now().Unix(),
+				}
+
+				if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
+					log.Errorf("systemProto.SaveMessage error: %s", err.Error())
+					continue
+				}
+
+				err = s.systemProto.SendMessage(ctx, &msg)
+				if err != nil {
+					log.Errorf("systemProto.SendMessage error: %s", err.Error())
+				}
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (s *SystemSvc) goHandleMessage() {
@@ -113,7 +188,6 @@ func (s *SystemSvc) goHandleMessage() {
 				}); err != nil {
 					log.Errorf("send messge error: %s", err.Error())
 				}
-
 			}
 
 		case pb.SystemMsg_ContactApplyAck: // 同意加好友
@@ -145,6 +219,94 @@ func (s *SystemSvc) goHandleMessage() {
 				}
 			case pb.SystemMsg_IsReject:
 				// 更新系统消息状态，已拒绝
+				if err = s.systemProto.UpdateMessageState(ctx, msg.AckId, pb.SystemMsg_IsReject); err != nil {
+					log.Errorf("systemProto.UpdateMessage error: %s", err.Error())
+				}
+			default:
+				// nothing
+				log.Error("msg state error")
+			}
+
+		case pb.SystemMsg_InviteJoinGroup:
+			ctx := context.Background()
+			// 系统消息入库
+			if err := s.systemProto.SaveMessage(ctx, msg); err != nil {
+				log.Errorf("save message error: %s", err.Error())
+				continue
+			}
+
+			// 判断是否自动加好友
+			account, err := s.accountSvc.GetAccount(ctx)
+			if err != nil {
+				log.Errorf("get account error: %s", err.Error())
+				continue
+			}
+
+			if account.AutoJoinGroup {
+				// 创建群组
+				fmt.Println("groupID ", msg.GroupId, "name ", msg.GroupName, "avatar ", msg.GroupAvatar)
+				if err = s.groupSvc.JoinGroup(ctx, msg.GroupId, msg.GroupName, msg.GroupAvatar, msg.GroupLamptime); err != nil {
+					log.Errorf("groupSvc.JoinGroup error: %s", err.Error())
+					continue
+				}
+
+				// 如果是自动加好友，则更新系统消息状态为已同意
+				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, pb.SystemMsg_IsAgree); err != nil {
+					log.Errorf("update message state error: %s", err.Error())
+					continue
+				}
+
+				// 发送同意加好友消息
+				if err = s.systemProto.SendMessage(ctx, &pb.SystemMsg{
+					Id:            GenMsgID(account.PeerID),
+					AckId:         msg.Id,
+					Type:          pb.SystemMsg_InviteJoinGroupAck,
+					GroupId:       msg.GroupId,
+					GroupName:     msg.GroupName,
+					GroupAvatar:   msg.GroupAvatar,
+					GroupLamptime: msg.GroupLamptime,
+					FromPeer: &pb.Peer{
+						PeerId: []byte(account.PeerID),
+						Name:   account.Name,
+						Avatar: account.Avatar,
+					},
+					ToPeer: &pb.Peer{
+						PeerId: msg.FromPeer.PeerId,
+						Name:   msg.FromPeer.Name,
+						Avatar: msg.FromPeer.Avatar,
+					},
+					Content: "",
+					State:   pb.SystemMsg_IsAgree,
+					Ctime:   time.Now().Unix(),
+					Utime:   time.Now().Unix(),
+				}); err != nil {
+					log.Errorf("send messge error: %s", err.Error())
+				}
+
+			}
+		case pb.SystemMsg_InviteJoinGroupAck:
+			// 收到邀请入群回执
+			ctx := context.Background()
+			ackMsg, err := s.systemProto.GetMessage(ctx, msg.AckId)
+			if err != nil {
+				log.Errorf("systemProto.GetMessage error: %s-%s-", err.Error(), msg.AckId)
+				continue
+			}
+
+			ackPeerID := peer.ID(ackMsg.ToPeer.PeerId)
+			if peer.ID(msg.FromPeer.PeerId) != ackPeerID {
+				log.Errorf("ackPeerID not equal")
+				continue
+			}
+
+			switch msg.State {
+			case pb.SystemMsg_IsAgree:
+				// 更新系统消息状态，已同意入群邀请
+				if err = s.systemProto.UpdateMessageState(ctx, msg.AckId, pb.SystemMsg_IsAgree); err != nil {
+					log.Errorf("systemProto.UpdateMessage error: %s", err.Error())
+				}
+			case pb.SystemMsg_IsReject:
+				// 更新系统消息状态，已拒绝入群邀请
 				if err = s.systemProto.UpdateMessageState(ctx, msg.AckId, pb.SystemMsg_IsReject); err != nil {
 					log.Errorf("systemProto.UpdateMessage error: %s", err.Error())
 				}

@@ -180,7 +180,16 @@ func (m *MessageService) subscribeHandler(ctx context.Context, sub event.Subscri
 	}
 }
 
-func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, msg string) error {
+func (m *MessageService) GetMessageList(ctx context.Context, groupID string, offset int, limit int) ([]*pb.Message, error) {
+	msgs, err := m.data.ListMessages(ctx, groupID, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("m.data.ListMessages error: %w", err)
+	}
+
+	return msgs, nil
+}
+
+func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, name string, avatar string, content string) error {
 
 	peerID := m.host.ID()
 	lamportime, err := m.data.TickLamportTime(context.Background(), groupID)
@@ -188,17 +197,30 @@ func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, ms
 		return err
 	}
 
-	err = m.broadcastMessage(ctx, groupID, &pb.Message{
+	msg := pb.Message{
 		Id:         msgID(lamportime, peerID),
+		GroupId:    groupID,
 		PeerId:     []byte(peerID),
+		PeerName:   name,
+		PeerAvatar: avatar,
 		Type:       pb.Message_TEXT,
-		Payload:    []byte(msg),
+		Payload:    []byte(content),
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportime,
-	})
-	if err != nil {
-		return err
 	}
+
+	// 保存消息
+	err = m.data.SaveMessage(context.Background(), groupID, &msg)
+	if err != nil {
+		log.Errorf("save group message error: %v", err)
+	}
+
+	err = m.broadcastMessage(ctx, groupID, &msg)
+	if err != nil {
+		return fmt.Errorf("m.broadcast message error: %w", err)
+	}
+
+	fmt.Println("111222")
 
 	return nil
 }
@@ -206,7 +228,10 @@ func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, ms
 // 发送消息
 func (m *MessageService) broadcastMessage(ctx context.Context, groupID string, msg *pb.Message, excludePeerIDs ...peer.ID) error {
 
-	for _, peerID := range m.getConnectPeers(groupID) {
+	connectPeerIDs := m.getConnectPeers(groupID)
+	fmt.Printf("get connect peers: %v\n", connectPeerIDs)
+
+	for _, peerID := range connectPeerIDs {
 		if len(excludePeerIDs) > 0 {
 			isExcluded := false
 			for _, excludePeerID := range excludePeerIDs {

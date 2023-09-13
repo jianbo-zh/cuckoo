@@ -56,7 +56,7 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 	}
 
 	account = proto.Account{
-		PeerID:         fullAccount.PeerID.String(),
+		PeerId:         fullAccount.PeerID.String(),
 		Name:           fullAccount.Name,
 		Avatar:         fullAccount.Avatar,
 		AutoAddContact: fullAccount.AutoAddContact,
@@ -87,7 +87,7 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 
 	} else if account != nil {
 		protoAccount = proto.Account{
-			PeerID:         account.PeerID.String(),
+			PeerId:         account.PeerID.String(),
 			Name:           account.Name,
 			Avatar:         account.Avatar,
 			AutoAddContact: account.AutoAddContact,
@@ -157,7 +157,7 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountAutoAddContact(ctx, request.GetIsReview())
+	err = accountSvc.SetAccountAutoAddContact(ctx, request.GetIsAuto())
 	if err != nil {
 		return nil, fmt.Errorf("accountSvc.SetAutoAddContact error: %w", err)
 	}
@@ -167,7 +167,7 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 			Code:    0,
 			Message: "ok",
 		},
-		IsReview: request.GetIsReview(),
+		IsAuto: request.GetIsAuto(),
 	}
 	return reply, nil
 }
@@ -179,7 +179,7 @@ func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAut
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountAutoJoinGroup(ctx, request.GetIsReview())
+	err = accountSvc.SetAccountAutoJoinGroup(ctx, request.GetIsAuto())
 	if err != nil {
 		return nil, fmt.Errorf("accountSvc.SetAutoJoinGroup error: %w", err)
 	}
@@ -189,7 +189,7 @@ func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAut
 			Code:    0,
 			Message: "ok",
 		},
-		IsReview: request.GetIsReview(),
+		IsAuto: request.GetIsAuto(),
 	}
 	return reply, nil
 }

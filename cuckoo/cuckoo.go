@@ -74,27 +74,27 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 		return nil, fmt.Errorf("datastore.New error: %w", err)
 	}
 
-	cuckoo.accountSvc, err = accountsvc.NewAccountService(conf.AccountService, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.accountSvc, err = accountsvc.NewAccountService(ctx, conf.AccountService, cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
 		return nil, fmt.Errorf("accountsvc.NewAccountService error: %s", err.Error())
 	}
 
-	cuckoo.contactSvc, err = contactsvc.NewContactService(conf.ContactService, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.contactSvc, err = contactsvc.NewContactService(ctx, conf.ContactService, cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
 		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
 	}
 
-	cuckoo.groupSvc, err = groupsvc.NewGroupService(conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc)
 	if err != nil {
 		return nil, fmt.Errorf("group.NewGroupService error: %s", err.Error())
 	}
 
-	// cuckoo.depositSvc, err = depositsvc.NewDepositService(conf.DepositService, cuckoo.host, ds, ebus, routingDiscovery)
+	// cuckoo.depositSvc, err = depositsvc.NewDepositService(ctx, conf.DepositService, cuckoo.host, ds, ebus, routingDiscovery)
 	// if err != nil {
 	// 	return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
 	// }
 
-	cuckoo.systemSvc, err = systemsvc.NewSystemService(cuckoo.host, ds, cuckoo.accountSvc, cuckoo.contactSvc)
+	cuckoo.systemSvc, err = systemsvc.NewSystemService(ctx, cuckoo.host, ds, ebus, cuckoo.accountSvc, cuckoo.contactSvc, cuckoo.groupSvc)
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
 	}

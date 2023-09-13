@@ -9,6 +9,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
+	"github.com/jianbo-zh/dchat/service/groupsvc"
 )
 
 var _ proto.SessionSvcServer = (*SessionSvc)(nil)
@@ -38,25 +39,40 @@ func (c *SessionSvc) getContactSvc() (contactsvc.ContactServiceIface, error) {
 	return contactSvc, nil
 }
 
-func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessionListRequest) (*proto.GetSessionListReply, error) {
+func (c *SessionSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return groupSvc, nil
+}
+
+func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessionsRequest) (*proto.GetSessionsReply, error) {
 
 	var sessions []*proto.Session
-	if len(groups) > 0 {
-		for i, group := range groups {
-			if request.Keywords != "" && !strings.Contains(group.Name, request.Keywords) {
-				continue
-			}
+	groupSvc, err := s.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("s.getGroupSvc error: %w", err)
+	}
 
-			sessions = append(sessions, &proto.Session{
-				SessionType:       proto.SessionType_GROUP_SESSION,
-				SessionID:         group.GroupID,
-				Avatar:            group.Avatar,
-				Name:              group.Name,
-				LastMessage:       "lastmessage",
-				LastMessageTime:   time.Now().Unix(),
-				HaveUnreadMessage: i%2 == 0,
-			})
-		}
+	groups, err := groupSvc.ListGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.ListGroups error: %w", err)
+	}
+
+	for _, group := range groups {
+		sessions = append(sessions, &proto.Session{
+			Type:      proto.Session_GroupSession,
+			SessionId: group.ID,
+			Name:      group.Name,
+			Avatar:    group.Avatar,
+		})
 	}
 
 	contactSvc, err := s.getContactSvc()
@@ -75,8 +91,8 @@ func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessi
 		}
 
 		sessions = append(sessions, &proto.Session{
-			SessionType:       proto.SessionType_CONTACT_SESSION,
-			SessionID:         contact.PeerID.String(),
+			Type:              proto.Session_ContactSession,
+			SessionId:         contact.PeerID.String(),
 			Name:              contact.Name,
 			Avatar:            contact.Avatar,
 			LastMessage:       "",
@@ -99,12 +115,12 @@ func (s *SessionSvc) GetSessionList(ctx context.Context, request *proto.GetSessi
 		sessionList = make([]*proto.Session, 0)
 	}
 
-	reply := &proto.GetSessionListReply{
+	reply := &proto.GetSessionsReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		SessionList: sessionList,
+		Sessions: sessionList,
 	}
 	return reply, nil
 }

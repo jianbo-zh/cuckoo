@@ -22,17 +22,16 @@ func init() {
 	contactMessages = make([]*proto.ContactMessage, 0)
 
 	groupMessages = append(groupMessages, &proto.GroupMessage{
-		ID:      "id",
-		GroupID: "groupID",
-		Sender: &proto.Contact{
-			PeerID: "peerID-8081",
+		Id:      "id",
+		GroupId: "groupID",
+		Sender: &proto.Peer{
+			Id:     "peerID-8081",
 			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name-8081",
-			Alias:  "",
 		},
-		MsgType:    proto.MsgType_TEXT_MSG,
+		MsgType:    "text",
 		MimeType:   "text/plain",
-		Data:       []byte("hello 你好！"),
+		Payload:    []byte("hello 你好！"),
 		CreateTime: time.Now().Unix(),
 	})
 }

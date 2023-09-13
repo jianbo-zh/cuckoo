@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -12,10 +13,7 @@ import (
 )
 
 // initNetwork 初始化网络
-func (n *NetworkService) initNetwork(groups []struct {
-	GroupID string
-	PeerIDs []peer.ID
-}) error {
+func (n *NetworkService) initNetwork(groups []gevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
 	defer n.groupPeersMutex.Unlock()
@@ -46,10 +44,7 @@ func (n *NetworkService) initNetwork(groups []struct {
 	return nil
 }
 
-func (n *NetworkService) addNetwork(groups []struct {
-	GroupID string
-	PeerIDs []peer.ID
-}) error {
+func (n *NetworkService) addNetwork(groups []gevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
 	defer n.groupPeersMutex.Unlock()

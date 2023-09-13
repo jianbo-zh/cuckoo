@@ -39,7 +39,8 @@ type AdminService struct {
 	data ds.AdminIface
 
 	emitters struct {
-		evtSendAdminLog event.Emitter
+		evtSendAdminLog    event.Emitter
+		evtInviteJoinGroup event.Emitter
 	}
 
 	groupConns map[string]map[peer.ID]struct{}
@@ -58,6 +59,10 @@ func NewAdminService(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	lhost.SetStreamHandler(SYNC_ID, admsvc.Handler)
 
 	if admsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
+		return nil, fmt.Errorf("set emitter error: %v", err)
+	}
+
+	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&gevent.EvtInviteJoinGroup{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
 	}
 
@@ -134,7 +139,44 @@ func (a *AdminService) subscribeHandler(ctx context.Context, sub event.Subscript
 	}
 }
 
-func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs []peer.ID) (string, error) {
+func (a *AdminService) JoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error {
+	err := a.data.MergeLamportTime(ctx, groupID, lamptime)
+	if err != nil {
+		return fmt.Errorf("a.data.MergeLamportTime error: %w", err)
+	}
+
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("a.data.TickLamportTime error: %w", err)
+	}
+
+	hostID := a.host.ID()
+
+	memberLog := pb.Log{
+		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "member", hostID.String()),
+		GroupId:    groupID,
+		PeerId:     hostID.String(),
+		Type:       pb.Log_MEMBER,
+		MemberId:   hostID.String(),
+		Operate:    pb.Log_APPLY,
+		Payload:    []byte(""),
+		Timestamp:  int32(time.Now().Unix()),
+		Lamportime: lamportTime,
+		Signature:  []byte(""),
+	}
+
+	if err = a.data.JoinGroupSaveLog(ctx, hostID, groupID, &memberLog); err != nil {
+		return fmt.Errorf("a.data.JoinGroupSaveLog error: %w", err)
+	}
+
+	if err = a.data.JoinGroup(ctx, groupID, groupName, groupAvatar); err != nil {
+		return fmt.Errorf("a.data.JoinGroup error: %w", err)
+	}
+
+	return nil
+}
+
+func (a *AdminService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (string, error) {
 
 	groupID := ds.GroupID(uuid.NewString())
 	peerID := a.host.ID().String()
@@ -184,9 +226,33 @@ func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs [
 	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &nameLog); err != nil {
 		return string(groupID), err
 	}
-
 	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
 		MsgType: pb.Log_NAME,
+		MsgData: &nameLog,
+	}); err != nil {
+		return "", err
+	}
+
+	// 设置头像
+	lamportTime, err = a.data.TickLamportTime(ctx, groupID)
+	if err != nil {
+		return string(groupID), err
+	}
+	avatarLog := pb.Log{
+		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "avatar", peerID),
+		GroupId:    string(groupID),
+		PeerId:     peerID,
+		Type:       pb.Log_AVATAR,
+		Payload:    []byte(avatar),
+		Timestamp:  int32(time.Now().Unix()),
+		Lamportime: lamportTime,
+		Signature:  []byte(""),
+	}
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &avatarLog); err != nil {
+		return string(groupID), err
+	}
+	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+		MsgType: pb.Log_AVATAR,
 		MsgData: &nameLog,
 	}); err != nil {
 		return "", err
@@ -215,8 +281,17 @@ func (a *AdminService) CreateGroup(ctx context.Context, name string, memberIDs [
 		if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &memberLog); err != nil {
 			return string(groupID), err
 		}
+	}
 
-		// todo: 要单独给人发消息
+	// 发送邀请消息
+	if err = a.emitters.evtInviteJoinGroup.Emit(gevent.EvtInviteJoinGroup{
+		PeerIDs:       memberIDs,
+		GroupID:       groupID,
+		GroupName:     name,
+		GroupAvatar:   avatar,
+		GroupLamptime: lamportTime,
+	}); err != nil {
+		return string(groupID), fmt.Errorf("evtInviteJoinGroup.Emit error: %w", err)
 	}
 
 	return string(groupID), nil
@@ -259,20 +334,118 @@ func (a *AdminService) DisbandGroup(ctx context.Context, groupID0 string) error 
 	return nil
 }
 
+func (a *AdminService) ExitGroup(ctx context.Context, groupID string) error {
+
+	peerID := a.host.ID().String()
+
+	// 创建组
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	pbmsg := pb.Log{
+		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "exit", peerID),
+		GroupId:    string(groupID),
+		PeerId:     peerID,
+		Type:       pb.Log_DISBAND,
+		Payload:    []byte(groupID),
+		Timestamp:  int32(time.Now().Unix()),
+		Lamportime: lamportTime,
+		Signature:  []byte(""),
+	}
+
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+		return err
+	}
+
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+		MsgType: pb.Log_DISBAND,
+		MsgData: &pbmsg,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *AdminService) DeleteGroup(ctx context.Context, groupID string) error {
+
+	fmt.Println("delete group ", groupID)
+
+	peerID := a.host.ID().String()
+
+	// 创建组
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	pbmsg := pb.Log{
+		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "exit", peerID),
+		GroupId:    string(groupID),
+		PeerId:     peerID,
+		Type:       pb.Log_DISBAND,
+		Payload:    []byte(groupID),
+		Timestamp:  int32(time.Now().Unix()),
+		Lamportime: lamportTime,
+		Signature:  []byte(""),
+	}
+
+	if err = a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+		return err
+	}
+
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+		MsgType: pb.Log_DISBAND,
+		MsgData: &pbmsg,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = a.data.DeleteGroup(ctx, groupID); err != nil {
+		return fmt.Errorf("data.DeleteGroup error: %w", err)
+	}
+
+	return nil
+}
+
 func (a *AdminService) ListGroups(ctx context.Context) ([]ds.Group, error) {
 	return a.data.ListGroups(ctx)
 }
 
+func (a *AdminService) GetGroupIDs(ctx context.Context) ([]string, error) {
+	return a.data.GetGroupIDs(ctx)
+}
+
+func (a *AdminService) GetGroup(ctx context.Context, groupID string) (*ds.Group, error) {
+	return a.data.GetGroup(ctx, groupID)
+}
+
 func (a *AdminService) GroupName(ctx context.Context, groupID string) (string, error) {
 
-	if remark, err := a.data.GroupRemark(ctx, ds.GroupID(groupID)); err != nil {
+	if name, err := a.data.GroupLocalName(ctx, ds.GroupID(groupID)); err != nil {
 		return "", err
 
-	} else if remark != "" {
-		return remark, nil
+	} else if name != "" {
+		return name, nil
 	}
 
 	return a.data.GroupName(ctx, ds.GroupID(groupID))
+}
+
+func (a *AdminService) GroupAvatar(ctx context.Context, groupID string) (string, error) {
+
+	if avatar, err := a.data.GroupLocalAvatar(ctx, ds.GroupID(groupID)); err != nil {
+		return "", err
+
+	} else if avatar != "" {
+		return avatar, nil
+	}
+
+	return a.data.GroupAvatar(ctx, ds.GroupID(groupID))
 }
 
 func (a *AdminService) GroupNotice(ctx context.Context, groupID string) (string, error) {
@@ -315,6 +488,60 @@ func (a *AdminService) SetGroupName(ctx context.Context, groupID0 string, name s
 	return nil
 }
 
+func (a *AdminService) SetGroupLocalName(ctx context.Context, groupID0 string, name string) error {
+	err := a.data.SetGroupLocalName(ctx, groupID0, name)
+	if err != nil {
+		return fmt.Errorf("data.SetGroupLocalName error: %w", err)
+	}
+
+	return nil
+}
+
+func (a *AdminService) SetGroupAvatar(ctx context.Context, groupID0 string, avatar string) error {
+
+	groupID := ds.GroupID(groupID0)
+	peerID := a.host.ID().String()
+
+	lamportTime, err := a.data.TickLamportTime(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	pbmsg := pb.Log{
+		Id:         fmt.Sprintf("%d_%s_%s", lamportTime, "avatar", peerID),
+		GroupId:    string(groupID),
+		PeerId:     peerID,
+		Type:       pb.Log_AVATAR,
+		Payload:    []byte(avatar),
+		Timestamp:  int32(time.Now().Unix()),
+		Lamportime: lamportTime,
+		Signature:  []byte(""),
+	}
+
+	if err := a.data.SaveLog(ctx, a.host.ID(), groupID, &pbmsg); err != nil {
+		return err
+	}
+
+	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
+		MsgType: pb.Log_AVATAR,
+		MsgData: &pbmsg,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *AdminService) SetGroupLocalAvatar(ctx context.Context, groupID0 string, avatar string) error {
+	err := a.data.SetGroupLocalAvatar(ctx, groupID0, avatar)
+	if err != nil {
+		return fmt.Errorf("data.SetGroupLocalAvatar error: %w", err)
+	}
+
+	return nil
+}
+
 func (a *AdminService) SetGroupNotice(ctx context.Context, groupID0 string, notice string) error {
 
 	groupID := ds.GroupID(groupID0)
@@ -349,11 +576,6 @@ func (a *AdminService) SetGroupNotice(ctx context.Context, groupID0 string, noti
 	}
 
 	return nil
-}
-
-func (a *AdminService) SetGroupRemark(ctx context.Context, groupID string, remark string) error {
-	// 只是更新本地
-	return a.data.SetGroupRemark(ctx, ds.GroupID(groupID), remark)
 }
 
 func (a *AdminService) InviteMember(ctx context.Context, groupID0 string, peerID0 peer.ID) error {
@@ -490,7 +712,7 @@ func (a *AdminService) RemoveMember(ctx context.Context, groupID0 string, member
 	return nil
 }
 
-func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]ds.Member, error) {
+func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]peer.ID, error) {
 
 	groupID := ds.GroupID(groupID0)
 	memberLogs, err := a.data.GroupMemberLogs(ctx, groupID)
@@ -527,16 +749,14 @@ func (a *AdminService) ListMembers(ctx context.Context, groupID0 string) ([]ds.M
 		}
 	}
 
-	var members []ds.Member
+	var memberIDs []peer.ID
 	for memberID := range oks {
 		peerID, err := peer.Decode(memberID)
 		if err != nil {
 			return nil, err
 		}
-		members = append(members, ds.Member{
-			PeerID: peerID,
-		})
+		memberIDs = append(memberIDs, peerID)
 	}
 
-	return members, nil
+	return memberIDs, nil
 }

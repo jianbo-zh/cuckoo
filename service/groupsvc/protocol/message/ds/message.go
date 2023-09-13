@@ -3,6 +3,7 @@ package ds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	ds "github.com/ipfs/go-datastore"
@@ -40,20 +41,21 @@ func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID strin
 
 func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb.Message) error {
 
-	msgPrefix := []string{"dchat", "group", string(groupID), "message"}
-
-	key := ds.KeyWithNamespaces(append(msgPrefix, "logs", msg.Id))
-	bs, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
+	fmt.Println("save message groupid: ", groupID, "msgid: ", msg.Id)
 
 	batch, err := m.Batch(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := batch.Put(ctx, key, bs); err != nil {
+	msgPrefix := []string{"dchat", "group", string(groupID), "message"}
+	msgKey := ds.KeyWithNamespaces(append(msgPrefix, "logs", msg.Id))
+	fmt.Println("msgkey: ", msgKey.String())
+	bs, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	if err := batch.Put(ctx, msgKey, bs); err != nil {
 		return err
 	}
 
@@ -77,11 +79,16 @@ func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb
 	return batch.Commit(ctx)
 }
 
-func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb.Message, error) {
+func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*msgpb.Message, error) {
 
+	fmt.Printf("list messages groupId:%s offset:%d limit:%d\n", groupID, offset, limit)
+
+	fmt.Println("prefix: ", "/dchat/group/"+string(groupID)+"/message/logs")
 	results, err := m.Query(ctx, query.Query{
 		Prefix: "/dchat/group/" + string(groupID) + "/message/logs",
 		Orders: []query.Order{query.OrderByKeyDescending{}},
+		Offset: offset,
+		Limit:  limit,
 	})
 	if err != nil {
 		return nil, err
@@ -92,6 +99,8 @@ func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID) ([]*msgpb
 		if result.Error != nil {
 			return nil, err
 		}
+
+		fmt.Println("adf2222")
 
 		var msg msgpb.Message
 		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {

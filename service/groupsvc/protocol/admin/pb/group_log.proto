@@ -8,9 +8,10 @@ message Log {
   enum Type {
     CREATE = 0; // 创建群
     NAME = 1; // 设置群名
-    NOTICE = 2; // 设置群公告
-    MEMBER = 3; // 群成员操作
-    DISBAND = 4; // 解散群
+    AVATAR = 2; // 设置群头像
+    NOTICE = 3; // 设置群公告
+    MEMBER = 4; // 群成员操作
+    DISBAND = 5; // 解散群
   }
 
   // 群成员具体操作
