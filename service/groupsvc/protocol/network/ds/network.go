@@ -7,10 +7,13 @@ import (
 	"sync"
 
 	ds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/multiformats/go-varint"
 )
 
 var _ NetworkIface = (*NetworkDs)(nil)
+
+var adminDsKey = &datastore.GroupDsKey{}
 
 type NetworkDs struct {
 	ds.Batching
@@ -26,9 +29,7 @@ func (n *NetworkDs) GetLamportTime(ctx context.Context, groupID GroupID) (uint64
 	n.networkLamportMutex.Lock()
 	defer n.networkLamportMutex.Unlock()
 
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "network", "lamportime"})
-
-	tbs, err := n.Get(ctx, key)
+	tbs, err := n.Get(ctx, adminDsKey.NetworkLamptimeKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			return 0, nil
@@ -43,23 +44,21 @@ func (n *NetworkDs) SetLamportTime(ctx context.Context, groupID GroupID, lamptim
 	n.networkLamportMutex.Lock()
 	defer n.networkLamportMutex.Unlock()
 
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "network", "lamportime"})
-
 	buff := make([]byte, varint.MaxLenUvarint63)
 	len := varint.PutUvarint(buff, lamptime)
 
-	return n.Put(ctx, key, buff[:len])
+	return n.Put(ctx, adminDsKey.NetworkLamptimeKey(groupID), buff[:len])
 }
 
 func (n *NetworkDs) TickLamportTime(ctx context.Context, groupID GroupID) (uint64, error) {
 	n.networkLamportMutex.Lock()
 	defer n.networkLamportMutex.Unlock()
 
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "network", "lamportime"})
+	lamptimeKey := adminDsKey.NetworkLamptimeKey(groupID)
 
 	lamptime := uint64(0)
 
-	if tbs, err := n.Get(ctx, key); err != nil {
+	if tbs, err := n.Get(ctx, lamptimeKey); err != nil {
 		if !errors.Is(err, ds.ErrNotFound) {
 			return 0, err
 		}
@@ -71,7 +70,7 @@ func (n *NetworkDs) TickLamportTime(ctx context.Context, groupID GroupID) (uint6
 	buff := make([]byte, varint.MaxLenUvarint63)
 	len := varint.PutUvarint(buff, lamptime+1)
 
-	if err := n.Put(ctx, key, buff[:len]); err != nil {
+	if err := n.Put(ctx, lamptimeKey, buff[:len]); err != nil {
 		return 0, err
 	}
 

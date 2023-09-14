@@ -7,20 +7,21 @@ message Message {
   // 消息类型
   enum MsgType {
     TEXT = 0; // 文本
-    AUDIO = 1; // 语音
-    VIDEO = 2; // 视频
-    INVITE = 3; // 群成员邀请
+    IMAGE = 1; // 图片
+    AUDIO = 2; // 语音
+    VIDEO = 3; // 视频
+    UNKNOWN = 4; // 未知
   }
 
   string id = 1;
 
-  MsgType msg_type = 2;
+  bytes fromPeerId = 2;
 
-  string mime_type = 3;
+  bytes toPeerId = 3;
 
-  bytes from_peer_id = 4;
+  MsgType msgType = 4;
 
-  bytes to_peer_id = 5;
+  string mimeType = 5;
 
   bytes payload = 6;
 

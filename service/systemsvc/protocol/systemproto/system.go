@@ -6,7 +6,7 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/protocolid"
+	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/ds"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -21,7 +21,7 @@ var log = logging.Logger("system")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID         = protocolid.SYSTEM_MESSAGE_ID
+	ID         = protocol.SystemMessageID_v100
 	maxMsgSize = 4 * 1024 // 4K
 )
 

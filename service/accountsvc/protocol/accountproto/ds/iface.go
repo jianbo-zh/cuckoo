@@ -10,7 +10,7 @@ import (
 type AccountIface interface {
 	ipfsds.Batching
 
-	CreateAccount(context.Context, *pb.AccountMsg) error
-	GetAccount(context.Context) (*pb.AccountMsg, error)
-	UpdateAccount(context.Context, *pb.AccountMsg) error
+	CreateAccount(context.Context, *pb.Account) error
+	GetAccount(context.Context) (*pb.Account, error)
+	UpdateAccount(context.Context, *pb.Account) error
 }

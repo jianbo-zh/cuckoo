@@ -6,8 +6,9 @@ import (
 	"time"
 
 	gevent "github.com/jianbo-zh/dchat/event"
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/ds"
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/internal/protocol"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/ds"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -26,14 +27,14 @@ var log = logging.Logger("message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = "/dchat/peer/msg/1.0.0"
-	SYNC_ID = "/dchat/peer/msg/sync/1.0.0"
+	ID      = protocol.ContactMessageID_v100
+	SYNC_ID = protocol.ContactMessageSyncID_v100
 
 	ServiceName = "peer.message"
 	maxMsgSize  = 4 * 1024 // 4K
 )
 
-type PeerMessageSvc struct {
+type PeerMessageProto struct {
 	host host.Host
 	data ds.PeerMessageIface
 
@@ -44,9 +45,9 @@ type PeerMessageSvc struct {
 	}
 }
 
-func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageSvc, error) {
+func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageProto, error) {
 	var err error
-	msgsvc := PeerMessageSvc{
+	msgsvc := PeerMessageProto{
 		host: lhost,
 		data: ds.Wrap(ids),
 	}
@@ -90,7 +91,7 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	return &msgsvc, nil
 }
 
-func (p *PeerMessageSvc) handleAppSubs(ctx context.Context, sub event.Subscription) {
+func (p *PeerMessageProto) handleAppSubs(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -116,7 +117,7 @@ func (p *PeerMessageSvc) handleAppSubs(ctx context.Context, sub event.Subscripti
 	}
 }
 
-func (p *PeerMessageSvc) handleHostSubs(ctx context.Context, sub event.Subscription) {
+func (p *PeerMessageProto) handleHostSubs(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -148,7 +149,7 @@ func (p *PeerMessageSvc) handleHostSubs(ctx context.Context, sub event.Subscript
 	}
 }
 
-func (p *PeerMessageSvc) Handler(stream network.Stream) {
+func (p *PeerMessageProto) Handler(stream network.Stream) {
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	defer rd.Close()
@@ -192,11 +193,11 @@ func (p *PeerMessageSvc) Handler(stream network.Stream) {
 	fmt.Println("receive ->", string(msg.Payload))
 }
 
-func (p *PeerMessageSvc) HasMessage(peerID peer.ID, msgID string) (bool, error) {
+func (p *PeerMessageProto) HasMessage(peerID peer.ID, msgID string) (bool, error) {
 	return p.data.HasMessage(context.Background(), peerID, msgID)
 }
 
-func (p *PeerMessageSvc) SaveMessage(peerID peer.ID, msgID string, msgData []byte) error {
+func (p *PeerMessageProto) SaveMessage(peerID peer.ID, msgID string, msgData []byte) error {
 	var pmsg pb.Message
 	if err := proto.Unmarshal(msgData, &pmsg); err != nil {
 		return err
@@ -212,7 +213,7 @@ func (p *PeerMessageSvc) SaveMessage(peerID peer.ID, msgID string, msgData []byt
 	return nil
 }
 
-func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, msg string) error {
+func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgType pb.Message_MsgType, mimeType string, payload []byte) error {
 
 	hostID := p.host.ID()
 
@@ -223,11 +224,11 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 
 	pmsg := pb.Message{
 		Id:         msgID(lamportTime, hostID),
-		MsgType:    pb.Message_TEXT,
-		MimeType:   "text/plain",
 		FromPeerId: []byte(hostID),
 		ToPeerId:   []byte(peerID),
-		Payload:    []byte(msg),
+		MsgType:    msgType,
+		MimeType:   mimeType,
+		Payload:    payload,
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportTime,
 	}
@@ -268,52 +269,14 @@ func (p *PeerMessageSvc) SendTextMessage(ctx context.Context, peerID peer.ID, ms
 	return nil
 }
 
-func (p *PeerMessageSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error) {
+func (p *PeerMessageProto) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error) {
 	return p.data.GetMessage(ctx, peerID, msgID)
 }
 
-func (p *PeerMessageSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error) {
+func (p *PeerMessageProto) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error) {
 	return p.data.GetMessages(ctx, peerID, offset, limit)
 }
 
-func (p *PeerMessageSvc) SendGroupInviteMessage(ctx context.Context, peerID peer.ID, groupID string) error {
-
-	hostID := p.host.ID()
-
-	stream, err := p.host.NewStream(ctx, peerID, ID)
-	if err != nil {
-		return err
-	}
-
-	pw := pbio.NewDelimitedWriter(stream)
-
-	lamportTime, err := p.data.TickLamportTime(ctx, peerID)
-	if err != nil {
-		stream.Reset()
-		return err
-	}
-
-	pmsg := pb.Message{
-		Id:         msgID(lamportTime, hostID),
-		MsgType:    pb.Message_INVITE,
-		Payload:    []byte(groupID),
-		FromPeerId: []byte(hostID),
-		ToPeerId:   []byte(peerID),
-		Lamportime: lamportTime,
-		Timestamp:  time.Now().Unix(),
-	}
-
-	err = p.data.SaveMessage(ctx, peerID, &pmsg)
-	if err != nil {
-		stream.Reset()
-		return err
-	}
-
-	err = pw.WriteMsg(&pmsg)
-	if err != nil {
-		stream.Reset()
-		return err
-	}
-
-	return nil
+func (p *PeerMessageProto) ClearMessage(ctx context.Context, peerID peer.ID) error {
+	return p.data.ClearMessage(ctx, peerID)
 }

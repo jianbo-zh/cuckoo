@@ -4,29 +4,33 @@ package message.pb;
 
 message Message {
 
-    enum Type {
+    enum MsgType {
       TEXT = 0;
-      AUDIO = 1;
-      VIDEO = 2;
+      IMAGE = 1;
+      AUDIO = 2;
+      VIDEO = 3;
+      UNKNOWN = 4;
     }
   
     string id = 1;
 
-    string group_id = 2;
+    string groupId = 2;
 
-    bytes peer_id = 3;
+    bytes peerId = 3;
 
-    string peer_name = 4;
+    string peerName = 4;
 
-    string peer_avatar = 5;
+    string peerAvatar = 5;
   
-    Type type = 6;
+    MsgType msgType = 6;
+
+    string mimeType = 7;
   
-    bytes payload = 7;
+    bytes payload = 8;
   
-    int64 timestamp = 8;
+    int64 timestamp = 9;
   
-    uint64 lamportime = 9;
+    uint64 lamportime = 10;
   
-    bytes signature = 10;
+    bytes signature = 11;
 }

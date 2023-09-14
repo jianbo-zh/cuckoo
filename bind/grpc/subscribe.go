@@ -22,7 +22,17 @@ func NewSubscribeSvc(getter cuckoo.CuckooGetter) *SubscribeSvc {
 	}
 }
 
-func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventRequest, server proto.SubscribeSvc_SubscribeCommonEventServer) error {
+func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventRequest, server proto.SubscribeSvc_SubscribeCommonEventServer) (err error) {
+
+	log.Infoln("SubscribeCommonEvent request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SubscribeCommonEvent panic: ", e)
+		} else if err != nil {
+			log.Errorln("SubscribeCommonEvent error: ", err.Error())
+		}
+	}()
+
 	cuckoo, err := c.getter.GetCuckoo()
 	if err != nil {
 		return fmt.Errorf("c.getter.GetCuckoo error: %w", err)
@@ -61,6 +71,8 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 			if err != nil {
 				return fmt.Errorf("server.Send error: %w", err)
 			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
 
 		case myevent.EvtReceiveGroupMessage:
 			// todo:

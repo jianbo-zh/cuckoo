@@ -37,9 +37,20 @@ func (c *SystemSvc) getSystemSvc() (systemsvc.SystemServiceIface, error) {
 	return systemSvc, nil
 }
 
-func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.ClearSystemMessageRequest) (*proto.ClearSystemMessageReply, error) {
+func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.ClearSystemMessageRequest) (reply *proto.ClearSystemMessageReply, err error) {
 
-	reply := &proto.ClearSystemMessageReply{
+	log.Infoln("ClearSystemMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("ClearSystemMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("ClearSystemMessage error: ", err.Error())
+		} else {
+			log.Infoln("ClearSystemMessage reply: ", reply.String())
+		}
+	}()
+
+	reply = &proto.ClearSystemMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -48,7 +59,18 @@ func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.Clear
 	return reply, nil
 }
 
-func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAddContactRequest) (*proto.ApplyAddContactReply, error) {
+func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAddContactRequest) (reply *proto.ApplyAddContactReply, err error) {
+
+	log.Infoln("ApplyAddContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("ApplyAddContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("ApplyAddContact error: ", err.Error())
+		} else {
+			log.Infoln("ApplyAddContact reply: ", reply.String())
+		}
+	}()
 
 	systemSvc, err := c.getSystemSvc()
 	if err != nil {
@@ -66,7 +88,7 @@ func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAdd
 		return nil, fmt.Errorf("peerSvc.AddPeer error: %w", err)
 	}
 
-	reply := &proto.ApplyAddContactReply{
+	reply = &proto.ApplyAddContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -75,7 +97,18 @@ func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAdd
 	return reply, nil
 }
 
-func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAddContactRequest) (*proto.AgreeAddContactReply, error) {
+func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAddContactRequest) (reply *proto.AgreeAddContactReply, err error) {
+
+	log.Infoln("AgreeAddContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("AgreeAddContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("AgreeAddContact error: ", err.Error())
+		} else {
+			log.Infoln("AgreeAddContact reply: ", reply.String())
+		}
+	}()
 
 	systemSvc, err := c.getSystemSvc()
 	if err != nil {
@@ -87,7 +120,7 @@ func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAdd
 		return nil, fmt.Errorf("systemSvc.AgreeAddContact error: %w", err)
 	}
 
-	reply := &proto.AgreeAddContactReply{
+	reply = &proto.AgreeAddContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -97,7 +130,18 @@ func (c *SystemSvc) AgreeAddContact(ctx context.Context, request *proto.AgreeAdd
 	return reply, nil
 }
 
-func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectAddContactRequest) (*proto.RejectAddContactReply, error) {
+func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectAddContactRequest) (reply *proto.RejectAddContactReply, err error) {
+
+	log.Infoln("RejectAddContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("RejectAddContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("RejectAddContact error: ", err.Error())
+		} else {
+			log.Infoln("RejectAddContact reply: ", reply.String())
+		}
+	}()
 
 	systemSvc, err := c.getSystemSvc()
 	if err != nil {
@@ -109,7 +153,7 @@ func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectA
 		return nil, fmt.Errorf("systemSvc.RejectAddContact error: %w", err)
 	}
 
-	reply := &proto.RejectAddContactReply{
+	reply = &proto.RejectAddContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -119,7 +163,18 @@ func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectA
 	return reply, nil
 }
 
-func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSystemMessagesRequest) (*proto.GetSystemMessagesReply, error) {
+func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSystemMessagesRequest) (reply *proto.GetSystemMessagesReply, err error) {
+
+	log.Infoln("GetSystemMessages request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetSystemMessages panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetSystemMessages error: ", err.Error())
+		} else {
+			log.Infoln("GetSystemMessages reply: ", reply.String())
+		}
+	}()
 
 	systemSvc, err := s.getSystemSvc()
 	if err != nil {
@@ -158,7 +213,7 @@ func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSys
 		})
 	}
 
-	reply := &proto.GetSystemMessagesReply{
+	reply = &proto.GetSystemMessagesReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

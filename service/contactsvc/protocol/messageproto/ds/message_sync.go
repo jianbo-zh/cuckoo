@@ -7,14 +7,13 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
 )
 
 func (m *MessageDS) GetMessageHead(ctx context.Context, peerID peer.ID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "peer", peerID.String(), "message", "head"})
-	val, err := m.Get(ctx, key)
+	val, err := m.Get(ctx, contactDsKey.MsgHeadKey(peerID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return "", err
 	}
@@ -23,8 +22,7 @@ func (m *MessageDS) GetMessageHead(ctx context.Context, peerID peer.ID) (string,
 }
 
 func (m *MessageDS) GetMessageTail(ctx context.Context, peerID peer.ID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "peer", peerID.String(), "message", "tail"})
-	val, err := m.Get(ctx, key)
+	val, err := m.Get(ctx, contactDsKey.MsgTailKey(peerID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return "", err
 	}
@@ -39,7 +37,7 @@ func (m *MessageDS) GetMessageLength(ctx context.Context, peerID peer.ID) (int32
 func (m *MessageDS) GetRangeIDs(peerID peer.ID, startID string, endID string) ([]string, error) {
 
 	results, err := m.Query(context.Background(), query.Query{
-		Prefix:   "/dchat/peer/" + peerID.String() + "/message/logs/",
+		Prefix:   contactDsKey.MsgLogPrefix(peerID),
 		Filters:  []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:   []query.Order{query.OrderByKey{}},
 		KeysOnly: true,
@@ -64,7 +62,7 @@ func (m *MessageDS) GetRangeIDs(peerID peer.ID, startID string, endID string) ([
 
 func (m *MessageDS) GetRangeMessages(peerID peer.ID, startID string, endID string) ([]*pb.Message, error) {
 	results, err := m.Query(context.Background(), query.Query{
-		Prefix:  "/dchat/peer/" + peerID.String() + "/message/logs/",
+		Prefix:  contactDsKey.MsgLogPrefix(peerID),
 		Filters: []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:  []query.Order{query.OrderByKey{}},
 	})
@@ -93,12 +91,10 @@ func (m *MessageDS) GetRangeMessages(peerID peer.ID, startID string, endID strin
 func (m *MessageDS) GetMessagesByIDs(peerID peer.ID, msgIDs []string) ([]*pb.Message, error) {
 
 	ctx := context.Background()
-	prefix := "/dchat/peer/" + peerID.String() + "/message/logs/"
 
 	var msgs []*pb.Message
-
 	for _, msgID := range msgIDs {
-		val, err := m.Get(ctx, ds.NewKey(prefix+msgID))
+		val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 		if err != nil {
 			return nil, err
 		}

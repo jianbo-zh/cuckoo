@@ -28,24 +28,22 @@ service AccountSvc {
 service ContactSvc {
   // 联系人信息
   rpc GetContact(GetContactRequest) returns (GetContactReply) {}
-  // 获取联系人ids
-  rpc GetContactIds(GetContactIdsRequest) returns (GetContactIdsReply) {}
   // 获取联系人列表
   rpc GetContacts(GetContactsRequest) returns (GetContactsReply) {}
   // 获取指定联系人列表
   rpc GetSpecifiedContacts(GetSpecifiedContactsRequest) returns (GetSpecifiedContactsReply) {}
   // 获取附近的人
-  rpc GetNearbyContacts(GetNearbyContactsRequest) returns (stream GetNearbyContactsStreamReply) {}
+  rpc GetNearbyPeers(GetNearbyPeersRequest) returns (stream GetNearbyPeersStreamReply) {}
   // 获取单条消息
   rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageReply) {}
   // 获取聊天记录
   rpc GetContactMessages(GetContactMessagesRequest) returns (GetContactMessagesReply) {}
   // 发送消息
   rpc SendContactMessage(SendContactMessageRequest) returns (SendContactMessageReply) {}
-  // 设置联系人别名
-  rpc SetContactName(SetContactNameRequest) returns (SetContactNameReply) {}
   // 清空聊天记录
   rpc ClearContactMessage(ClearContactMessageRequest) returns (ClearContactMessageReply) {}
+  // 设置联系人别名
+  rpc SetContactName(SetContactNameRequest) returns (SetContactNameReply) {}
   // 删除联系人
   rpc DeleteContact(DeleteContactRequest) returns (DeleteContactReply) {}
 }
@@ -55,27 +53,19 @@ service GroupSvc {
   // 创建群
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupReply) {}
   // 获取群详情
-  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
-  // 获取群详情
-  rpc GetGroupFull(GetGroupFullRequest) returns (GetGroupFullReply) {}
-  // 获取群列表
-  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
+  rpc GetGroupDetail(GetGroupDetailRequest) returns (GetGroupDetailReply) {}
   // 获取聊天记录
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 发送消息
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
-  // 设置头像（管理员操作）
-  rpc SetGroupAvatar(SetGroupAvatarRequest) returns (SetGroupAvatarReply) {}
   // 设置名称
   rpc SetGroupName(SetGroupNameRequest) returns (SetGroupNameReply) {}
+  // 设置头像（管理员操作）
+  rpc SetGroupAvatar(SetGroupAvatarRequest) returns (SetGroupAvatarReply) {}
   // 设置群公告
   rpc SetGroupNotice(SetGroupNoticeRequest) returns (SetGroupNoticeReply) {}
-  // 邀请群成员
-  rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
   // 群成员列表
   rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
-  // 移除群成员
-  rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
   // 设置入群是否审核
   rpc SetJoinGroupReview(SetJoinGroupReviewRequest) returns (SetJoinGroupReviewReply) {}
   // 清空聊天记录
@@ -84,6 +74,16 @@ service GroupSvc {
   rpc ExitGroup(ExitGroupRequest) returns (ExitGroupReply) {}
   // 删除此群
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupReply) {}
+
+
+  // 获取群详情
+  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
+  // 获取群列表
+  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
+  // 邀请群成员
+  rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
+  // 移除群成员
+  rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
 }
 
 // 会话服务
@@ -94,10 +94,12 @@ service SessionSvc {
 // 系统服务
 service SystemSvc {
   rpc GetSystemMessages(GetSystemMessagesRequest) returns (GetSystemMessagesReply) {}
-  rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
   rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
   rpc AgreeAddContact(AgreeAddContactRequest) returns (AgreeAddContactReply) {}
   rpc RejectAddContact(RejectAddContactRequest) returns (RejectAddContactReply) {}
+
+
+  rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
 }
 
 // 消息订阅服务
@@ -106,6 +108,14 @@ service SubscribeSvc {
 }
 
 // -------------------- 分隔符 --------------------
+enum MsgType {
+  Text = 0;
+  Image = 1;
+  Audio = 2;
+  Video = 3;
+  Unknown = 4;
+}
+
 message Result {
   int32 code = 1;
   string message = 2;
@@ -169,12 +179,6 @@ message GetContactReply {
   Contact contact = 2;
 }
 
-message GetContactIdsRequest {}
-message GetContactIdsReply {
-  Result result = 1;
-  repeated string contactIds = 2;
-}
-
 message GetContactsRequest {
   string keywords = 1;
 }
@@ -191,10 +195,10 @@ message GetSpecifiedContactsReply {
   repeated Contact contacts = 2;
 }
 
-message GetNearbyContactsRequest {}
-message GetNearbyContactsStreamReply {
+message GetNearbyPeersRequest {}
+message GetNearbyPeersStreamReply {
   Result result = 1;
-  Contact contact = 2;
+  Peer peer = 2;
 }
 
 message GetContactMessageRequest {
@@ -219,9 +223,9 @@ message GetContactMessagesReply {
 
 message SendContactMessageRequest {
   string contactId = 1;
-  string msgType = 2;
+  MsgType msgType = 2;
   string mimeType = 3;
-  bytes data = 4;
+  bytes payload = 4;
 }
 
 message SendContactMessageReply {
@@ -275,12 +279,12 @@ message GetGroupReply {
   Group group = 2;
 }
 
-message GetGroupFullRequest {
+message GetGroupDetailRequest {
   string groupId = 1;
 }
-message GetGroupFullReply {
+message GetGroupDetailReply {
   Result result = 1;
-  GroupFull group = 2;
+  GroupDetail group = 2;
 }
 
 message GetGroupsRequest {}
@@ -301,7 +305,7 @@ message GetGroupMessagesReply {
 
 message SendGroupMessageRequest {
   string groupId = 1;
-  string msgType = 2;
+  MsgType msgType = 2;
   string mimeType = 3;
   bytes payload = 4;
 }
@@ -493,11 +497,11 @@ message ContactMessage {
   // 消息ID
   string id = 1;
   // 发送者
-  Contact fromPeer = 2;
+  Contact fromContact = 2;
   // 接收者
-  string toPeerId = 3;
+  string toContactId = 3;
   // 消息类型
-  string msgType = 4;
+  MsgType msgType = 4;
   // MIME-Type
   string mimeType = 5;
   // 消息内容
@@ -533,7 +537,7 @@ message GroupSession {
 }
 
 // 群
-message GroupFull {
+message GroupDetail {
   // ID
   string groupId = 1;
   // 名称
@@ -571,7 +575,7 @@ message  GroupMessage {
   // 发送者
   Peer sender = 3;
   // 消息类型
-  string msgType = 4;
+  MsgType msgType = 4;
   // MIME类型
   string mimeType = 5;
   // 内容

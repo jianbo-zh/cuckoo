@@ -7,14 +7,15 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/peer/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
 )
 
-var NSPrefix = []string{"dchat", "deposit", "peer"}
-
 var _ DepositMessageIface = (*DepositPeerDataStore)(nil)
+
+var depositDsKey = &datastore.DepositDsKey{}
 
 type DepositPeerDataStore struct {
 	ipfsds.Batching
@@ -25,11 +26,9 @@ func DepositPeerWrap(d ipfsds.Batching) *DepositPeerDataStore {
 }
 
 func (pds *DepositPeerDataStore) SaveDepositMessage(msg *pb.OfflineMessage) error {
-	prefix := "/dchat/deposit/peer/" + peer.ID(msg.ToPeerId).String() + "/message/logs/"
 
 	msg.Id = msgID(msg.DepositTime, peer.ID(msg.FromPeerId))
-
-	key := ipfsds.NewKey(prefix + msg.Id)
+	key := depositDsKey.PeerMsgLogKey(peer.ID(msg.ToPeerId), msg.Id)
 
 	bs, err := proto.Marshal(msg)
 	if err != nil {
@@ -40,9 +39,8 @@ func (pds *DepositPeerDataStore) SaveDepositMessage(msg *pb.OfflineMessage) erro
 }
 
 func (pds *DepositPeerDataStore) GetDepositMessages(peerID peer.ID, offset int, limit int, startTime int64, lastID string) (msgs []*pb.OfflineMessage, err error) {
-	prefix := "/dchat/deposit/peer/" + peerID.String() + "/message/logs/"
 	results, err := pds.Query(context.Background(), query.Query{
-		Prefix:  prefix,
+		Prefix:  depositDsKey.PeerMsgLogPrefix(peerID),
 		Filters: []query.Filter{TimePrefixFilter{StartTime: startTime, Sep: "_"}},
 		Orders:  []query.Order{query.OrderByKey{}},
 		Offset:  offset,
@@ -69,13 +67,11 @@ func (pds *DepositPeerDataStore) GetDepositMessages(peerID peer.ID, offset int, 
 }
 
 func (pds *DepositPeerDataStore) SetLastAckID(peerID peer.ID, ackID string) error {
-	key := ipfsds.NewKey("/dchat/deposit/peer/" + peerID.String() + "/ackid")
-	return pds.Put(context.Background(), key, []byte(ackID))
+	return pds.Put(context.Background(), depositDsKey.PeerLastAckIDKey(peerID), []byte(ackID))
 }
 
 func (pds *DepositPeerDataStore) GetLastAckID(peerID peer.ID) (string, error) {
-	key := ipfsds.NewKey("/dchat/deposit/peer/" + peerID.String() + "/ackid")
-	ackbs, err := pds.Get(context.Background(), key)
+	ackbs, err := pds.Get(context.Background(), depositDsKey.PeerLastAckIDKey(peerID))
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return "", err
 	}

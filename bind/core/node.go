@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/jianbo-zh/dchat/bind/utils"
@@ -40,8 +39,7 @@ func StartNode(config *NodeConfig) error {
 
 	logging.SetupLogging(logging.Config{
 		Level:  logging.LevelDebug,
-		File:   filepath.Join(config.storageDir, "go.log"),
-		Stderr: true,
+		Format: logging.FormatPlaintextOutput,
 		Stdout: true,
 	})
 

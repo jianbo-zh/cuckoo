@@ -4,7 +4,7 @@ import (
 	"context"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -15,6 +15,7 @@ type PeerMessageIface interface {
 	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error)
 	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error)
 	HasMessage(ctx context.Context, peerID peer.ID, msgID string) (bool, error)
+	ClearMessage(ctx context.Context, peerID peer.ID) error
 
 	GetLamportTime(ctx context.Context, peerID peer.ID) (uint64, error)
 	TickLamportTime(ctx context.Context, peerID peer.ID) (uint64, error)

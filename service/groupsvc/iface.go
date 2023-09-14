@@ -3,6 +3,7 @@ package groupsvc
 import (
 	"context"
 
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/ds"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -33,8 +34,8 @@ type GroupServiceIface interface {
 	RemoveMember(ctx context.Context, groupID string, memberID peer.ID) error               // 移除成员
 	ListMembers(ctx context.Context, groupID string) ([]peer.ID, error)                     // 成员列表
 
-	SendMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) error // 发送消息
-	ListMessages(ctx context.Context, groupID string, offset int, limit int) ([]Message, error)             // 消息列表
+	SendMessage(ctx context.Context, groupID string, msgType types.MsgType, mimeType string, payload []byte) error // 发送消息
+	ListMessages(ctx context.Context, groupID string, offset int, limit int) ([]Message, error)                    // 消息列表
 
 	Close()
 }
@@ -60,19 +61,10 @@ type ReviewMemberParam struct{}
 type RemoveMemberParam struct{}
 type ListMembersParam struct{}
 
-type MsgType int
-
-const (
-	MsgTypeText MsgType = iota
-	MsgTypeAudio
-	MsgTypeVideo
-	MsgTypeInvite
-)
-
 type Message struct {
 	ID         string
 	GroupID    string
-	MsgType    MsgType
+	MsgType    types.MsgType
 	MimeType   string
 	FromPeer   Peer
 	Payload    []byte

@@ -11,6 +11,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
@@ -19,6 +20,8 @@ import (
 // group 相关存储操作及接口
 
 var _ AdminIface = (*AdminDs)(nil)
+
+var adminDsKey = &datastore.GroupDsKey{}
 
 type AdminDs struct {
 	ds.Batching
@@ -42,68 +45,56 @@ func (a *AdminDs) SaveLog(ctx context.Context, hostID peer.ID, groupID GroupID, 
 		return err
 	}
 
-	msgPrefix := []string{"dchat", "group", string(groupID)}
-
-	msgKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "logs", msg.Id))
-	if err = batch.Put(ctx, msgKey, bs); err != nil {
+	if err = batch.Put(ctx, adminDsKey.AdminLogKey(groupID, msg.Id), bs); err != nil {
 		return err
 	}
 
-	headKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "head"))
-	headID, err := a.Get(ctx, headKey)
+	headID, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return err
 	}
 
 	if len(headID) == 0 || msg.Id < string(headID) {
-		if err = batch.Put(ctx, headKey, []byte(msg.Id)); err != nil {
+		if err = batch.Put(ctx, adminDsKey.AdminLogHeadKey(groupID), []byte(msg.Id)); err != nil {
 			return err
 		}
 	}
 
-	tailKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "tail"))
-	tailID, err := a.Get(ctx, tailKey)
+	tailID, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return err
 	}
 	if len(tailID) == 0 || msg.Id > string(tailID) {
-		if err = batch.Put(ctx, tailKey, []byte(msg.Id)); err != nil {
+		if err = batch.Put(ctx, adminDsKey.AdminLogTailKey(groupID), []byte(msg.Id)); err != nil {
 			return err
 		}
 	}
 
 	switch msg.Type {
 	case pb.Log_CREATE:
-		createKey := ds.KeyWithNamespaces(append(msgPrefix, "creator"))
-		if err = batch.Put(ctx, createKey, []byte(msg.PeerId)); err != nil {
+		if err = batch.Put(ctx, adminDsKey.CreatorKey(groupID), []byte(msg.PeerId)); err != nil {
 			return err
 		}
-		stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
-		if err = batch.Put(ctx, stateKey, []byte("normal")); err != nil {
+		if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte("normal")); err != nil {
 			return err
 		}
-		groupListKey := ds.KeyWithNamespaces([]string{"dchat", "group", "list", groupID})
-		if err = batch.Put(ctx, groupListKey, []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
+		if err = batch.Put(ctx, adminDsKey.SessionKey(groupID), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
 			return err
 		}
 	case pb.Log_DISBAND:
-		stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
-		if err = batch.Put(ctx, stateKey, []byte("disband")); err != nil {
+		if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte("disband")); err != nil {
 			return err
 		}
 	case pb.Log_NAME:
-		nameKey := ds.KeyWithNamespaces(append(msgPrefix, "name"))
-		if err = batch.Put(ctx, nameKey, msg.Payload); err != nil {
+		if err = batch.Put(ctx, adminDsKey.NameKey(groupID), msg.Payload); err != nil {
 			return err
 		}
 	case pb.Log_AVATAR:
-		avatarKey := ds.KeyWithNamespaces(append(msgPrefix, "avatar"))
-		if err = batch.Put(ctx, avatarKey, msg.Payload); err != nil {
+		if err = batch.Put(ctx, adminDsKey.AvatarKey(groupID), msg.Payload); err != nil {
 			return err
 		}
 	case pb.Log_NOTICE:
-		noticeKey := ds.KeyWithNamespaces(append(msgPrefix, "notice"))
-		if err = batch.Put(ctx, noticeKey, msg.Payload); err != nil {
+		if err = batch.Put(ctx, adminDsKey.NoticeKey(groupID), msg.Payload); err != nil {
 			return err
 		}
 	case pb.Log_MEMBER:
@@ -111,16 +102,14 @@ func (a *AdminDs) SaveLog(ctx context.Context, hostID peer.ID, groupID GroupID, 
 		case pb.Log_REMOVE:
 			if hostID.String() == msg.MemberId {
 				// 自己被移除了，则更新状态
-				stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
-				if err = batch.Put(ctx, stateKey, []byte("kicked")); err != nil {
+				if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte("kicked")); err != nil {
 					return err
 				}
 			}
 		case pb.Log_AGREE, pb.Log_APPLY:
 			if hostID.String() == msg.MemberId {
 				// 新加入
-				stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
-				if err = batch.Put(ctx, stateKey, []byte("normal")); err != nil {
+				if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte("normal")); err != nil {
 					return err
 				}
 			}
@@ -142,32 +131,26 @@ func (a *AdminDs) JoinGroupSaveLog(ctx context.Context, hostID peer.ID, groupID 
 		return err
 	}
 
-	msgPrefix := []string{"dchat", "group", string(groupID)}
-
-	msgKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "logs", msg.Id))
-	if err = batch.Put(ctx, msgKey, bs); err != nil {
+	if err = batch.Put(ctx, adminDsKey.AdminLogKey(groupID, msg.Id), bs); err != nil {
 		return err
 	}
 
-	headKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "head"))
-	headID, err := a.Get(ctx, headKey)
+	headID, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return err
 	}
 
 	if len(headID) == 0 || msg.Id < string(headID) {
-		if err = batch.Put(ctx, headKey, []byte(msg.Id)); err != nil {
+		if err = batch.Put(ctx, adminDsKey.AdminLogHeadKey(groupID), []byte(msg.Id)); err != nil {
 			return err
 		}
 	}
-
-	tailKey := ds.KeyWithNamespaces(append(msgPrefix, "admin", "tail"))
-	tailID, err := a.Get(ctx, tailKey)
+	tailID, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return err
 	}
 	if len(tailID) == 0 || msg.Id > string(tailID) {
-		if err = batch.Put(ctx, tailKey, []byte(msg.Id)); err != nil {
+		if err = batch.Put(ctx, adminDsKey.AdminLogTailKey(groupID), []byte(msg.Id)); err != nil {
 			return err
 		}
 	}
@@ -181,24 +164,19 @@ func (a *AdminDs) JoinGroup(ctx context.Context, groupID string, name string, av
 		return err
 	}
 
-	msgPrefix := []string{"dchat", "group", string(groupID)}
-	nameKey := ds.KeyWithNamespaces(append(msgPrefix, "name"))
-	if err = batch.Put(ctx, nameKey, []byte(name)); err != nil {
+	if err = batch.Put(ctx, adminDsKey.NameKey(groupID), []byte(name)); err != nil {
 		return fmt.Errorf("batch.Put error: %w", err)
 	}
 
-	avatarKey := ds.KeyWithNamespaces(append(msgPrefix, "avatar"))
-	if err = batch.Put(ctx, avatarKey, []byte(avatar)); err != nil {
+	if err = batch.Put(ctx, adminDsKey.AvatarKey(groupID), []byte(avatar)); err != nil {
 		return fmt.Errorf("batch.Put error: %w", err)
 	}
 
-	stateKey := ds.KeyWithNamespaces(append(msgPrefix, "state"))
-	if err = batch.Put(ctx, stateKey, []byte("normal")); err != nil {
+	if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte("normal")); err != nil {
 		return fmt.Errorf("batch.Put error: %w", err)
 	}
 
-	groupListKey := ds.KeyWithNamespaces([]string{"dchat", "group", "list", groupID})
-	if err := batch.Put(ctx, groupListKey, []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
+	if err := batch.Put(ctx, adminDsKey.SessionKey(groupID), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
 		return fmt.Errorf("batch.Put error: %w", err)
 	}
 
@@ -213,7 +191,7 @@ func (a *AdminDs) DeleteGroup(ctx context.Context, groupID string) error {
 
 	result, err := a.Query(ctx, query.Query{
 		Filters: []query.Filter{query.FilterKeyPrefix{
-			Prefix: "/dchat/group/" + groupID + "/",
+			Prefix: adminDsKey.AdminPrefix(groupID),
 		}},
 	})
 	if err != nil {
@@ -227,14 +205,12 @@ func (a *AdminDs) DeleteGroup(ctx context.Context, groupID string) error {
 			return fmt.Errorf("entry.Error error: %w", entry.Error)
 		}
 
-		fmt.Println("group key ", entry.Key)
-
 		if err = a.Delete(ctx, ds.NewKey(entry.Key)); err != nil {
 			return fmt.Errorf("a.Delete error: %w", err)
 		}
 	}
 
-	if err = a.Delete(ctx, ds.NewKey("/dchat/group/list/"+groupID)); err != nil {
+	if err = a.Delete(ctx, adminDsKey.SessionKey(groupID)); err != nil {
 		return fmt.Errorf("a.Delete error: %w", err)
 	}
 
@@ -243,9 +219,8 @@ func (a *AdminDs) DeleteGroup(ctx context.Context, groupID string) error {
 
 func (a *AdminDs) GetGroupIDs(ctx context.Context) ([]string, error) {
 
-	msgPrefix := "/dchat/group/list/"
 	results, err := a.Query(ctx, query.Query{
-		Prefix: msgPrefix,
+		Prefix: adminDsKey.SessionPrefix(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ds query error: %w", err)
@@ -257,7 +232,7 @@ func (a *AdminDs) GetGroupIDs(ctx context.Context) ([]string, error) {
 			return nil, fmt.Errorf("result.Error: %w", err)
 		}
 
-		groupIDs = append(groupIDs, strings.TrimPrefix(result.Key, msgPrefix))
+		groupIDs = append(groupIDs, strings.TrimPrefix(result.Key, adminDsKey.SessionPrefix()))
 	}
 
 	return groupIDs, nil
@@ -265,15 +240,12 @@ func (a *AdminDs) GetGroupIDs(ctx context.Context) ([]string, error) {
 
 func (a *AdminDs) GetGroup(ctx context.Context, groupID string) (*Group, error) {
 
-	msgPrefix := []string{"dchat", "group", string(groupID)}
-	nameKey := ds.KeyWithNamespaces(append(msgPrefix, "name"))
-	nameBs, err := a.Get(ctx, nameKey)
+	nameBs, err := a.Get(ctx, adminDsKey.NameKey(groupID))
 	if err != nil {
 		return nil, fmt.Errorf("a.Get error: %w", err)
 	}
 
-	avatarKey := ds.KeyWithNamespaces(append(msgPrefix, "avatar"))
-	avatarBs, err := a.Get(ctx, avatarKey)
+	avatarBs, err := a.Get(ctx, adminDsKey.AvatarKey(groupID))
 	if err != nil {
 		return nil, fmt.Errorf("a.Get error: %w", err)
 	}
@@ -288,7 +260,7 @@ func (a *AdminDs) GetGroup(ctx context.Context, groupID string) (*Group, error) 
 func (a *AdminDs) ListGroups(ctx context.Context) ([]Group, error) {
 
 	results, err := a.Query(ctx, query.Query{
-		Prefix: "/dchat/group/list",
+		Prefix: adminDsKey.SessionPrefix(),
 		Orders: []query.Order{GroupOrderByValueTimeDescending{}},
 	})
 	if err != nil {
@@ -304,24 +276,23 @@ func (a *AdminDs) ListGroups(ctx context.Context) ([]Group, error) {
 		fields := strings.Split(strings.Trim(result.Entry.Key, "/"), "/")
 		groupID := fields[len(fields)-1]
 
-		groupPrefix := []string{"dchat", "group", string(groupID)}
-		namebs, err := a.Get(ctx, ds.KeyWithNamespaces(append(groupPrefix, "localname")))
+		namebs, err := a.Get(ctx, adminDsKey.LocalNameKey(groupID))
 		if err != nil && !errors.Is(err, ds.ErrNotFound) {
 			return nil, fmt.Errorf("a.Get group local name error: %w", err)
 		}
 		if len(namebs) == 0 {
-			namebs, err = a.Get(ctx, ds.KeyWithNamespaces(append(groupPrefix, "name")))
+			namebs, err = a.Get(ctx, adminDsKey.NameKey(groupID))
 			if err != nil {
 				return nil, fmt.Errorf("a.Get group name error: %w", err)
 			}
 		}
 
-		avatarbs, err := a.Get(ctx, ds.KeyWithNamespaces(append(groupPrefix, "localavatar")))
+		avatarbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
 		if err != nil && !errors.Is(err, ds.ErrNotFound) {
 			return nil, fmt.Errorf("a.Get group local avatar error: %w", err)
 		}
 		if len(avatarbs) == 0 {
-			avatarbs, err = a.Get(ctx, ds.KeyWithNamespaces(append(groupPrefix, "avatar")))
+			avatarbs, err = a.Get(ctx, adminDsKey.AvatarKey(groupID))
 			if err != nil {
 				return nil, fmt.Errorf("a.Get group avatar error: %w", err)
 			}
@@ -338,9 +309,8 @@ func (a *AdminDs) ListGroups(ctx context.Context) ([]Group, error) {
 }
 
 func (a *AdminDs) GroupName(ctx context.Context, groupID GroupID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "name"})
 
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.NameKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			// todo: 从日志里面读取
@@ -353,9 +323,8 @@ func (a *AdminDs) GroupName(ctx context.Context, groupID GroupID) (string, error
 }
 
 func (a *AdminDs) GroupLocalName(ctx context.Context, groupID GroupID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "localname"})
 
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.LocalNameKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			// todo: 从日志里面读取
@@ -368,9 +337,8 @@ func (a *AdminDs) GroupLocalName(ctx context.Context, groupID GroupID) (string, 
 }
 
 func (a *AdminDs) GroupAvatar(ctx context.Context, groupID GroupID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "avatar"})
 
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.AvatarKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			// todo: 从日志里面读取
@@ -383,9 +351,8 @@ func (a *AdminDs) GroupAvatar(ctx context.Context, groupID GroupID) (string, err
 }
 
 func (a *AdminDs) GroupLocalAvatar(ctx context.Context, groupID GroupID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "localavatar"})
 
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			// todo: 从日志里面读取
@@ -398,9 +365,8 @@ func (a *AdminDs) GroupLocalAvatar(ctx context.Context, groupID GroupID) (string
 }
 
 func (a *AdminDs) GroupNotice(ctx context.Context, groupID GroupID) (string, error) {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "notice"})
 
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.NoticeKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			// todo: 从日志里面读取
@@ -413,19 +379,17 @@ func (a *AdminDs) GroupNotice(ctx context.Context, groupID GroupID) (string, err
 }
 
 func (a *AdminDs) SetGroupLocalName(ctx context.Context, groupID GroupID, name string) error {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "localname"})
-	return a.Put(ctx, key, []byte(name))
+	return a.Put(ctx, adminDsKey.LocalNameKey(groupID), []byte(name))
 }
 
 func (a *AdminDs) SetGroupLocalAvatar(ctx context.Context, groupID GroupID, avatar string) error {
-	key := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "localavatar"})
-	return a.Put(ctx, key, []byte(avatar))
+	return a.Put(ctx, adminDsKey.LocalAvatarKey(groupID), []byte(avatar))
 }
 
 func (a *AdminDs) GroupMemberLogs(ctx context.Context, groupID GroupID) ([]*pb.Log, error) {
 
 	results, err := a.Query(ctx, query.Query{
-		Prefix:  "/dchat/group/" + string(groupID),
+		Prefix:  adminDsKey.AdminPrefix(groupID),
 		Orders:  []query.Order{GroupOrderByKeyDescending{}},
 		Filters: []query.Filter{GroupMemberFilter{}},
 	})

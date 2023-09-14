@@ -8,6 +8,7 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/message/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/message/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -25,8 +26,8 @@ var log = logging.Logger("message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = "/dchat/group/msg/1.0.0"
-	SYNC_ID = "/dchat/group/syncmsg/1.0.0"
+	ID      = protocol.GroupMessageID_v100
+	SYNC_ID = protocol.GroupMessageSyncID_v100
 
 	ServiceName = "group.message"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -203,7 +204,7 @@ func (m *MessageService) SendTextMessage(ctx context.Context, groupID string, na
 		PeerId:     []byte(peerID),
 		PeerName:   name,
 		PeerAvatar: avatar,
-		Type:       pb.Message_TEXT,
+		MsgType:    pb.Message_TEXT,
 		Payload:    []byte(content),
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportime,

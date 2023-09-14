@@ -20,17 +20,3 @@ type AccountServiceIface interface {
 
 	Close()
 }
-
-type Account struct {
-	PeerID         peer.ID
-	Name           string
-	Avatar         string
-	AutoAddContact bool
-	AutoJoinGroup  bool
-}
-
-type Peer struct {
-	PeerID peer.ID
-	Name   string
-	Avatar string
-}

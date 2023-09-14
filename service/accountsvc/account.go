@@ -7,6 +7,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto"
+	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -34,23 +35,23 @@ func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lh
 
 func (a *AccountSvc) CreateAccount(ctx context.Context, account Account) (*Account, error) {
 
-	pAccount, err := a.accountProto.CreateAccount(ctx, accountproto.Account{
-		PeerID:         account.PeerID,
+	pbAccount, err := a.accountProto.CreateAccount(ctx, &pb.Account{
+		PeerId:         []byte(account.PeerID),
 		Name:           account.Name,
 		Avatar:         account.Avatar,
 		AutoAddContact: account.AutoAddContact,
 		AutoJoinGroup:  account.AutoJoinGroup,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("accountProto.CreateAccount error: %w", err)
+		return nil, fmt.Errorf("proto create account error: %w", err)
 	}
 
 	return &Account{
-		PeerID:         pAccount.PeerID,
-		Name:           pAccount.Name,
-		Avatar:         pAccount.Avatar,
-		AutoAddContact: pAccount.AutoAddContact,
-		AutoJoinGroup:  pAccount.AutoJoinGroup,
+		PeerID:         peer.ID(pbAccount.PeerId),
+		Name:           pbAccount.Name,
+		Avatar:         pbAccount.Avatar,
+		AutoAddContact: pbAccount.AutoAddContact,
+		AutoJoinGroup:  pbAccount.AutoJoinGroup,
 	}, nil
 
 }
@@ -58,12 +59,11 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, account Account) (*Accou
 func (a *AccountSvc) GetAccount(ctx context.Context) (*Account, error) {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("a.accountProto.GetAccount error: %w", err)
+		return nil, fmt.Errorf("proto get account error: %w", err)
 	}
-	fmt.Println("account name: ", pbAccount.Name)
 
 	return &Account{
-		PeerID:         pbAccount.PeerID,
+		PeerID:         peer.ID(pbAccount.PeerId),
 		Name:           pbAccount.Name,
 		Avatar:         pbAccount.Avatar,
 		AutoAddContact: pbAccount.AutoAddContact,
@@ -74,48 +74,47 @@ func (a *AccountSvc) GetAccount(ctx context.Context) (*Account, error) {
 func (a *AccountSvc) SetAccountName(ctx context.Context, name string) error {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
-		return fmt.Errorf("get account error: %s", err.Error())
+		return fmt.Errorf("proto get account error: %w", err)
 	}
 	pbAccount.Name = name
-	return a.accountProto.UpdateAccount(ctx, *pbAccount)
+	return a.accountProto.UpdateAccount(ctx, pbAccount)
 }
 
 func (a *AccountSvc) SetAccountAvatar(ctx context.Context, avatar string) error {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
-		return fmt.Errorf("get account error: %s", err.Error())
+		return fmt.Errorf("proto get account error: %w", err)
 	}
 	pbAccount.Avatar = avatar
-	return a.accountProto.UpdateAccount(ctx, *pbAccount)
+	return a.accountProto.UpdateAccount(ctx, pbAccount)
 }
 
 func (a *AccountSvc) SetAccountAutoAddContact(ctx context.Context, autoAddContact bool) error {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
-		return fmt.Errorf("get account error: %s", err.Error())
+		return fmt.Errorf("proto get account error: %w", err)
 	}
 	pbAccount.AutoAddContact = autoAddContact
-	return a.accountProto.UpdateAccount(ctx, *pbAccount)
+	return a.accountProto.UpdateAccount(ctx, pbAccount)
 }
 
 func (a *AccountSvc) SetAccountAutoJoinGroup(ctx context.Context, autoJoinGroup bool) error {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
-		return fmt.Errorf("get account error: %s", err.Error())
+		return fmt.Errorf("proto get account error: %w", err)
 	}
 	pbAccount.AutoJoinGroup = autoJoinGroup
-	return a.accountProto.UpdateAccount(ctx, *pbAccount)
+	return a.accountProto.UpdateAccount(ctx, pbAccount)
 }
 
 func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*Peer, error) {
-
 	pbPeer, err := a.accountProto.GetPeer(ctx, peerID)
 	if err != nil {
-		return nil, fmt.Errorf("a.accountProto.GetAccount error: %w", err)
+		return nil, fmt.Errorf("proto get peer error: %w", err)
 	}
 
 	return &Peer{
-		PeerID: pbPeer.PeerID,
+		PeerID: peer.ID(pbPeer.PeerId),
 		Name:   pbPeer.Name,
 		Avatar: pbPeer.Avatar,
 	}, nil

@@ -7,7 +7,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	contactproto "github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto"
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message"
+	message "github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,7 +17,7 @@ import (
 var _ ContactServiceIface = (*ContactSvc)(nil)
 
 type ContactSvc struct {
-	msgSvc       *message.PeerMessageSvc
+	msgProto     *message.PeerMessageProto
 	contactProto *contactproto.ContactProto
 }
 
@@ -28,7 +28,7 @@ func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lh
 
 	contactsvc := &ContactSvc{}
 
-	contactsvc.msgSvc, err = message.NewMessageSvc(lhost, ids, ebus)
+	contactsvc.msgProto, err = message.NewMessageSvc(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("message.NewMessageSvc error: %s", err.Error())
 	}
@@ -105,9 +105,14 @@ func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*Contact, 
 	}, nil
 }
 
+func (c *ContactSvc) SetContactName(ctx context.Context, peerID peer.ID, name string) error {
+	return c.contactProto.SetContactName(ctx, peerID, name)
+}
+
 func (c *ContactSvc) AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error {
-	if err := c.contactProto.AddContact(ctx, peerID, name, avatar); err != nil {
-		return fmt.Errorf("contactProto.AddContact error: %w", err)
-	}
-	return nil
+	return c.contactProto.AddContact(ctx, peerID, name, avatar)
+}
+
+func (c *ContactSvc) DeleteContact(ctx context.Context, peerID peer.ID) error {
+	return c.contactProto.DeleteContact(ctx, peerID)
 }

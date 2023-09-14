@@ -7,6 +7,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/ds"
@@ -266,7 +267,7 @@ func (group *GroupService) ListMembers(ctx context.Context, groupID string) ([]p
 }
 
 // 发送消息
-func (group *GroupService) SendMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) error {
+func (group *GroupService) SendMessage(ctx context.Context, groupID string, msgType types.MsgType, mimeType string, payload []byte) error {
 
 	account, err := group.accountSvc.GetAccount(ctx)
 	if err != nil {
@@ -290,8 +291,8 @@ func (group *GroupService) ListMessages(ctx context.Context, groupID string, off
 		messageList = append(messageList, Message{
 			ID:       msg.Id,
 			GroupID:  msg.GroupId,
-			MsgType:  MsgTypeText,
-			MimeType: "text/plain",
+			MsgType:  decodeMsgType(msg.MsgType),
+			MimeType: msg.MimeType,
 			FromPeer: Peer{
 				PeerID: peer.ID(msg.PeerId),
 				Name:   msg.PeerName,

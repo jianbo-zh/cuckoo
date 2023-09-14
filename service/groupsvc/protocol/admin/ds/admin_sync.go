@@ -13,7 +13,7 @@ import (
 
 func (a *AdminDs) GetRangeMessages(groupID string, startID string, endID string) ([]*pb.Log, error) {
 	results, err := a.Query(context.Background(), query.Query{
-		Prefix:  "/dchat/group/" + groupID + "/admin/logs/",
+		Prefix:  adminDsKey.AdminLogPrefix(groupID),
 		Filters: []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:  []query.Order{query.OrderByKey{}},
 	})
@@ -42,7 +42,7 @@ func (a *AdminDs) GetRangeMessages(groupID string, startID string, endID string)
 func (a *AdminDs) GetRangeIDs(groupID string, startID string, endID string) ([]string, error) {
 
 	results, err := a.Query(context.Background(), query.Query{
-		Prefix:   "/dchat/group/" + groupID + "/admin/logs/",
+		Prefix:   adminDsKey.AdminLogPrefix(groupID),
 		Filters:  []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:   []query.Order{query.OrderByKey{}},
 		KeysOnly: true,
@@ -68,12 +68,11 @@ func (a *AdminDs) GetRangeIDs(groupID string, startID string, endID string) ([]s
 func (a *AdminDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Log, error) {
 
 	ctx := context.Background()
-	prefix := "/dchat/group/" + groupID + "/admin/logs/"
 
 	var msgs []*pb.Log
 
 	for _, msgID := range msgIDs {
-		val, err := a.Get(ctx, ds.NewKey(prefix+msgID))
+		val, err := a.Get(ctx, adminDsKey.AdminLogKey(groupID, msgID))
 		if err != nil {
 			return nil, err
 		}
@@ -90,8 +89,7 @@ func (a *AdminDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Log, 
 }
 
 func (a *AdminDs) GetMessageHead(ctx context.Context, groupID GroupID) (string, error) {
-	headKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "admin", "head"})
-	head, err := a.Get(ctx, headKey)
+	head, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return "", err
 	}
@@ -99,8 +97,7 @@ func (a *AdminDs) GetMessageHead(ctx context.Context, groupID GroupID) (string, 
 	return string(head), nil
 }
 func (a *AdminDs) GetMessageTail(ctx context.Context, groupID GroupID) (string, error) {
-	tailKey := ds.KeyWithNamespaces([]string{"dchat", "group", string(groupID), "admin", "tail"})
-	tail, err := a.Get(ctx, tailKey)
+	tail, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
 	if err != nil && !errors.Is(err, ds.ErrNotFound) {
 		return "", err
 	}

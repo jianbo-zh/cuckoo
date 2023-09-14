@@ -16,5 +16,6 @@ type PeerIface interface {
 	GetContacts(context.Context) ([]*pb.ContactMsg, error)
 	GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.ContactMsg, error)
 	GetContactIDs(context.Context) ([]peer.ID, error)
+	UpdateContact(context.Context, *pb.ContactMsg) error
 	DeleteContact(context.Context, peer.ID) error
 }

@@ -3,6 +3,7 @@ package contactsvc
 import (
 	"context"
 
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -21,37 +22,30 @@ import (
 */
 
 type ContactServiceIface interface {
-	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*Message, error)
-	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]Message, error)
-	SendTextMessage(ctx context.Context, peerID peer.ID, content string) error
-	SendGroupInviteMessage(ctx context.Context, peerID peer.ID, content string) error
-
 	AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error
 	GetContact(ctx context.Context, peerID peer.ID) (*Contact, error)
 	GetContacts(ctx context.Context) ([]Contact, error)
 	GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]Contact, error)
+	DeleteContact(ctx context.Context, peerID peer.ID) error
+	SetContactName(ctx context.Context, peerID peer.ID, name string) error
+
+	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*Message, error)
+	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]Message, error)
+	SendMessage(ctx context.Context, peerID peer.ID, msgType types.MsgType, mimeType string, payload []byte) error
+	ClearMessage(ctx context.Context, peerID peer.ID) error
 
 	Close()
 }
 
-type MsgType int
-
-const (
-	MsgTypeText MsgType = iota
-	MsgTypeAudio
-	MsgTypeVideo
-	MsgTypeInvite
-)
-
 type Message struct {
-	ID         string  `json:"id"`
-	MsgType    MsgType `json:"msg_type"`
-	MimeType   string  `json:"mime_type"`
-	FromPeerID peer.ID `json:"from_peer_id"`
-	ToPeerID   peer.ID `json:"to_peer_id"`
-	Payload    []byte  `json:"payload"`
-	Timestamp  int64   `json:"timestamp"`
-	Lamportime uint64  `json:"lamportime"`
+	ID         string
+	MsgType    types.MsgType
+	MimeType   string
+	FromPeerID peer.ID
+	ToPeerID   peer.ID
+	Payload    []byte
+	Timestamp  int64
+	Lamportime uint64
 }
 
 type Peer struct {

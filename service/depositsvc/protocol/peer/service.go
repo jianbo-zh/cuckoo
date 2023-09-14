@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/peer/ds"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/peer/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -24,8 +25,8 @@ var log = logging.Logger("deposit")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	PUSH_ID = "/dchat/deposit/peer/push/1.0.0" // 寄存服务
-	PULL_ID = "/dchat/deposit/peer/pull/1.0.0" // 获取服务
+	PUSH_ID = protocol.DepositPushID_v100
+	PULL_ID = protocol.DepositPullID_v100
 
 	ServiceName  = "deposit.peer"
 	maxMsgSize   = 4 * 1024  // 4K

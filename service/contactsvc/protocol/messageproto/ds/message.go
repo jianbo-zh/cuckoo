@@ -4,18 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	msgpb "github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/internal/datastore"
+	msgpb "github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
 )
 
 var _ PeerMessageIface = (*MessageDS)(nil)
+
+var contactDsKey = &datastore.ContactDsKey{}
 
 type MessageDS struct {
 	ipfsds.Batching
@@ -29,8 +30,7 @@ func Wrap(b ipfsds.Batching) *MessageDS {
 
 // HasMessage 消息是否存在
 func (m *MessageDS) HasMessage(ctx context.Context, peerID peer.ID, msgID string) (bool, error) {
-	key := ipfsds.KeyWithNamespaces([]string{"dchat", "peer", peerID.String(), "message", "logs", msgID})
-	return m.Has(ctx, key)
+	return m.Has(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 }
 
 // SaveMessage 保存消息
@@ -46,27 +46,22 @@ func (m *MessageDS) SaveMessage(ctx context.Context, peerID peer.ID, msg *msgpb.
 		return err
 	}
 
-	msgPrefix := []string{"dchat", "peer", peerID.String(), "message"}
-
-	msgKey := ipfsds.KeyWithNamespaces(append(msgPrefix, "logs", msg.Id))
-	if err = batch.Put(ctx, msgKey, bs); err != nil {
+	if err = batch.Put(ctx, contactDsKey.MsgLogKey(peerID, msg.Id), bs); err != nil {
 		return err
 	}
 
-	headKey := ipfsds.KeyWithNamespaces(append(msgPrefix, "head"))
-	head, err := m.Get(ctx, headKey)
+	head, err := m.Get(ctx, contactDsKey.MsgHeadKey(peerID))
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return err
 	}
 
 	if len(head) == 0 {
-		if err = batch.Put(ctx, headKey, []byte(msg.Id)); err != nil {
+		if err = batch.Put(ctx, contactDsKey.MsgHeadKey(peerID), []byte(msg.Id)); err != nil {
 			return err
 		}
 	}
 
-	tailKey := ipfsds.KeyWithNamespaces(append(msgPrefix, "tail"))
-	if err = batch.Put(ctx, tailKey, []byte(msg.Id)); err != nil {
+	if err = batch.Put(ctx, contactDsKey.MsgTailKey(peerID), []byte(msg.Id)); err != nil {
 		return err
 	}
 
@@ -74,9 +69,8 @@ func (m *MessageDS) SaveMessage(ctx context.Context, peerID peer.ID, msg *msgpb.
 }
 
 func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*msgpb.Message, error) {
-	key := ipfsds.KeyWithNamespaces([]string{"dchat", "peer", peerID.String(), "message", "logs", msgID})
 
-	val, err := m.Get(ctx, key)
+	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 	if err != nil {
 		return nil, fmt.Errorf("m.Get error: %w", err)
 	}
@@ -93,7 +87,7 @@ func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string
 // GetMessages 获取消息列表
 func (m *MessageDS) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*msgpb.Message, error) {
 	results, err := m.Query(ctx, query.Query{
-		Prefix: fmt.Sprintf("/dchat/peer/%s/message/logs", peerID.String()),
+		Prefix: contactDsKey.MsgLogPrefix(peerID),
 		Orders: []query.Order{query.OrderByKeyDescending{}},
 		Offset: offset,
 		Limit:  limit,
@@ -120,18 +114,26 @@ func (m *MessageDS) GetMessages(ctx context.Context, peerID peer.ID, offset int,
 	return reverse(msgs), nil
 }
 
-func parseMsgID(msgID string) (lamptime uint64, peerID string, err error) {
-	idArr := strings.SplitN(msgID, "_", 2)
-	if len(idArr) <= 1 {
-		err = fmt.Errorf("msgID <%s> format error", msgID)
-		return
+func (m *MessageDS) ClearMessage(ctx context.Context, peerID peer.ID) error {
+	results, err := m.Query(ctx, query.Query{
+		Prefix:   contactDsKey.MsgPrefix(peerID),
+		KeysOnly: true,
+	})
+	if err != nil {
+		return fmt.Errorf("ds query error: %w", err)
 	}
 
-	if lamptime, err = strconv.ParseUint(idArr[0], 10, 64); err != nil {
-		return
+	for result := range results.Next() {
+		if result.Error != nil {
+			return fmt.Errorf("results next error: %w", result.Error)
+		}
+
+		if err = m.Delete(ctx, ipfsds.NewKey(result.Key)); err != nil {
+			return fmt.Errorf("ds delete key error: %w", err)
+		}
 	}
 
-	return lamptime, idArr[1], nil
+	return nil
 }
 
 func reverse[T any](s []T) []T {

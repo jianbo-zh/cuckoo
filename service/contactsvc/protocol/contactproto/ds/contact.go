@@ -2,16 +2,20 @@ package ds
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
 )
 
 var _ PeerIface = (*PeerDS)(nil)
+
+var contactDsKey = &datastore.ContactDsKey{}
 
 type PeerDS struct {
 	ipfsds.Batching
@@ -27,14 +31,12 @@ func (p *PeerDS) AddContact(ctx context.Context, info *pb.ContactMsg) error {
 		return err
 	}
 
-	key := ipfsds.NewKey("/dchat/peer/peer/" + peer.ID(info.PeerId).String())
-	return p.Put(ctx, key, value)
+	return p.Put(ctx, contactDsKey.ContactKey(peer.ID(info.PeerId)), value)
 }
 
 func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.ContactMsg, error) {
-	key := ipfsds.NewKey("/dchat/peer/peer/" + peerID.String())
 
-	value, err := p.Get(ctx, key)
+	value, err := p.Get(ctx, contactDsKey.ContactKey(peer.ID(peerID)))
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +52,7 @@ func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.ContactMsg
 func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.ContactMsg, error) {
 	var contacts []*pb.ContactMsg
 	for _, peerID := range peerIDs {
-		value, err := p.Get(ctx, ipfsds.NewKey("/dchat/peer/peer/"+peerID.String()))
+		value, err := p.Get(ctx, contactDsKey.ContactKey(peerID))
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +69,7 @@ func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb
 
 func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 	results, err := p.Query(ctx, query.Query{
-		Prefix: "/dchat/peer/peer/",
+		Prefix: contactDsKey.Prefix(),
 	})
 	if err != nil {
 		return nil, err
@@ -91,9 +93,8 @@ func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 }
 
 func (p *PeerDS) GetContactIDs(ctx context.Context) ([]peer.ID, error) {
-	prefix := "/dchat/peer/peer/"
 	results, err := p.Query(ctx, query.Query{
-		Prefix:   prefix,
+		Prefix:   contactDsKey.Prefix(),
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -106,7 +107,7 @@ func (p *PeerDS) GetContactIDs(ctx context.Context) ([]peer.ID, error) {
 			return nil, result.Error
 		}
 
-		peerID, err := peer.Decode(strings.TrimLeft(result.Entry.Key, prefix))
+		peerID, err := peer.Decode(strings.TrimLeft(result.Entry.Key, contactDsKey.Prefix()))
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +118,35 @@ func (p *PeerDS) GetContactIDs(ctx context.Context) ([]peer.ID, error) {
 	return peerIDs, nil
 }
 
+func (p *PeerDS) UpdateContact(ctx context.Context, info *pb.ContactMsg) error {
+	value, err := proto.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	return p.Put(ctx, contactDsKey.ContactKey(peer.ID(info.PeerId)), value)
+}
+
 func (p *PeerDS) DeleteContact(ctx context.Context, peerID peer.ID) error {
-	key := ipfsds.NewKey("/dchat/peer/peer/" + peerID.String())
-	return p.Delete(ctx, key)
+	// delete message
+	results, err := p.Query(ctx, query.Query{
+		Prefix:   contactDsKey.MsgPrefix(peerID),
+		KeysOnly: true,
+	})
+	if err != nil {
+		return fmt.Errorf("ds query error: %w", err)
+	}
+
+	for result := range results.Next() {
+		if result.Error != nil {
+			return fmt.Errorf("ds result next error: %w", err)
+		}
+
+		if err = p.Delete(ctx, ipfsds.NewKey(result.Key)); err != nil {
+			return fmt.Errorf("ds delete key error: %w", err)
+		}
+	}
+
+	// delete contact
+	return p.Delete(ctx, contactDsKey.ContactKey(peerID))
 }

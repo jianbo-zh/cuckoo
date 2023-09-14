@@ -53,7 +53,18 @@ func (c *SessionSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
 	return groupSvc, nil
 }
 
-func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessionsRequest) (*proto.GetSessionsReply, error) {
+func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessionsRequest) (reply *proto.GetSessionsReply, err error) {
+
+	log.Infoln("GetSessions request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetSessions panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetSessions error: ", err.Error())
+		} else {
+			log.Infoln("GetSessions reply: ", reply.String())
+		}
+	}()
 
 	var sessions []*proto.Session
 	groupSvc, err := s.getGroupSvc()
@@ -115,7 +126,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		sessionList = make([]*proto.Session, 0)
 	}
 
-	reply := &proto.GetSessionsReply{
+	reply = &proto.GetSessionsReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

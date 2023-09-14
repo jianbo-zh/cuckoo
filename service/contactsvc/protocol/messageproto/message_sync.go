@@ -6,14 +6,14 @@ import (
 	"crypto/sha1"
 	"time"
 
-	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/message/pb"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
 	"google.golang.org/protobuf/proto"
 )
 
-func (p *PeerMessageSvc) RunSync(peerID peer.ID) {
+func (p *PeerMessageProto) RunSync(peerID peer.ID) {
 	ctx := context.Background()
 	stream, err := p.host.NewStream(ctx, peerID, SYNC_ID)
 	if err != nil {
@@ -47,7 +47,7 @@ func (p *PeerMessageSvc) RunSync(peerID peer.ID) {
 	}
 }
 
-func (p *PeerMessageSvc) SyncHandler(stream network.Stream) {
+func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
 
 	defer stream.Close()
 
@@ -63,7 +63,7 @@ func (p *PeerMessageSvc) SyncHandler(stream network.Stream) {
 	}
 }
 
-func (p *PeerMessageSvc) loopSync(peerID peer.ID, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
+func (p *PeerMessageProto) loopSync(peerID peer.ID, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
 
 	var syncmsg pb.PeerSyncMessage
 
@@ -112,7 +112,7 @@ func (p *PeerMessageSvc) loopSync(peerID peer.ID, stream network.Stream, rd pbio
 	}
 }
 
-func (p *PeerMessageSvc) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
+func (p *PeerMessageProto) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 
 	var summary pb.DataSummary
 	if err := proto.Unmarshal(syncmsg.Payload, &summary); err != nil {
@@ -201,7 +201,7 @@ func (p *PeerMessageSvc) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncM
 	return nil
 }
 
-func (p *PeerMessageSvc) handleSyncRangeHash(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
+func (p *PeerMessageProto) handleSyncRangeHash(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 	var hashmsg pb.DataRangeHash
 	if err := proto.Unmarshal(syncmsg.Payload, &hashmsg); err != nil {
 		return err
@@ -239,7 +239,7 @@ func (p *PeerMessageSvc) handleSyncRangeHash(peerID peer.ID, syncmsg *pb.PeerSyn
 	return nil
 }
 
-func (p *PeerMessageSvc) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
+func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 	var idmsg pb.DataRangeIDs
 	if err := proto.Unmarshal(syncmsg.Payload, &idmsg); err != nil {
 		return err
@@ -313,7 +313,7 @@ func (p *PeerMessageSvc) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSync
 	return nil
 }
 
-func (p *PeerMessageSvc) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage) error {
+func (p *PeerMessageProto) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage) error {
 	var msg pb.Message
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
 		return err
@@ -325,7 +325,7 @@ func (p *PeerMessageSvc) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyncM
 	return nil
 }
 
-func (p *PeerMessageSvc) handleSyncPullMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
+func (p *PeerMessageProto) handleSyncPullMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 	var pullmsg pb.DataPullMsg
 	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
 		return err
@@ -353,7 +353,7 @@ func (p *PeerMessageSvc) handleSyncPullMsg(peerID peer.ID, syncmsg *pb.PeerSyncM
 	return nil
 }
 
-func (p *PeerMessageSvc) getMessageSummary(peerID peer.ID) (*pb.DataSummary, error) {
+func (p *PeerMessageProto) getMessageSummary(peerID peer.ID) (*pb.DataSummary, error) {
 
 	ctx := context.Background()
 
@@ -389,7 +389,7 @@ func (p *PeerMessageSvc) getMessageSummary(peerID peer.ID) (*pb.DataSummary, err
 	}, nil
 }
 
-func (p *PeerMessageSvc) getRangeIDs(peerID peer.ID, startID string, endID string) (*pb.DataRangeIDs, error) {
+func (p *PeerMessageProto) getRangeIDs(peerID peer.ID, startID string, endID string) (*pb.DataRangeIDs, error) {
 	ids, err := p.data.GetRangeIDs(peerID, startID, endID)
 	if err != nil {
 		return nil, err
@@ -402,15 +402,15 @@ func (p *PeerMessageSvc) getRangeIDs(peerID peer.ID, startID string, endID strin
 	}, nil
 }
 
-func (p *PeerMessageSvc) getRangeMessages(peerID peer.ID, startID string, endID string) ([]*pb.Message, error) {
+func (p *PeerMessageProto) getRangeMessages(peerID peer.ID, startID string, endID string) ([]*pb.Message, error) {
 	return p.data.GetRangeMessages(peerID, startID, endID)
 }
 
-func (p *PeerMessageSvc) getMessagesByIDs(peerID peer.ID, msgIDs []string) ([]*pb.Message, error) {
+func (p *PeerMessageProto) getMessagesByIDs(peerID peer.ID, msgIDs []string) ([]*pb.Message, error) {
 	return p.data.GetMessagesByIDs(peerID, msgIDs)
 }
 
-func (p *PeerMessageSvc) rangeHash(peerID peer.ID, startID string, endID string) ([]byte, error) {
+func (p *PeerMessageProto) rangeHash(peerID peer.ID, startID string, endID string) ([]byte, error) {
 	ids, err := p.data.GetRangeIDs(peerID, startID, endID)
 	if err != nil {
 		return nil, err

@@ -53,51 +53,60 @@ func (c *ContactSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	return accountSvc, nil
 }
 
-func (c *ContactSvc) ClearContactMessage(ctx context.Context, request *proto.ClearContactMessageRequest) (*proto.ClearContactMessageReply, error) {
+func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRequest) (reply *proto.GetContactReply, err error) {
 
-	contactMessages = make([]*proto.ContactMessage, 0)
+	log.Infoln("GetContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetContact error: ", err.Error())
+		} else {
+			log.Infoln("GetContact reply: ", reply.String())
+		}
+	}()
 
-	reply := &proto.ClearContactMessageReply{
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
+	}
+
+	peerID, err := peer.Decode(request.ContactId)
+	if err != nil {
+		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	contact, err := contactSvc.GetContact(ctx, peerID)
+	if err != nil {
+		return nil, fmt.Errorf("svc get contact error: %w", err)
+	}
+
+	reply = &proto.GetContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
+		},
+		Contact: &proto.Contact{
+			Id:     contact.PeerID.String(),
+			Name:   contact.Name,
+			Avatar: contact.Avatar,
 		},
 	}
 	return reply, nil
 }
 
-func (c *ContactSvc) DeleteContact(ctx context.Context, request *proto.DeleteContactRequest) (*proto.DeleteContactReply, error) {
+func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContactsRequest) (reply *proto.GetContactsReply, err error) {
 
-	contacts = make([]*proto.Contact, 0)
-
-	reply := &proto.DeleteContactReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-	}
-	return reply, nil
-}
-
-func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRequest) (*proto.GetContactReply, error) {
-
-	var contact *proto.Contact = nil
-
-	if len(contacts) > 0 {
-		contact = contacts[0]
-	}
-
-	reply := &proto.GetContactReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Contact: contact,
-	}
-	return reply, nil
-}
-
-func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContactsRequest) (*proto.GetContactsReply, error) {
+	log.Infoln("GetContacts request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetContacts panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetContacts error: ", err.Error())
+		} else {
+			log.Infoln("GetContacts reply: ", reply.String())
+		}
+	}()
 
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
@@ -118,7 +127,7 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 		})
 	}
 
-	reply := &proto.GetContactsReply{
+	reply = &proto.GetContactsReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -128,42 +137,36 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 	return reply, nil
 }
 
-func (c *ContactSvc) GetContactIDs(ctx context.Context, request *proto.GetContactIdsRequest) (*proto.GetContactIdsReply, error) {
+func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.GetSpecifiedContactsRequest) (reply *proto.GetSpecifiedContactsReply, err error) {
 
-	var peerIDs []string
-	for _, contact := range contacts {
-		peerIDs = append(peerIDs, contact.Id)
-	}
-
-	reply := &proto.GetContactIdsReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		ContactIds: peerIDs,
-	}
-	return reply, nil
-}
-
-func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.GetSpecifiedContactsRequest) (*proto.GetSpecifiedContactsReply, error) {
+	log.Infoln("GetSpecifiedContacts request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetSpecifiedContacts panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetSpecifiedContacts error: ", err.Error())
+		} else {
+			log.Infoln("GetSpecifiedContacts reply: ", reply.String())
+		}
+	}()
 
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
-		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
+		return nil, fmt.Errorf("get contact svc error: %w", err)
 	}
 
 	var peerIDs []peer.ID
 	for _, pid := range request.ContactIds {
 		peerID, err := peer.Decode(pid)
 		if err != nil {
-			return nil, fmt.Errorf("peer.Decode error: %w", err)
+			return nil, fmt.Errorf("peer decode error: %w", err)
 		}
 		peerIDs = append(peerIDs, peerID)
 	}
 
 	contacts, err := contactSvc.GetContactsByPeerIDs(ctx, peerIDs)
 	if err != nil {
-		return nil, fmt.Errorf("contactSvc.GetContactsByPeerIDs error: %w", err)
+		return nil, fmt.Errorf("svc get contacts by peer ids error: %w", err)
 	}
 
 	contactList := make([]*proto.Contact, 0)
@@ -174,7 +177,7 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 			Avatar: contact.Avatar,
 		})
 	}
-	reply := &proto.GetSpecifiedContactsReply{
+	reply = &proto.GetSpecifiedContactsReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -184,70 +187,127 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 	return reply, nil
 }
 
-func (c *ContactSvc) GetNearbyContacts(request *proto.GetNearbyContactsRequest, server proto.ContactSvc_GetNearbyContactsServer) error {
+func (c *ContactSvc) DeleteContact(ctx context.Context, request *proto.DeleteContactRequest) (reply *proto.DeleteContactReply, err error) {
+
+	log.Infoln("DeleteContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("DeleteContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("DeleteContact error: ", err.Error())
+		} else {
+			log.Infoln("DeleteContact reply: ", reply.String())
+		}
+	}()
+
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get contact svc error: %w", err)
+	}
+
+	peerID, err := peer.Decode(request.ContactId)
+	if err != nil {
+		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	if err = contactSvc.DeleteContact(ctx, peerID); err != nil {
+		return nil, fmt.Errorf("svc delete contact error: %w", err)
+	}
+
+	reply = &proto.DeleteContactReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) GetNearbyPeers(request *proto.GetNearbyPeersRequest, server proto.ContactSvc_GetNearbyPeersServer) (err error) {
+
+	log.Infoln("GetNearbyPeers request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetNearbyPeers panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetNearbyPeers error: ", err.Error())
+		}
+	}()
+
 	cuckoo, err := c.getter.GetCuckoo()
 	if err != nil {
-		return fmt.Errorf("c.getter.GetCuckoo error: %w", err)
+		return fmt.Errorf("get cuckoo error: %w", err)
 	}
 
 	peerIDs, err := cuckoo.GetLanPeerIDs()
 	if err != nil {
-		return fmt.Errorf("cuckoo.GetLanPeerIDs error: %w", err)
+		return fmt.Errorf("cuckoo get lan peer ids error: %w", err)
 	}
-
-	fmt.Printf("get lan peer ids: %d\n", len(peerIDs))
 
 	if len(peerIDs) > 0 {
 		accountSvc, err := cuckoo.GetAccountSvc()
 		if err != nil {
-			return fmt.Errorf("cuckoo.GetAccountSvc error: %w", err)
+			return fmt.Errorf("get account svc error: %w", err)
 		}
 
 		ctx := context.Background()
 		for _, peerID := range peerIDs {
-			fmt.Printf("get lan peer: %s\n", peerID.String())
 
 			peerAccount, err := accountSvc.GetPeer(ctx, peerID)
 			if err != nil {
-				fmt.Printf("accountSvc.GetPeerAccount error: %s", err.Error())
+				log.Errorf("svc get peer error: %s", err.Error())
 				continue
 			}
 
-			fmt.Println("download peer avatar start")
 			err = accountSvc.DownloadPeerAvatar(ctx, peerID, peerAccount.Avatar)
 			if err != nil {
-				fmt.Printf("accountSvc.DownloadPeerAvatar error: %s\n", err.Error())
+				log.Errorf("svc download peer avatar error: %s", err.Error())
 				continue
 			}
-			fmt.Println("download peer avatar end")
 
-			server.Send(&proto.GetNearbyContactsStreamReply{
+			reply := &proto.GetNearbyPeersStreamReply{
 				Result: &proto.Result{
 					Code:    0,
 					Message: "ok",
 				},
-				Contact: &proto.Contact{
+				Peer: &proto.Peer{
 					Id:     peerAccount.PeerID.String(),
 					Name:   peerAccount.Name,
 					Avatar: peerAccount.Avatar,
 				},
-			})
-			fmt.Println("server.Sended nearby")
+			}
+			if err = server.Send(reply); err != nil {
+				return err
+			}
+
+			log.Infoln("GetNearbyContacts reply: ", reply.String())
 		}
 	}
 
 	return nil
 }
 
-func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetContactMessageRequest) (*proto.GetContactMessageReply, error) {
+func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetContactMessageRequest) (reply *proto.GetContactMessageReply, err error) {
+
+	log.Infoln("GetContactMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetContactMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetContactMessage error: ", err.Error())
+		} else {
+			log.Infoln("GetContactMessage reply: ", reply.String())
+		}
+	}()
+
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
-		return nil, fmt.Errorf("get contact service error: %w", err)
+		return nil, fmt.Errorf("get contact svc error: %w", err)
 	}
 
 	accountSvc, err := c.getAccountSvc()
 	if err != nil {
-		return nil, fmt.Errorf("get account service error: %w", err)
+		return nil, fmt.Errorf("get account svc error: %w", err)
 	}
 
 	peerID, err := peer.Decode(request.ContactId)
@@ -257,64 +317,70 @@ func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetCo
 
 	contact, err := contactSvc.GetContact(ctx, peerID)
 	if err != nil {
-		return nil, fmt.Errorf("get contact error: %w", err)
+		return nil, fmt.Errorf("svc get contact error: %w", err)
 	}
 
 	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get account error: %w", err)
+		return nil, fmt.Errorf("svc get account error: %w", err)
 	}
 
 	msg, err := contactSvc.GetMessage(ctx, peerID, request.MsgId)
 	if err != nil {
-		return nil, fmt.Errorf("contactSvc.GetMessage error: %w", err)
+		return nil, fmt.Errorf("svc get msg error: %w", err)
 	}
 
 	var sender proto.Contact
-	var receiver proto.Contact
+	var receiverID string
 	if msg.FromPeerID == account.PeerID {
 		sender = proto.Contact{
 			Id:     account.PeerID.String(),
 			Name:   account.Name,
 			Avatar: account.Avatar,
 		}
-		receiver = proto.Contact{
-			Id:     contact.PeerID.String(),
-			Name:   contact.Name,
-			Avatar: contact.Avatar,
-		}
+		receiverID = contact.PeerID.String()
+
 	} else if msg.FromPeerID == contact.PeerID {
 		sender = proto.Contact{
 			Id:     contact.PeerID.String(),
 			Name:   contact.Name,
 			Avatar: contact.Avatar,
 		}
-		receiver = proto.Contact{
-			Id:     account.PeerID.String(),
-			Name:   account.Name,
-			Avatar: account.Avatar,
-		}
+		receiverID = account.PeerID.String()
 	}
 
-	return &proto.GetContactMessageReply{
+	reply = &proto.GetContactMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "",
 		},
 		Message: &proto.ContactMessage{
-			Id:         msg.ID,
-			FromPeer:   &sender,
-			ToPeerId:   receiver.Id,
-			MsgType:    "text",
-			MimeType:   msg.MimeType,
-			Payload:    msg.Payload,
-			State:      "",
-			CreateTime: msg.Timestamp,
+			Id:          msg.ID,
+			FromContact: &sender,
+			ToContactId: receiverID,
+			MsgType:     msgTypeToProto(msg.MsgType),
+			MimeType:    msg.MimeType,
+			Payload:     msg.Payload,
+			State:       "",
+			CreateTime:  msg.Timestamp,
 		},
-	}, nil
+	}
+
+	return reply, nil
 }
 
-func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetContactMessagesRequest) (*proto.GetContactMessagesReply, error) {
+func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetContactMessagesRequest) (reply *proto.GetContactMessagesReply, err error) {
+
+	log.Infoln("GetContactMessages request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetContactMessages panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetContactMessages error: ", err.Error())
+		} else {
+			log.Infoln("GetContactMessages reply: ", reply.String())
+		}
+	}()
 
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
@@ -349,44 +415,37 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 	var msglist []*proto.ContactMessage
 	for _, msg := range msgs {
 		var sender proto.Contact
-		var receiver proto.Contact
+		var receiverID string
 		if msg.FromPeerID == account.PeerID {
 			sender = proto.Contact{
 				Id:     account.PeerID.String(),
 				Name:   account.Name,
 				Avatar: account.Avatar,
 			}
-			receiver = proto.Contact{
-				Id:     contact.PeerID.String(),
-				Name:   contact.Name,
-				Avatar: contact.Avatar,
-			}
+			receiverID = contact.PeerID.String()
+
 		} else if msg.FromPeerID == contact.PeerID {
 			sender = proto.Contact{
 				Id:     contact.PeerID.String(),
 				Name:   contact.Name,
 				Avatar: contact.Avatar,
 			}
-			receiver = proto.Contact{
-				Id:     account.PeerID.String(),
-				Name:   account.Name,
-				Avatar: account.Avatar,
-			}
+			receiverID = account.PeerID.String()
 		}
 
 		msglist = append(msglist, &proto.ContactMessage{
-			Id:         msg.ID,
-			FromPeer:   &sender,
-			ToPeerId:   receiver.Id,
-			MsgType:    "text",
-			MimeType:   msg.MimeType,
-			Payload:    msg.Payload,
-			State:      "",
-			CreateTime: msg.Timestamp,
+			Id:          msg.ID,
+			FromContact: &sender,
+			ToContactId: receiverID,
+			MsgType:     msgTypeToProto(msg.MsgType),
+			MimeType:    msg.MimeType,
+			Payload:     msg.Payload,
+			State:       "",
+			CreateTime:  msg.Timestamp,
 		})
 	}
 
-	reply := &proto.GetContactMessagesReply{
+	reply = &proto.GetContactMessagesReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -398,7 +457,18 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 }
 
 // todo: 客户端和后端借口不一致，需要调整下
-func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.SendContactMessageRequest) (*proto.SendContactMessageReply, error) {
+func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.SendContactMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactMessage reply: ", reply.String())
+		}
+	}()
 
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
@@ -425,45 +495,99 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		return nil, fmt.Errorf("get account error: %w", err)
 	}
 
-	err = contactSvc.SendTextMessage(ctx, peerID, string(request.Data))
+	err = contactSvc.SendMessage(ctx, peerID, protoToMsgType(request.MsgType), request.MimeType, request.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("send text message error: %w", err)
+		return nil, fmt.Errorf("svc send message error: %w", err)
 	}
 
-	reply := &proto.SendContactMessageReply{
+	reply = &proto.SendContactMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
 		Message: &proto.ContactMessage{
 			Id: "id",
-			FromPeer: &proto.Contact{
+			FromContact: &proto.Contact{
 				Id:     account.PeerID.String(),
 				Name:   account.Name,
 				Avatar: account.Avatar,
 			},
-			ToPeerId:   contact.PeerID.String(),
-			MsgType:    request.MsgType,
-			MimeType:   request.MimeType,
-			Payload:    request.Data,
-			State:      "sending",
-			CreateTime: time.Now().Unix(),
+			ToContactId: contact.PeerID.String(),
+			MsgType:     request.MsgType,
+			MimeType:    request.MimeType,
+			Payload:     request.Payload,
+			State:       "sending",
+			CreateTime:  time.Now().Unix(),
 		},
 	}
 	return reply, nil
 }
 
-func (c *ContactSvc) SetContactName(ctx context.Context, request *proto.SetContactNameRequest) (*proto.SetContactNameReply, error) {
+func (c *ContactSvc) ClearContactMessage(ctx context.Context, request *proto.ClearContactMessageRequest) (reply *proto.ClearContactMessageReply, err error) {
 
-	if len(contacts) > 0 {
-		for i, contact := range contacts {
-			if contact.Id == request.ContactId {
-				contacts[i].Name = request.Name
-			}
+	log.Infoln("ClearContactMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("ClearContactMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("ClearContactMessage error: ", err.Error())
+		} else {
+			log.Infoln("ClearContactMessage reply: ", reply.String())
 		}
+	}()
+
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get contact svc error: %w", err)
 	}
 
-	reply := &proto.SetContactNameReply{
+	peerID, err := peer.Decode(request.ContactId)
+	if err != nil {
+		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	err = contactSvc.ClearMessage(ctx, peerID)
+	if err != nil {
+		return nil, fmt.Errorf("svc clear msg error: %w", err)
+	}
+
+	reply = &proto.ClearContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) SetContactName(ctx context.Context, request *proto.SetContactNameRequest) (reply *proto.SetContactNameReply, err error) {
+
+	log.Infoln("SetContactName request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetContactName panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetContactName error: ", err.Error())
+		} else {
+			log.Infoln("SetContactName reply: ", reply.String())
+		}
+	}()
+
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get contact svc error: %w", err)
+	}
+
+	peerID, err := peer.Decode(request.ContactId)
+	if err != nil {
+		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	if err = contactSvc.SetContactName(ctx, peerID, request.Name); err != nil {
+		return nil, fmt.Errorf("svc set contact name error: %w", err)
+	}
+
+	reply = &proto.SetContactNameReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

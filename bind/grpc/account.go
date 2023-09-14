@@ -38,7 +38,18 @@ func (a *AccountSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	return accountSvc, nil
 }
 
-func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (*proto.CreateAccountReply, error) {
+func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (reply *proto.CreateAccountReply, err error) {
+
+	log.Infoln("CreateAccount request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("CreateAccount panic: ", e)
+		} else if err != nil {
+			log.Errorln("CreateAccount error: ", err.Error())
+		} else {
+			log.Infoln("CreateAccount reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -63,7 +74,7 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 		AutoJoinGroup:  fullAccount.AutoJoinGroup,
 	}
 
-	reply := &proto.CreateAccountReply{
+	reply = &proto.CreateAccountReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -73,7 +84,18 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 	return reply, nil
 }
 
-func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRequest) (*proto.GetAccountReply, error) {
+func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRequest) (reply *proto.GetAccountReply, err error) {
+
+	log.Infoln("GetAccount request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetAccount panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetAccount error: ", err.Error())
+		} else {
+			log.Infoln("GetAccount reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -95,7 +117,7 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 		}
 	}
 
-	reply := &proto.GetAccountReply{
+	reply = &proto.GetAccountReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -106,7 +128,18 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 	return reply, nil
 }
 
-func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAccountAvatarRequest) (*proto.SetAccountAvatarReply, error) {
+func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAccountAvatarRequest) (reply *proto.SetAccountAvatarReply, err error) {
+
+	log.Infoln("SetAccountAvatar request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAccountAvatar panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAccountAvatar error: ", err.Error())
+		} else {
+			log.Infoln("SetAccountAvatar reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -118,7 +151,7 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 		return nil, fmt.Errorf("accountSvc.SetAvatar error: %w", err)
 	}
 
-	reply := &proto.SetAccountAvatarReply{
+	reply = &proto.SetAccountAvatarReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -128,7 +161,18 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 	return reply, nil
 }
 
-func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccountNameRequest) (*proto.SetAccountNameReply, error) {
+func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccountNameRequest) (reply *proto.SetAccountNameReply, err error) {
+
+	log.Infoln("SetAccountName request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAccountName panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAccountName error: ", err.Error())
+		} else {
+			log.Infoln("SetAccountName reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -140,7 +184,7 @@ func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccou
 		return nil, fmt.Errorf("accountSvc.SetName error: %w", err)
 	}
 
-	reply := &proto.SetAccountNameReply{
+	reply = &proto.SetAccountNameReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -150,7 +194,18 @@ func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccou
 	return reply, nil
 }
 
-func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAutoAddContactRequest) (*proto.SetAutoAddContactReply, error) {
+func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAutoAddContactRequest) (reply *proto.SetAutoAddContactReply, err error) {
+
+	log.Infoln("SetAutoAddContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAutoAddContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAutoAddContact error: ", err.Error())
+		} else {
+			log.Infoln("SetAutoAddContact reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -162,7 +217,7 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 		return nil, fmt.Errorf("accountSvc.SetAutoAddContact error: %w", err)
 	}
 
-	reply := &proto.SetAutoAddContactReply{
+	reply = &proto.SetAutoAddContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -172,7 +227,18 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 	return reply, nil
 }
 
-func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAutoJoinGroupRequest) (*proto.SetAutoJoinGroupReply, error) {
+func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAutoJoinGroupRequest) (reply *proto.SetAutoJoinGroupReply, err error) {
+
+	log.Infoln("SetAutoJoinGroup request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAutoJoinGroup panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAutoJoinGroup error: ", err.Error())
+		} else {
+			log.Infoln("SetAutoJoinGroup reply: ", reply.String())
+		}
+	}()
 
 	accountSvc, err := a.getAccountSvc()
 	if err != nil {
@@ -184,7 +250,7 @@ func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAut
 		return nil, fmt.Errorf("accountSvc.SetAutoJoinGroup error: %w", err)
 	}
 
-	reply := &proto.SetAutoJoinGroupReply{
+	reply = &proto.SetAutoJoinGroupReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

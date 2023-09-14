@@ -7,7 +7,7 @@ import (
 )
 
 var account proto.Account
-var groups []*proto.GroupFull
+var groups []*proto.GroupDetail
 var groupMembers []*proto.GroupMember
 var groupMessages []*proto.GroupMessage
 var contacts []*proto.Contact
@@ -15,7 +15,7 @@ var contactMessages []*proto.ContactMessage
 
 func init() {
 	account = proto.Account{}
-	groups = make([]*proto.GroupFull, 0)
+	groups = make([]*proto.GroupDetail, 0)
 	groupMembers = make([]*proto.GroupMember, 0)
 	groupMessages = make([]*proto.GroupMessage, 0)
 	contacts = make([]*proto.Contact, 0)
@@ -29,7 +29,7 @@ func init() {
 			Avatar: "md5_f4b3ae325c43e3fb08c0c7fbbc57ea63.jpg",
 			Name:   "name-8081",
 		},
-		MsgType:    "text",
+		MsgType:    msgTypeToProto("text"),
 		MimeType:   "text/plain",
 		Payload:    []byte("hello 你好！"),
 		CreateTime: time.Now().Unix(),

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/network/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/network/pb"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -24,8 +25,8 @@ import (
 var log = logging.Logger("network")
 
 const (
-	CONN_ID    = "/dchat/group/connect/1.0.0"
-	ROUTING_ID = "/dchat/group/routing/1.0.0"
+	CONN_ID    = protocol.GroupConnID_v100
+	ROUTING_ID = protocol.GroupRoutingID_100
 
 	ServiceName = "group.connect"
 	maxMsgSize  = 4 * 1024 // 4K

@@ -156,6 +156,20 @@ func (c *ContactProto) GetContacts(ctx context.Context) ([]*ContactEntiy, error)
 	return peers, nil
 }
 
+func (c *ContactProto) SetContactName(ctx context.Context, peerID peer.ID, name string) error {
+	contact, err := c.data.GetContact(ctx, peerID)
+	if err != nil {
+		return fmt.Errorf("ds get contact error: %w", err)
+	}
+
+	contact.Name = name
+	if err = c.data.UpdateContact(ctx, contact); err != nil {
+		return fmt.Errorf("ds update contact error: %w", err)
+	}
+
+	return nil
+}
+
 func (c *ContactProto) DeleteContact(ctx context.Context, peerID peer.ID) error {
 	return c.data.DeleteContact(ctx, peerID)
 }

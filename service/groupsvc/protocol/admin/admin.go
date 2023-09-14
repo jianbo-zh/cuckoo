@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -26,8 +27,8 @@ var log = logging.Logger("message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = "/dchat/group/admin/1.0.0"
-	SYNC_ID = "/dchat/group/syncmsg/1.0.0"
+	ID      = protocol.GroupAdminID_v100
+	SYNC_ID = protocol.GroupAdminSyncID_v100
 
 	ServiceName = "group.admin"
 	maxMsgSize  = 4 * 1024 // 4K

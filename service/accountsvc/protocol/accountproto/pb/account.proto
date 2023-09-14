@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package account.pb;
 
-message AccountMsg {
+message Account {
   bytes peer_id = 1;
   string name = 2;
   string avatar = 3;
@@ -10,7 +10,7 @@ message AccountMsg {
 	bool auto_join_group = 5;
 }
 
-message PeerMsg {
+message Peer {
   bytes peer_id = 1;
   string name = 2;
   string avatar = 3;

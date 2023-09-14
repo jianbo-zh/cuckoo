@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/message/pb"
 	"google.golang.org/protobuf/proto"
@@ -12,7 +11,7 @@ import (
 
 func (m *MessageDs) GetRangeMessages(groupID string, startID string, endID string) ([]*pb.Message, error) {
 	results, err := m.Query(context.Background(), query.Query{
-		Prefix:  "/dchat/group/" + groupID + "/message/logs/",
+		Prefix:  adminDsKey.MsgLogPrefix(groupID),
 		Filters: []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:  []query.Order{query.OrderByKey{}},
 	})
@@ -41,7 +40,7 @@ func (m *MessageDs) GetRangeMessages(groupID string, startID string, endID strin
 func (m *MessageDs) GetRangeIDs(groupID string, startID string, endID string) ([]string, error) {
 
 	results, err := m.Query(context.Background(), query.Query{
-		Prefix:   "/dchat/group/" + groupID + "/message/logs/",
+		Prefix:   adminDsKey.MsgLogPrefix(groupID),
 		Filters:  []query.Filter{NewIDRangeFilter(startID, endID)},
 		Orders:   []query.Order{query.OrderByKey{}},
 		KeysOnly: true,
@@ -67,12 +66,11 @@ func (m *MessageDs) GetRangeIDs(groupID string, startID string, endID string) ([
 func (m *MessageDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Message, error) {
 
 	ctx := context.Background()
-	prefix := "/dchat/group/" + groupID + "/message/logs/"
 
 	var msgs []*pb.Message
 
 	for _, msgID := range msgIDs {
-		val, err := m.Get(ctx, ds.NewKey(prefix+msgID))
+		val, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
 		if err != nil {
 			return nil, err
 		}
