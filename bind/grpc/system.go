@@ -6,6 +6,7 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -82,8 +83,14 @@ func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAdd
 		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
 	}
 
+	peer0 := &types.Peer{
+		ID:     peerID,
+		Name:   request.Name,
+		Avatar: request.Avatar,
+	}
+
 	fmt.Println("systemSvc.ApplyAddContact", request.Name, request.Avatar, request.Content)
-	err = systemSvc.ApplyAddContact(ctx, peerID, request.Name, request.Avatar, request.Content)
+	err = systemSvc.ApplyAddContact(ctx, peer0, request.Content)
 	if err != nil {
 		return nil, fmt.Errorf("peerSvc.AddPeer error: %w", err)
 	}
@@ -188,28 +195,28 @@ func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSys
 
 	var msglist []*proto.SystemMessage
 	for _, msg := range msgs {
-		var msgType proto.SystemMessage_MsgType
-		switch msg.Type {
-		case systemsvc.TypeContactApply:
+		var msgType proto.SystemMessage_SystemType
+		switch msg.SystemType {
+		case types.SystemTypeApplyAddContact:
 			msgType = proto.SystemMessage_ApplyAddContact
 		default:
 			msgType = proto.SystemMessage_InviteJoinGroup
 		}
 
 		msglist = append(msglist, &proto.SystemMessage{
-			Id:      msg.ID,
-			Type:    msgType,
-			GroupId: msg.GroupID,
+			Id:         msg.ID,
+			SystemType: msgType,
+			GroupId:    msg.GroupID,
 			FromPeer: &proto.Peer{
-				Id:     msg.Sender.PeerID.String(),
+				Id:     msg.Sender.ID.String(),
 				Name:   msg.Sender.Name,
 				Avatar: msg.Sender.Avatar,
 			},
-			ToPeerId:   msg.Receiver.PeerID.String(),
-			Content:    msg.Content,
-			State:      string(msg.State),
-			CreateTime: msg.Ctime,
-			UpdateTime: msg.Utime,
+			ToPeerId:    msg.Receiver.ID.String(),
+			Content:     msg.Content,
+			SystemState: msg.SystemState,
+			CreateTime:  msg.CreateTime,
+			UpdateTime:  msg.UpdateTime,
 		})
 	}
 

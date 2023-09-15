@@ -313,8 +313,8 @@ const (
 	ContactSvc_GetContactMessage_FullMethodName    = "/chat.ContactSvc/GetContactMessage"
 	ContactSvc_GetContactMessages_FullMethodName   = "/chat.ContactSvc/GetContactMessages"
 	ContactSvc_SendContactMessage_FullMethodName   = "/chat.ContactSvc/SendContactMessage"
-	ContactSvc_SetContactName_FullMethodName       = "/chat.ContactSvc/SetContactName"
 	ContactSvc_ClearContactMessage_FullMethodName  = "/chat.ContactSvc/ClearContactMessage"
+	ContactSvc_SetContactName_FullMethodName       = "/chat.ContactSvc/SetContactName"
 	ContactSvc_DeleteContact_FullMethodName        = "/chat.ContactSvc/DeleteContact"
 )
 
@@ -336,10 +336,10 @@ type ContactSvcClient interface {
 	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesReply, error)
 	// 发送消息
 	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
-	// 设置联系人别名
-	SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error)
 	// 清空聊天记录
 	ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error)
+	// 设置联系人别名
+	SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error)
 	// 删除联系人
 	DeleteContact(ctx context.Context, in *DeleteContactRequest, opts ...grpc.CallOption) (*DeleteContactReply, error)
 }
@@ -438,18 +438,18 @@ func (c *contactSvcClient) SendContactMessage(ctx context.Context, in *SendConta
 	return out, nil
 }
 
-func (c *contactSvcClient) SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error) {
-	out := new(SetContactNameReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SetContactName_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error) {
+	out := new(ClearContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_ClearContactMessage_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *contactSvcClient) ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error) {
-	out := new(ClearContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_ClearContactMessage_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) SetContactName(ctx context.Context, in *SetContactNameRequest, opts ...grpc.CallOption) (*SetContactNameReply, error) {
+	out := new(SetContactNameReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SetContactName_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -483,10 +483,10 @@ type ContactSvcServer interface {
 	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesReply, error)
 	// 发送消息
 	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error)
-	// 设置联系人别名
-	SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error)
 	// 清空聊天记录
 	ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error)
+	// 设置联系人别名
+	SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error)
 	// 删除联系人
 	DeleteContact(context.Context, *DeleteContactRequest) (*DeleteContactReply, error)
 	mustEmbedUnimplementedContactSvcServer()
@@ -517,11 +517,11 @@ func (UnimplementedContactSvcServer) GetContactMessages(context.Context, *GetCon
 func (UnimplementedContactSvcServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendContactMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetContactName not implemented")
-}
 func (UnimplementedContactSvcServer) ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearContactMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SetContactName(context.Context, *SetContactNameRequest) (*SetContactNameReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetContactName not implemented")
 }
 func (UnimplementedContactSvcServer) DeleteContact(context.Context, *DeleteContactRequest) (*DeleteContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteContact not implemented")
@@ -668,24 +668,6 @@ func _ContactSvc_SendContactMessage_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContactSvc_SetContactName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetContactNameRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SetContactName(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SetContactName_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SetContactName(ctx, req.(*SetContactNameRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ContactSvc_ClearContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearContactMessageRequest)
 	if err := dec(in); err != nil {
@@ -700,6 +682,24 @@ func _ContactSvc_ClearContactMessage_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ContactSvcServer).ClearContactMessage(ctx, req.(*ClearContactMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SetContactName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetContactNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SetContactName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SetContactName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SetContactName(ctx, req.(*SetContactNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -754,12 +754,12 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ContactSvc_SendContactMessage_Handler,
 		},
 		{
-			MethodName: "SetContactName",
-			Handler:    _ContactSvc_SetContactName_Handler,
-		},
-		{
 			MethodName: "ClearContactMessage",
 			Handler:    _ContactSvc_ClearContactMessage_Handler,
+		},
+		{
+			MethodName: "SetContactName",
+			Handler:    _ContactSvc_SetContactName_Handler,
 		},
 		{
 			MethodName: "DeleteContact",
@@ -777,22 +777,22 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	GroupSvc_CreateGroup_FullMethodName        = "/chat.GroupSvc/CreateGroup"
-	GroupSvc_GetGroupDetail_FullMethodName     = "/chat.GroupSvc/GetGroupDetail"
-	GroupSvc_GetGroupMessages_FullMethodName   = "/chat.GroupSvc/GetGroupMessages"
-	GroupSvc_SendGroupMessage_FullMethodName   = "/chat.GroupSvc/SendGroupMessage"
-	GroupSvc_SetGroupName_FullMethodName       = "/chat.GroupSvc/SetGroupName"
-	GroupSvc_SetGroupAvatar_FullMethodName     = "/chat.GroupSvc/SetGroupAvatar"
-	GroupSvc_SetGroupNotice_FullMethodName     = "/chat.GroupSvc/SetGroupNotice"
-	GroupSvc_GetGroupMembers_FullMethodName    = "/chat.GroupSvc/GetGroupMembers"
-	GroupSvc_SetJoinGroupReview_FullMethodName = "/chat.GroupSvc/SetJoinGroupReview"
-	GroupSvc_ClearGroupMessage_FullMethodName  = "/chat.GroupSvc/ClearGroupMessage"
-	GroupSvc_ExitGroup_FullMethodName          = "/chat.GroupSvc/ExitGroup"
-	GroupSvc_DeleteGroup_FullMethodName        = "/chat.GroupSvc/DeleteGroup"
-	GroupSvc_GetGroup_FullMethodName           = "/chat.GroupSvc/GetGroup"
-	GroupSvc_GetGroups_FullMethodName          = "/chat.GroupSvc/GetGroups"
-	GroupSvc_InviteJoinGroup_FullMethodName    = "/chat.GroupSvc/InviteJoinGroup"
-	GroupSvc_RemoveGroupMember_FullMethodName  = "/chat.GroupSvc/RemoveGroupMember"
+	GroupSvc_CreateGroup_FullMethodName       = "/chat.GroupSvc/CreateGroup"
+	GroupSvc_GetGroup_FullMethodName          = "/chat.GroupSvc/GetGroup"
+	GroupSvc_GetGroupDetail_FullMethodName    = "/chat.GroupSvc/GetGroupDetail"
+	GroupSvc_GetGroups_FullMethodName         = "/chat.GroupSvc/GetGroups"
+	GroupSvc_SetGroupName_FullMethodName      = "/chat.GroupSvc/SetGroupName"
+	GroupSvc_SetGroupAvatar_FullMethodName    = "/chat.GroupSvc/SetGroupAvatar"
+	GroupSvc_SetGroupNotice_FullMethodName    = "/chat.GroupSvc/SetGroupNotice"
+	GroupSvc_SetGroupAutoJoin_FullMethodName  = "/chat.GroupSvc/SetGroupAutoJoin"
+	GroupSvc_ExitGroup_FullMethodName         = "/chat.GroupSvc/ExitGroup"
+	GroupSvc_DeleteGroup_FullMethodName       = "/chat.GroupSvc/DeleteGroup"
+	GroupSvc_DisbandGroup_FullMethodName      = "/chat.GroupSvc/DisbandGroup"
+	GroupSvc_GetGroupMembers_FullMethodName   = "/chat.GroupSvc/GetGroupMembers"
+	GroupSvc_RemoveGroupMember_FullMethodName = "/chat.GroupSvc/RemoveGroupMember"
+	GroupSvc_SendGroupMessage_FullMethodName  = "/chat.GroupSvc/SendGroupMessage"
+	GroupSvc_GetGroupMessages_FullMethodName  = "/chat.GroupSvc/GetGroupMessages"
+	GroupSvc_ClearGroupMessage_FullMethodName = "/chat.GroupSvc/ClearGroupMessage"
 )
 
 // GroupSvcClient is the client API for GroupSvc service.
@@ -802,35 +802,35 @@ type GroupSvcClient interface {
 	// 创建群
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupReply, error)
 	// 获取群详情
+	GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error)
+	// 获取群详情
 	GetGroupDetail(ctx context.Context, in *GetGroupDetailRequest, opts ...grpc.CallOption) (*GetGroupDetailReply, error)
-	// 获取聊天记录
-	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
-	// 发送消息
-	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 获取群列表
+	GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error)
 	// 设置名称
 	SetGroupName(ctx context.Context, in *SetGroupNameRequest, opts ...grpc.CallOption) (*SetGroupNameReply, error)
 	// 设置头像（管理员操作）
 	SetGroupAvatar(ctx context.Context, in *SetGroupAvatarRequest, opts ...grpc.CallOption) (*SetGroupAvatarReply, error)
 	// 设置群公告
 	SetGroupNotice(ctx context.Context, in *SetGroupNoticeRequest, opts ...grpc.CallOption) (*SetGroupNoticeReply, error)
-	// 群成员列表
-	GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error)
 	// 设置入群是否审核
-	SetJoinGroupReview(ctx context.Context, in *SetJoinGroupReviewRequest, opts ...grpc.CallOption) (*SetJoinGroupReviewReply, error)
-	// 清空聊天记录
-	ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error)
+	SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJoinRequest, opts ...grpc.CallOption) (*SetGroupAutoJoinReply, error)
 	// 退出此群
 	ExitGroup(ctx context.Context, in *ExitGroupRequest, opts ...grpc.CallOption) (*ExitGroupReply, error)
-	// 删除此群
+	// 退出并删除此群
 	DeleteGroup(ctx context.Context, in *DeleteGroupRequest, opts ...grpc.CallOption) (*DeleteGroupReply, error)
-	// 获取群详情
-	GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error)
-	// 获取群列表
-	GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error)
-	// 邀请群成员
-	InviteJoinGroup(ctx context.Context, in *InviteJoinGroupRequest, opts ...grpc.CallOption) (*InviteJoinGroupReply, error)
+	// 解散此群
+	DisbandGroup(ctx context.Context, in *DisbandGroupRequest, opts ...grpc.CallOption) (*DisbandGroupReply, error)
+	// 群成员列表
+	GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberReply, error)
+	// 发送消息
+	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 获取聊天记录
+	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
+	// 清空聊天记录
+	ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error)
 }
 
 type groupSvcClient struct {
@@ -850,6 +850,15 @@ func (c *groupSvcClient) CreateGroup(ctx context.Context, in *CreateGroupRequest
 	return out, nil
 }
 
+func (c *groupSvcClient) GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error) {
+	out := new(GetGroupReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *groupSvcClient) GetGroupDetail(ctx context.Context, in *GetGroupDetailRequest, opts ...grpc.CallOption) (*GetGroupDetailReply, error) {
 	out := new(GetGroupDetailReply)
 	err := c.cc.Invoke(ctx, GroupSvc_GetGroupDetail_FullMethodName, in, out, opts...)
@@ -859,18 +868,9 @@ func (c *groupSvcClient) GetGroupDetail(ctx context.Context, in *GetGroupDetailR
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error) {
-	out := new(GetGroupMessagesReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessages_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupMessage_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error) {
+	out := new(GetGroupsReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroups_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -904,27 +904,9 @@ func (c *groupSvcClient) SetGroupNotice(ctx context.Context, in *SetGroupNoticeR
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error) {
-	out := new(GetGroupMembersReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMembers_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) SetJoinGroupReview(ctx context.Context, in *SetJoinGroupReviewRequest, opts ...grpc.CallOption) (*SetJoinGroupReviewReply, error) {
-	out := new(SetJoinGroupReviewReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SetJoinGroupReview_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error) {
-	out := new(ClearGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_ClearGroupMessage_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJoinRequest, opts ...grpc.CallOption) (*SetGroupAutoJoinReply, error) {
+	out := new(SetGroupAutoJoinReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SetGroupAutoJoin_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -949,27 +931,18 @@ func (c *groupSvcClient) DeleteGroup(ctx context.Context, in *DeleteGroupRequest
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error) {
-	out := new(GetGroupReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroup_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) DisbandGroup(ctx context.Context, in *DisbandGroupRequest, opts ...grpc.CallOption) (*DisbandGroupReply, error) {
+	out := new(DisbandGroupReply)
+	err := c.cc.Invoke(ctx, GroupSvc_DisbandGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *groupSvcClient) GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error) {
-	out := new(GetGroupsReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroups_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) InviteJoinGroup(ctx context.Context, in *InviteJoinGroupRequest, opts ...grpc.CallOption) (*InviteJoinGroupReply, error) {
-	out := new(InviteJoinGroupReply)
-	err := c.cc.Invoke(ctx, GroupSvc_InviteJoinGroup_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error) {
+	out := new(GetGroupMembersReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMembers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -985,6 +958,33 @@ func (c *groupSvcClient) RemoveGroupMember(ctx context.Context, in *RemoveGroupM
 	return out, nil
 }
 
+func (c *groupSvcClient) SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error) {
+	out := new(GetGroupMessagesReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessages_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error) {
+	out := new(ClearGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_ClearGroupMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GroupSvcServer is the server API for GroupSvc service.
 // All implementations must embed UnimplementedGroupSvcServer
 // for forward compatibility
@@ -992,35 +992,35 @@ type GroupSvcServer interface {
 	// 创建群
 	CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupReply, error)
 	// 获取群详情
+	GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error)
+	// 获取群详情
 	GetGroupDetail(context.Context, *GetGroupDetailRequest) (*GetGroupDetailReply, error)
-	// 获取聊天记录
-	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
-	// 发送消息
-	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
+	// 获取群列表
+	GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error)
 	// 设置名称
 	SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error)
 	// 设置头像（管理员操作）
 	SetGroupAvatar(context.Context, *SetGroupAvatarRequest) (*SetGroupAvatarReply, error)
 	// 设置群公告
 	SetGroupNotice(context.Context, *SetGroupNoticeRequest) (*SetGroupNoticeReply, error)
-	// 群成员列表
-	GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error)
 	// 设置入群是否审核
-	SetJoinGroupReview(context.Context, *SetJoinGroupReviewRequest) (*SetJoinGroupReviewReply, error)
-	// 清空聊天记录
-	ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error)
+	SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error)
 	// 退出此群
 	ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error)
-	// 删除此群
+	// 退出并删除此群
 	DeleteGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupReply, error)
-	// 获取群详情
-	GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error)
-	// 获取群列表
-	GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error)
-	// 邀请群成员
-	InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error)
+	// 解散此群
+	DisbandGroup(context.Context, *DisbandGroupRequest) (*DisbandGroupReply, error)
+	// 群成员列表
+	GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error)
+	// 发送消息
+	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
+	// 获取聊天记录
+	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
+	// 清空聊天记录
+	ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error)
 	mustEmbedUnimplementedGroupSvcServer()
 }
 
@@ -1031,14 +1031,14 @@ type UnimplementedGroupSvcServer struct {
 func (UnimplementedGroupSvcServer) CreateGroup(context.Context, *CreateGroupRequest) (*CreateGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateGroup not implemented")
 }
+func (UnimplementedGroupSvcServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroup not implemented")
+}
 func (UnimplementedGroupSvcServer) GetGroupDetail(context.Context, *GetGroupDetailRequest) (*GetGroupDetailReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupDetail not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessages not implemented")
-}
-func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
+func (UnimplementedGroupSvcServer) GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroups not implemented")
 }
 func (UnimplementedGroupSvcServer) SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupName not implemented")
@@ -1049,14 +1049,8 @@ func (UnimplementedGroupSvcServer) SetGroupAvatar(context.Context, *SetGroupAvat
 func (UnimplementedGroupSvcServer) SetGroupNotice(context.Context, *SetGroupNoticeRequest) (*SetGroupNoticeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupNotice not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMembers not implemented")
-}
-func (UnimplementedGroupSvcServer) SetJoinGroupReview(context.Context, *SetJoinGroupReviewRequest) (*SetJoinGroupReviewReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetJoinGroupReview not implemented")
-}
-func (UnimplementedGroupSvcServer) ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClearGroupMessage not implemented")
+func (UnimplementedGroupSvcServer) SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetGroupAutoJoin not implemented")
 }
 func (UnimplementedGroupSvcServer) ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExitGroup not implemented")
@@ -1064,17 +1058,23 @@ func (UnimplementedGroupSvcServer) ExitGroup(context.Context, *ExitGroupRequest)
 func (UnimplementedGroupSvcServer) DeleteGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroup not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroup not implemented")
+func (UnimplementedGroupSvcServer) DisbandGroup(context.Context, *DisbandGroupRequest) (*DisbandGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisbandGroup not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroups not implemented")
-}
-func (UnimplementedGroupSvcServer) InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InviteJoinGroup not implemented")
+func (UnimplementedGroupSvcServer) GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMembers not implemented")
 }
 func (UnimplementedGroupSvcServer) RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMember not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessages not implemented")
+}
+func (UnimplementedGroupSvcServer) ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClearGroupMessage not implemented")
 }
 func (UnimplementedGroupSvcServer) mustEmbedUnimplementedGroupSvcServer() {}
 
@@ -1107,6 +1107,24 @@ func _GroupSvc_CreateGroup_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupSvc_GetGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).GetGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_GetGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).GetGroup(ctx, req.(*GetGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GroupSvc_GetGroupDetail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetGroupDetailRequest)
 	if err := dec(in); err != nil {
@@ -1125,38 +1143,20 @@ func _GroupSvc_GetGroupDetail_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroupMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupMessagesRequest)
+func _GroupSvc_GetGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupMessages(ctx, in)
+		return srv.(GroupSvcServer).GetGroups(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroupMessages_FullMethodName,
+		FullMethod: GroupSvc_GetGroups_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupMessages(ctx, req.(*GetGroupMessagesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_SendGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupMessage(ctx, req.(*SendGroupMessageRequest))
+		return srv.(GroupSvcServer).GetGroups(ctx, req.(*GetGroupsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1215,56 +1215,20 @@ func _GroupSvc_SetGroupNotice_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroupMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupMembersRequest)
+func _GroupSvc_SetGroupAutoJoin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGroupAutoJoinRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroupMembers(ctx, in)
+		return srv.(GroupSvcServer).SetGroupAutoJoin(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroupMembers_FullMethodName,
+		FullMethod: GroupSvc_SetGroupAutoJoin_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroupMembers(ctx, req.(*GetGroupMembersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_SetJoinGroupReview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetJoinGroupReviewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SetJoinGroupReview(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SetJoinGroupReview_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SetJoinGroupReview(ctx, req.(*SetJoinGroupReviewRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_ClearGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ClearGroupMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).ClearGroupMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_ClearGroupMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).ClearGroupMessage(ctx, req.(*ClearGroupMessageRequest))
+		return srv.(GroupSvcServer).SetGroupAutoJoin(ctx, req.(*SetGroupAutoJoinRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1305,56 +1269,38 @@ func _GroupSvc_DeleteGroup_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupRequest)
+func _GroupSvc_DisbandGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisbandGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroup(ctx, in)
+		return srv.(GroupSvcServer).DisbandGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroup_FullMethodName,
+		FullMethod: GroupSvc_DisbandGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroup(ctx, req.(*GetGroupRequest))
+		return srv.(GroupSvcServer).DisbandGroup(ctx, req.(*DisbandGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_GetGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupsRequest)
+func _GroupSvc_GetGroupMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMembersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroups(ctx, in)
+		return srv.(GroupSvcServer).GetGroupMembers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_GetGroups_FullMethodName,
+		FullMethod: GroupSvc_GetGroupMembers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroups(ctx, req.(*GetGroupsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_InviteJoinGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InviteJoinGroupRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).InviteJoinGroup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_InviteJoinGroup_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).InviteJoinGroup(ctx, req.(*InviteJoinGroupRequest))
+		return srv.(GroupSvcServer).GetGroupMembers(ctx, req.(*GetGroupMembersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1377,6 +1323,60 @@ func _GroupSvc_RemoveGroupMember_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupSvc_SendGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupMessage(ctx, req.(*SendGroupMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_GetGroupMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).GetGroupMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_GetGroupMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).GetGroupMessages(ctx, req.(*GetGroupMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_ClearGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearGroupMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).ClearGroupMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_ClearGroupMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).ClearGroupMessage(ctx, req.(*ClearGroupMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GroupSvc_ServiceDesc is the grpc.ServiceDesc for GroupSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1389,16 +1389,16 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_CreateGroup_Handler,
 		},
 		{
+			MethodName: "GetGroup",
+			Handler:    _GroupSvc_GetGroup_Handler,
+		},
+		{
 			MethodName: "GetGroupDetail",
 			Handler:    _GroupSvc_GetGroupDetail_Handler,
 		},
 		{
-			MethodName: "GetGroupMessages",
-			Handler:    _GroupSvc_GetGroupMessages_Handler,
-		},
-		{
-			MethodName: "SendGroupMessage",
-			Handler:    _GroupSvc_SendGroupMessage_Handler,
+			MethodName: "GetGroups",
+			Handler:    _GroupSvc_GetGroups_Handler,
 		},
 		{
 			MethodName: "SetGroupName",
@@ -1413,16 +1413,8 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_SetGroupNotice_Handler,
 		},
 		{
-			MethodName: "GetGroupMembers",
-			Handler:    _GroupSvc_GetGroupMembers_Handler,
-		},
-		{
-			MethodName: "SetJoinGroupReview",
-			Handler:    _GroupSvc_SetJoinGroupReview_Handler,
-		},
-		{
-			MethodName: "ClearGroupMessage",
-			Handler:    _GroupSvc_ClearGroupMessage_Handler,
+			MethodName: "SetGroupAutoJoin",
+			Handler:    _GroupSvc_SetGroupAutoJoin_Handler,
 		},
 		{
 			MethodName: "ExitGroup",
@@ -1433,20 +1425,28 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_DeleteGroup_Handler,
 		},
 		{
-			MethodName: "GetGroup",
-			Handler:    _GroupSvc_GetGroup_Handler,
+			MethodName: "DisbandGroup",
+			Handler:    _GroupSvc_DisbandGroup_Handler,
 		},
 		{
-			MethodName: "GetGroups",
-			Handler:    _GroupSvc_GetGroups_Handler,
-		},
-		{
-			MethodName: "InviteJoinGroup",
-			Handler:    _GroupSvc_InviteJoinGroup_Handler,
+			MethodName: "GetGroupMembers",
+			Handler:    _GroupSvc_GetGroupMembers_Handler,
 		},
 		{
 			MethodName: "RemoveGroupMember",
 			Handler:    _GroupSvc_RemoveGroupMember_Handler,
+		},
+		{
+			MethodName: "SendGroupMessage",
+			Handler:    _GroupSvc_SendGroupMessage_Handler,
+		},
+		{
+			MethodName: "GetGroupMessages",
+			Handler:    _GroupSvc_GetGroupMessages_Handler,
+		},
+		{
+			MethodName: "ClearGroupMessage",
+			Handler:    _GroupSvc_ClearGroupMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -8,6 +8,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 )
 
@@ -56,7 +57,7 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	fullAccount, err := accountSvc.CreateAccount(ctx, accountsvc.Account{
+	fullAccount, err := accountSvc.CreateAccount(ctx, types.Account{
 		Name:           request.Name,
 		Avatar:         request.Avatar,
 		AutoAddContact: true,
@@ -66,8 +67,8 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 		return nil, fmt.Errorf("accountSvc.CreateAccount error: %w", err)
 	}
 
-	account = proto.Account{
-		PeerId:         fullAccount.PeerID.String(),
+	account := proto.Account{
+		PeerId:         fullAccount.ID.String(),
 		Name:           fullAccount.Name,
 		Avatar:         fullAccount.Avatar,
 		AutoAddContact: fullAccount.AutoAddContact,
@@ -109,7 +110,7 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 
 	} else if account != nil {
 		protoAccount = proto.Account{
-			PeerId:         account.PeerID.String(),
+			PeerId:         account.ID.String(),
 			Name:           account.Name,
 			Avatar:         account.Avatar,
 			AutoAddContact: account.AutoAddContact,

@@ -13,5 +13,5 @@ type SystemIface interface {
 	AddSystemMessage(ctx context.Context, msg *pb.SystemMsg) error
 	GetSystemMessage(ctx context.Context, msgID string) (*pb.SystemMsg, error)
 	GetSystemMessageList(ctx context.Context, offset int, limit int) ([]*pb.SystemMsg, error)
-	UpdateSystemMessageState(ctx context.Context, msgID string, state pb.SystemMsg_State) error
+	UpdateSystemMessageState(ctx context.Context, msgID string, state string) error
 }

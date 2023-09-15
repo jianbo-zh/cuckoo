@@ -72,6 +72,10 @@ func (g *GroupDsKey) AdminLogPrefix(groupID string) string {
 	return groupKeyPrefix + groupID + "/admin/logs/"
 }
 
+func (g *GroupDsKey) MsgPrefix(groupID string) string {
+	return groupKeyPrefix + groupID + "/message/"
+}
+
 func (g *GroupDsKey) MsgLogPrefix(groupID string) string {
 	return groupKeyPrefix + groupID + "/message/logs/"
 }

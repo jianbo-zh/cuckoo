@@ -46,7 +46,7 @@ func (a *SystemDS) GetSystemMessage(ctx context.Context, msgID string) (*pb.Syst
 	return &msg, nil
 }
 
-func (a *SystemDS) UpdateSystemMessageState(ctx context.Context, msgID string, state pb.SystemMsg_State) error {
+func (a *SystemDS) UpdateSystemMessageState(ctx context.Context, msgID string, state string) error {
 	value, err := a.Get(ctx, systemDsKey.MsgLogKey(msgID))
 	if err != nil {
 		return err
@@ -57,8 +57,8 @@ func (a *SystemDS) UpdateSystemMessageState(ctx context.Context, msgID string, s
 		return err
 	}
 
-	msg.State = state
-	msg.Utime = time.Now().Unix()
+	msg.SystemState = state
+	msg.UpdateTime = time.Now().Unix()
 
 	value2, err := proto.Marshal(&msg)
 	if err != nil {

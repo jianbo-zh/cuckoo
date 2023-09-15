@@ -1,15 +1,9 @@
 package types
 
-type MsgType string
-
 const (
-	MsgTypeText    MsgType = "text"
-	MsgTypeImage   MsgType = "image"
-	MsgTypeAudio   MsgType = "audio"
-	MsgTypeVideo   MsgType = "video"
-	MsgTypeUnknown MsgType = "unknown"
+	MsgTypeText    string = "text"
+	MsgTypeImage   string = "image"
+	MsgTypeAudio   string = "audio"
+	MsgTypeVideo   string = "video"
+	MsgTypeUnknown string = "unknown"
 )
-
-func (m MsgType) String() string {
-	return string(m)
-}

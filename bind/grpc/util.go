@@ -5,7 +5,7 @@ import (
 	"github.com/jianbo-zh/dchat/internal/types"
 )
 
-func msgTypeToProto(msgType types.MsgType) proto.MsgType {
+func encodeMsgType(msgType string) proto.MsgType {
 	switch msgType {
 	case types.MsgTypeText:
 		return proto.MsgType_Text
@@ -20,7 +20,7 @@ func msgTypeToProto(msgType types.MsgType) proto.MsgType {
 	}
 }
 
-func protoToMsgType(msgType proto.MsgType) types.MsgType {
+func decodeMsgType(msgType proto.MsgType) string {
 	switch msgType {
 	case proto.MsgType_Text:
 		return types.MsgTypeText

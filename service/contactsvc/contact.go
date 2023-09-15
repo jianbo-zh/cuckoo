@@ -6,6 +6,7 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/types"
 	contactproto "github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto"
 	message "github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -47,8 +48,8 @@ func (c *ContactSvc) AgreeAddContact(ctx context.Context, peerID peer.ID, ackID 
 	return nil
 }
 
-func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]Contact, error) {
-	var contacts []Contact
+func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]types.Contact, error) {
+	var contacts []types.Contact
 
 	result, err := c.contactProto.GetContactsByPeerIDs(ctx, peerIDs)
 	if err != nil {
@@ -56,20 +57,18 @@ func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID
 	}
 
 	for _, pi := range result {
-		contacts = append(contacts, Contact{
-			PeerID:   pi.PeerID,
-			Name:     pi.Name,
-			Avatar:   pi.Avatar,
-			AddTs:    pi.AddTs,
-			AccessTs: pi.AccessTs,
+		contacts = append(contacts, types.Contact{
+			ID:     pi.PeerID,
+			Name:   pi.Name,
+			Avatar: pi.Avatar,
 		})
 	}
 
 	return contacts, nil
 }
 
-func (c *ContactSvc) GetContacts(ctx context.Context) ([]Contact, error) {
-	var contacts []Contact
+func (c *ContactSvc) GetContacts(ctx context.Context) ([]types.Contact, error) {
+	var contacts []types.Contact
 
 	result, err := c.contactProto.GetContacts(ctx)
 	if err != nil {
@@ -77,31 +76,46 @@ func (c *ContactSvc) GetContacts(ctx context.Context) ([]Contact, error) {
 	}
 
 	for _, pi := range result {
-		contacts = append(contacts, Contact{
-			PeerID:   pi.PeerID,
-			Name:     pi.Name,
-			Avatar:   pi.Avatar,
-			AddTs:    pi.AddTs,
-			AccessTs: pi.AccessTs,
+		contacts = append(contacts, types.Contact{
+			ID:     pi.PeerID,
+			Name:   pi.Name,
+			Avatar: pi.Avatar,
 		})
 	}
 
 	return contacts, nil
 }
 
-func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*Contact, error) {
+func (c *ContactSvc) GetContactSessions(ctx context.Context) ([]types.ContactSession, error) {
+	var contacts []types.ContactSession
+
+	result, err := c.contactProto.GetContacts(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pi := range result {
+		contacts = append(contacts, types.ContactSession{
+			ID:     pi.PeerID,
+			Name:   pi.Name,
+			Avatar: pi.Avatar,
+		})
+	}
+
+	return contacts, nil
+}
+
+func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*types.Contact, error) {
 
 	contact, err := c.contactProto.GetContact(ctx, peerID)
 	if err != nil {
 		return nil, fmt.Errorf("c.contactProto.GetContact error: %w", err)
 	}
 
-	return &Contact{
-		PeerID:   contact.PeerID,
-		Name:     contact.Name,
-		Avatar:   contact.Avatar,
-		AddTs:    contact.AddTs,
-		AccessTs: contact.AccessTs,
+	return &types.Contact{
+		ID:     contact.PeerID,
+		Name:   contact.Name,
+		Avatar: contact.Avatar,
 	}, nil
 }
 

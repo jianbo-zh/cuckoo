@@ -84,7 +84,7 @@ func (s *SystemProto) GetMessageList(ctx context.Context, offset int, limit int)
 	return msgs, nil
 }
 
-func (s *SystemProto) UpdateMessageState(ctx context.Context, msgID string, state pb.SystemMsg_State) error {
+func (s *SystemProto) UpdateMessageState(ctx context.Context, msgID string, state string) error {
 	err := s.data.UpdateSystemMessageState(ctx, msgID, state)
 	if err != nil {
 		return fmt.Errorf("update system message state error: %w", err)

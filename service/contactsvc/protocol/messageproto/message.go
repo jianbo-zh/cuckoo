@@ -213,7 +213,7 @@ func (p *PeerMessageProto) SaveMessage(peerID peer.ID, msgID string, msgData []b
 	return nil
 }
 
-func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgType pb.Message_MsgType, mimeType string, payload []byte) error {
+func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) error {
 
 	hostID := p.host.ID()
 

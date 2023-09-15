@@ -87,7 +87,7 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 			Message: "ok",
 		},
 		Contact: &proto.Contact{
-			Id:     contact.PeerID.String(),
+			Id:     contact.ID.String(),
 			Name:   contact.Name,
 			Avatar: contact.Avatar,
 		},
@@ -121,7 +121,7 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 	var contactList []*proto.Contact
 	for _, contact := range contacts {
 		contactList = append(contactList, &proto.Contact{
-			Id:     contact.PeerID.String(),
+			Id:     contact.ID.String(),
 			Name:   contact.Name,
 			Avatar: contact.Avatar,
 		})
@@ -172,7 +172,7 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 	contactList := make([]*proto.Contact, 0)
 	for _, contact := range contacts {
 		contactList = append(contactList, &proto.Contact{
-			Id:     contact.PeerID.String(),
+			Id:     contact.ID.String(),
 			Name:   contact.Name,
 			Avatar: contact.Avatar,
 		})
@@ -271,7 +271,7 @@ func (c *ContactSvc) GetNearbyPeers(request *proto.GetNearbyPeersRequest, server
 					Message: "ok",
 				},
 				Peer: &proto.Peer{
-					Id:     peerAccount.PeerID.String(),
+					Id:     peerAccount.ID.String(),
 					Name:   peerAccount.Name,
 					Avatar: peerAccount.Avatar,
 				},
@@ -332,21 +332,21 @@ func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetCo
 
 	var sender proto.Contact
 	var receiverID string
-	if msg.FromPeerID == account.PeerID {
+	if msg.FromPeerID == account.ID {
 		sender = proto.Contact{
-			Id:     account.PeerID.String(),
+			Id:     account.ID.String(),
 			Name:   account.Name,
 			Avatar: account.Avatar,
 		}
-		receiverID = contact.PeerID.String()
+		receiverID = contact.ID.String()
 
-	} else if msg.FromPeerID == contact.PeerID {
+	} else if msg.FromPeerID == contact.ID {
 		sender = proto.Contact{
-			Id:     contact.PeerID.String(),
+			Id:     contact.ID.String(),
 			Name:   contact.Name,
 			Avatar: contact.Avatar,
 		}
-		receiverID = account.PeerID.String()
+		receiverID = account.ID.String()
 	}
 
 	reply = &proto.GetContactMessageReply{
@@ -358,7 +358,7 @@ func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetCo
 			Id:          msg.ID,
 			FromContact: &sender,
 			ToContactId: receiverID,
-			MsgType:     msgTypeToProto(msg.MsgType),
+			MsgType:     encodeMsgType(msg.MsgType),
 			MimeType:    msg.MimeType,
 			Payload:     msg.Payload,
 			State:       "",
@@ -416,28 +416,28 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 	for _, msg := range msgs {
 		var sender proto.Contact
 		var receiverID string
-		if msg.FromPeerID == account.PeerID {
+		if msg.FromPeerID == account.ID {
 			sender = proto.Contact{
-				Id:     account.PeerID.String(),
+				Id:     account.ID.String(),
 				Name:   account.Name,
 				Avatar: account.Avatar,
 			}
-			receiverID = contact.PeerID.String()
+			receiverID = contact.ID.String()
 
-		} else if msg.FromPeerID == contact.PeerID {
+		} else if msg.FromPeerID == contact.ID {
 			sender = proto.Contact{
-				Id:     contact.PeerID.String(),
+				Id:     contact.ID.String(),
 				Name:   contact.Name,
 				Avatar: contact.Avatar,
 			}
-			receiverID = account.PeerID.String()
+			receiverID = account.ID.String()
 		}
 
 		msglist = append(msglist, &proto.ContactMessage{
 			Id:          msg.ID,
 			FromContact: &sender,
 			ToContactId: receiverID,
-			MsgType:     msgTypeToProto(msg.MsgType),
+			MsgType:     encodeMsgType(msg.MsgType),
 			MimeType:    msg.MimeType,
 			Payload:     msg.Payload,
 			State:       "",
@@ -495,7 +495,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		return nil, fmt.Errorf("get account error: %w", err)
 	}
 
-	err = contactSvc.SendMessage(ctx, peerID, protoToMsgType(request.MsgType), request.MimeType, request.Payload)
+	err = contactSvc.SendMessage(ctx, peerID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("svc send message error: %w", err)
 	}
@@ -508,11 +508,11 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		Message: &proto.ContactMessage{
 			Id: "id",
 			FromContact: &proto.Contact{
-				Id:     account.PeerID.String(),
+				Id:     account.ID.String(),
 				Name:   account.Name,
 				Avatar: account.Avatar,
 			},
-			ToContactId: contact.PeerID.String(),
+			ToContactId: contact.ID.String(),
 			MsgType:     request.MsgType,
 			MimeType:    request.MimeType,
 			Payload:     request.Payload,

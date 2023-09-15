@@ -9,47 +9,54 @@ import (
 	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
-	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin"
-	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/ds"
-	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/message"
-	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/network"
+	"github.com/jianbo-zh/dchat/service/contactsvc"
+	admin "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto"
+	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
+	message "github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto"
+	network "github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
+var log = logging.Logger("group-service")
+
 type GroupService struct {
-	networkSvc *network.NetworkService
-	adminSvc   *admin.AdminService
-	messageSvc *message.MessageService
+	networkProto *network.NetworkProto
+	adminProto   *admin.AdminProto
+	messageProto *message.MessageProto
 
 	accountSvc accountsvc.AccountServiceIface
+	contactSvc contactsvc.ContactServiceIface
 
 	emitters struct {
 		evtGroupsInit event.Emitter
 	}
 }
 
-func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost host.Host, ids ipfsds.Batching,
-	ebus event.Bus, rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface) (*GroupService, error) {
+func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface) (*GroupService, error) {
+
 	var err error
 
 	groupsvc = &GroupService{
 		accountSvc: accountSvc,
+		contactSvc: contactSvc,
 	}
 
-	groupsvc.adminSvc, err = admin.NewAdminService(lhost, ids, ebus)
+	groupsvc.adminProto, err = admin.NewAdminProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("admin.NewAdminService %s", err.Error())
 	}
 
-	groupsvc.networkSvc, err = network.NewNetworkService(lhost, rdiscvry, ids, ebus)
+	groupsvc.networkProto, err = network.NewNetworkProto(lhost, rdiscvry, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("network.NewNetworkService %s", err.Error())
 	}
 
-	groupsvc.messageSvc, err = message.NewMessageService(lhost, ids, ebus)
+	groupsvc.messageProto, err = message.NewMessageProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("network.NewNetworkService %s", err.Error())
 	}
@@ -81,9 +88,9 @@ func Get() GroupServiceIface {
 }
 
 // 关闭服务
-func (group *GroupService) Close() {}
+func (g *GroupService) Close() {}
 
-func (group *GroupService) handleSubscribe(ctx context.Context, sub event.Subscription) {
+func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -95,16 +102,16 @@ func (group *GroupService) handleSubscribe(ctx context.Context, sub event.Subscr
 			switch evt := e.(type) {
 			case gevent.EvtHostBootComplete:
 				if evt.IsSucc {
-					groupIDs, err := group.adminSvc.GetGroupIDs(ctx)
+					groupIDs, err := g.adminProto.GetGroupIDs(ctx)
 					if err != nil {
-						fmt.Printf("GetGroupIDs error: %s", err.Error())
+						log.Errorf("get group ids error: %s", err.Error())
 						return
 					}
 					var groups []gevent.Groups
 					for _, groupID := range groupIDs {
-						memeberIDs, err := group.adminSvc.ListMembers(ctx, groupID)
+						memeberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
 						if err != nil {
-							fmt.Println("ListMembers error: %s", err.Error())
+							log.Errorf("get member ids error: %s", err.Error())
 							return
 						}
 						groups = append(groups, gevent.Groups{
@@ -113,13 +120,11 @@ func (group *GroupService) handleSubscribe(ctx context.Context, sub event.Subscr
 						})
 					}
 
-					fmt.Printf("groups: %v\n", groups)
-
 					err = groupsvc.emitters.evtGroupsInit.Emit(gevent.EvtGroupsInit{
 						Groups: groups,
 					})
 					if err != nil {
-						fmt.Printf("emitters.evtGroupsInit error: %s", err.Error())
+						log.Errorf("emit group init error: %s", err.Error())
 					}
 					return
 				}
@@ -131,43 +136,86 @@ func (group *GroupService) handleSubscribe(ctx context.Context, sub event.Subscr
 }
 
 // 创建群
-func (group *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (string, error) {
-	return group.adminSvc.CreateGroup(ctx, name, avatar, memberIDs)
+func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*types.Group, error) {
+
+	contacts, err := g.contactSvc.GetContactsByPeerIDs(ctx, memberIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get contacts by ids error: %w", err)
+	}
+
+	members := make([]*pb.Log_Member, len(contacts))
+	for i, contact := range contacts {
+		members[i] = &pb.Log_Member{
+			Id:     []byte(contact.ID),
+			Name:   contact.Name,
+			Avatar: contact.Avatar,
+		}
+	}
+
+	groupID, err := g.adminProto.CreateGroup(ctx, name, avatar, members)
+	if err != nil {
+		return nil, fmt.Errorf("proto create group error: %w", err)
+	}
+
+	return &types.Group{
+		ID:     groupID,
+		Name:   name,
+		Avatar: avatar,
+	}, nil
 }
 
-// 加入群
-func (group *GroupService) JoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error {
-	return group.adminSvc.JoinGroup(ctx, groupID, groupName, groupAvatar, lamptime)
-}
-
-func (group *GroupService) GetGroup(ctx context.Context, groupID string) (*Group, error) {
-	grp, err := group.adminSvc.GetGroup(ctx, groupID)
+func (g *GroupService) GetGroup(ctx context.Context, groupID string) (*types.Group, error) {
+	grp, err := g.adminProto.GetGroup(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("adminSvc.GetGroup error: %w", err)
 	}
 
-	return &Group{
+	return &types.Group{
 		ID:     grp.ID,
 		Name:   grp.Name,
 		Avatar: grp.Avatar,
 	}, nil
 }
 
-// 解散群
-func (group *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
-
-	if err := group.adminSvc.DisbandGroup(ctx, groupID); err != nil {
-		return err
+func (g *GroupService) GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) {
+	grp, err := g.adminProto.GetGroupDetail(ctx, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("adminSvc.GetGroup error: %w", err)
 	}
 
-	// todo: 广播其他节点
-	return nil
+	return &types.GroupDetail{
+		ID:     grp.ID,
+		Name:   grp.Name,
+		Avatar: grp.Avatar,
+	}, nil
+}
+
+// AgreeJoinGroup 同意加入群
+func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error {
+
+	account, err := g.accountSvc.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("svc get account error: %w", err)
+	}
+
+	group := &types.Group{
+		ID:     groupID,
+		Name:   groupName,
+		Avatar: groupAvatar,
+	}
+
+	return g.adminProto.AgreeJoinGroup(ctx, account, group, lamptime)
 }
 
 // 退出群
-func (group *GroupService) ExitGroup(ctx context.Context, groupID string) error {
+func (g *GroupService) ExitGroup(ctx context.Context, groupID string) error {
 
-	if err := group.adminSvc.ExitGroup(ctx, groupID); err != nil {
+	account, err := g.accountSvc.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if err := g.adminProto.ExitGroup(ctx, account, groupID); err != nil {
 		return err
 	}
 
@@ -176,9 +224,14 @@ func (group *GroupService) ExitGroup(ctx context.Context, groupID string) error 
 }
 
 // 退出并删除群
-func (group *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
+func (g *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
 
-	if err := group.adminSvc.DeleteGroup(ctx, groupID); err != nil {
+	account, err := g.accountSvc.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if err := g.adminProto.DeleteGroup(ctx, account, groupID); err != nil {
 		return fmt.Errorf("adminSvc delete group error: %w", err)
 	}
 
@@ -186,58 +239,81 @@ func (group *GroupService) DeleteGroup(ctx context.Context, groupID string) erro
 	return nil
 }
 
-// 群列表
-func (group *GroupService) ListGroups(ctx context.Context) ([]ds.Group, error) {
-	return group.adminSvc.ListGroups(ctx)
-}
+// 解散群
+func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 
-// 群名称
-func (group *GroupService) GroupName(ctx context.Context, groupID string) (string, error) {
-	return group.adminSvc.GroupName(ctx, groupID)
-}
+	account, err := g.accountSvc.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("svc get account error: %w", err)
+	}
 
-// 设置群名称
-func (group *GroupService) SetGroupName(ctx context.Context, groupID string, name string) error {
-	return group.adminSvc.SetGroupName(ctx, groupID, name)
-}
-
-// 设置群头像
-func (group *GroupService) SetGroupAvatar(ctx context.Context, groupID string, avatar string) error {
-	return group.adminSvc.SetGroupAvatar(ctx, groupID, avatar)
-}
-
-// 设置群本地名称
-func (group *GroupService) SetGroupLocalName(ctx context.Context, groupID string, name string) error {
-	return group.adminSvc.SetGroupLocalName(ctx, groupID, name)
-}
-
-// 设置群本地头像
-func (group *GroupService) SetGroupLocalAvatar(ctx context.Context, groupID string, avatar string) error {
-	return group.adminSvc.SetGroupLocalAvatar(ctx, groupID, avatar)
-}
-
-// 群公告
-func (group *GroupService) GroupNotice(ctx context.Context, groupID string) (string, error) {
-	return group.adminSvc.GroupNotice(ctx, groupID)
-}
-
-// 设置群公告
-func (group *GroupService) SetGroupNotice(ctx context.Context, groupID string, notice string) error {
-	return group.adminSvc.SetGroupNotice(ctx, groupID, notice)
-}
-
-// 邀请进群
-func (group *GroupService) InviteMember(ctx context.Context, groupID string, peerID peer.ID) error {
-	if err := group.adminSvc.InviteMember(ctx, groupID, peerID); err != nil {
+	if err := g.adminProto.DisbandGroup(ctx, account, groupID); err != nil {
 		return err
 	}
 
-	// todo: 群广播操作
+	// todo: 广播其他节点
 	return nil
 }
 
+// 群列表
+func (g *GroupService) GetGroups(ctx context.Context) ([]types.Group, error) {
+	grps, err := g.adminProto.GetGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("proto get groups error: %w", err)
+	}
+
+	var groups []types.Group
+	for _, group := range grps {
+		groups = append(groups, types.Group{
+			ID:     group.ID,
+			Name:   group.Name,
+			Avatar: group.Avatar,
+		})
+	}
+
+	return groups, nil
+}
+
+// 群列表
+func (g *GroupService) GetGroupSessions(ctx context.Context) ([]types.GroupSession, error) {
+	grps, err := g.adminProto.GetGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("proto get groups error: %w", err)
+	}
+
+	var groups []types.GroupSession
+	for _, group := range grps {
+		groups = append(groups, types.GroupSession{
+			ID:     group.ID,
+			Name:   group.Name,
+			Avatar: group.Avatar,
+		})
+	}
+
+	return groups, nil
+}
+
+// 设置群名称
+func (g *GroupService) SetGroupName(ctx context.Context, groupID string, name string) error {
+	return g.adminProto.SetGroupName(ctx, groupID, name)
+}
+
+// 设置群头像
+func (g *GroupService) SetGroupAvatar(ctx context.Context, groupID string, avatar string) error {
+	return g.adminProto.SetGroupAvatar(ctx, groupID, avatar)
+}
+
+// 设置群公告
+func (g *GroupService) SetGroupNotice(ctx context.Context, groupID string, notice string) error {
+	return g.adminProto.SetGroupNotice(ctx, groupID, notice)
+}
+
+func (g *GroupService) SetGroupAutoJoin(ctx context.Context, groupID string, isAutoJoin bool) error {
+	return g.adminProto.SetGroupAutoJoin(ctx, groupID, isAutoJoin)
+}
+
 // 申请进群
-func (group *GroupService) ApplyMember(ctx context.Context, groupID string) error {
+func (g *GroupService) ApplyJoinGroup(ctx context.Context, groupID string) error {
 	// 1. 找到群节点（3个）
 
 	// 2. 向群节点发送申请入群消息
@@ -247,62 +323,92 @@ func (group *GroupService) ApplyMember(ctx context.Context, groupID string) erro
 }
 
 // 进群审核
-func (group *GroupService) ReviewMember(ctx context.Context, groupID string, memberID peer.ID, isAgree bool) error {
-	return group.adminSvc.ReviewMember(ctx, groupID, memberID, isAgree)
+func (g *GroupService) ReviewJoinGroup(ctx context.Context, groupID string, member *types.Peer, isAgree bool) error {
+	return g.adminProto.ReviewJoinGroup(ctx, groupID, member, isAgree)
 }
 
 // 移除成员
-func (group *GroupService) RemoveMember(ctx context.Context, groupID string, memberID peer.ID) error {
-	return group.adminSvc.RemoveMember(ctx, groupID, memberID)
+func (g *GroupService) RemoveGroupMember(ctx context.Context, groupID string, memberID peer.ID) error {
+	return g.adminProto.RemoveMember(ctx, groupID, memberID)
 }
 
 // 成员列表
-func (group *GroupService) ListMembers(ctx context.Context, groupID string) ([]peer.ID, error) {
-	memberIDs, err := group.adminSvc.ListMembers(ctx, groupID)
+func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]types.GroupMember, error) {
+	members, err := g.adminProto.GetGroupMembers(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
 
-	return memberIDs, nil
+	membersList := make([]types.GroupMember, len(members))
+	for _, member := range members {
+		membersList = append(membersList, types.GroupMember{
+			ID:     peer.ID(member.Id),
+			Name:   member.Name,
+			Avatar: member.Avatar,
+		})
+	}
+
+	return membersList, nil
 }
 
 // 发送消息
-func (group *GroupService) SendMessage(ctx context.Context, groupID string, msgType types.MsgType, mimeType string, payload []byte) error {
+func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (*types.GroupMessage, error) {
 
-	account, err := group.accountSvc.GetAccount(ctx)
+	account, err := g.accountSvc.GetAccount(ctx)
 	if err != nil {
-		return fmt.Errorf("accountSvc.GetAccount error: %w", err)
+		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
 	}
 
-	if err := group.messageSvc.SendTextMessage(ctx, groupID, account.Name, account.Avatar, string(payload)); err != nil {
-		return fmt.Errorf("group.messageSvc.SendTextMessage error: %w", err)
+	msg, err := g.messageProto.SendGroupMessage(ctx, account, groupID, msgType, mimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("group.messageSvc.SendTextMessage error: %w", err)
 	}
-	return nil
+
+	message := &types.GroupMessage{
+		ID:      msg.Id,
+		GroupID: msg.GroupId,
+		FromPeer: types.GroupMember{
+			ID:     peer.ID(msg.Member.Id),
+			Name:   msg.Member.Name,
+			Avatar: msg.Member.Avatar,
+		},
+		MsgType:    msg.MsgType,
+		MimeType:   msg.MimeType,
+		Payload:    msg.Payload,
+		CreateTime: msg.CreateTime,
+	}
+
+	return message, nil
 }
 
 // 消息列表
-func (group *GroupService) ListMessages(ctx context.Context, groupID string, offset int, limit int) ([]Message, error) {
-	msgs, err := group.messageSvc.GetMessageList(ctx, groupID, offset, limit)
+func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]types.GroupMessage, error) {
+	msgs, err := g.messageProto.GetMessageList(ctx, groupID, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
 	}
-	var messageList []Message
+
+	var messageList []types.GroupMessage
 	for _, msg := range msgs {
-		messageList = append(messageList, Message{
+		messageList = append(messageList, types.GroupMessage{
 			ID:       msg.Id,
 			GroupID:  msg.GroupId,
-			MsgType:  decodeMsgType(msg.MsgType),
+			MsgType:  msg.MsgType,
 			MimeType: msg.MimeType,
-			FromPeer: Peer{
-				PeerID: peer.ID(msg.PeerId),
-				Name:   msg.PeerName,
-				Avatar: msg.PeerAvatar,
+			FromPeer: types.GroupMember{
+				ID:     peer.ID(msg.Member.Id),
+				Name:   msg.Member.Name,
+				Avatar: msg.Member.Avatar,
 			},
 			Payload:    msg.Payload,
-			Timestamp:  msg.Timestamp,
-			Lamportime: 0,
+			CreateTime: msg.CreateTime,
 		})
 	}
 
 	return messageList, nil
+}
+
+// 消息列表
+func (g *GroupService) ClearGroupMessage(ctx context.Context, groupID string) error {
+	return g.messageProto.ClearGroupMessage(ctx, groupID)
 }

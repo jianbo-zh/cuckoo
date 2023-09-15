@@ -4,22 +4,13 @@ package peermsg.pb;
 
 message Message {
 
-  // 消息类型
-  enum MsgType {
-    TEXT = 0; // 文本
-    IMAGE = 1; // 图片
-    AUDIO = 2; // 语音
-    VIDEO = 3; // 视频
-    UNKNOWN = 4; // 未知
-  }
-
   string id = 1;
 
   bytes fromPeerId = 2;
 
   bytes toPeerId = 3;
 
-  MsgType msgType = 4;
+  string msgType = 4;
 
   string mimeType = 5;
 

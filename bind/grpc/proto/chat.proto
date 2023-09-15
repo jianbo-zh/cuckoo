@@ -53,37 +53,36 @@ service GroupSvc {
   // 创建群
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupReply) {}
   // 获取群详情
+  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
+  // 获取群详情
   rpc GetGroupDetail(GetGroupDetailRequest) returns (GetGroupDetailReply) {}
-  // 获取聊天记录
-  rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
-  // 发送消息
-  rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
+  // 获取群列表
+  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
   // 设置名称
   rpc SetGroupName(SetGroupNameRequest) returns (SetGroupNameReply) {}
   // 设置头像（管理员操作）
   rpc SetGroupAvatar(SetGroupAvatarRequest) returns (SetGroupAvatarReply) {}
   // 设置群公告
   rpc SetGroupNotice(SetGroupNoticeRequest) returns (SetGroupNoticeReply) {}
-  // 群成员列表
-  rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
   // 设置入群是否审核
-  rpc SetJoinGroupReview(SetJoinGroupReviewRequest) returns (SetJoinGroupReviewReply) {}
-  // 清空聊天记录
-  rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
+  rpc SetGroupAutoJoin(SetGroupAutoJoinRequest) returns (SetGroupAutoJoinReply) {}
   // 退出此群
   rpc ExitGroup(ExitGroupRequest) returns (ExitGroupReply) {}
-  // 删除此群
+  // 退出并删除此群
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupReply) {}
-
-
-  // 获取群详情
-  rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
-  // 获取群列表
-  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
-  // 邀请群成员
-  rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
+  // 解散此群 
+  rpc DisbandGroup(DisbandGroupRequest) returns (DisbandGroupReply) {}
+  // 群成员列表
+  rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
   // 移除群成员
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
+  // 发送消息
+  rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
+  // 获取聊天记录
+  rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
+  // 清空聊天记录
+  rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
+
 }
 
 // 会话服务
@@ -320,6 +319,7 @@ message SetGroupAvatarRequest {
 }
 message SetGroupAvatarReply {
   Result result = 1;
+  string avatar = 2;
 }
 
 message SetGroupNameRequest {
@@ -367,11 +367,11 @@ message RemoveGroupMemberReply {
   Result result = 1;
 }
 
-message SetJoinGroupReviewRequest {
+message SetGroupAutoJoinRequest {
   string groupId = 1;
   bool isAuto = 2;
 }
-message SetJoinGroupReviewReply {
+message SetGroupAutoJoinReply {
   Result result = 1;
   bool isAuto = 2;
 }
@@ -394,6 +394,13 @@ message DeleteGroupRequest {
   string groupId = 1;
 }
 message DeleteGroupReply {
+  Result result = 1;
+}
+
+message DisbandGroupRequest {
+  string groupId = 1;
+}
+message DisbandGroupReply {
   Result result = 1;
 }
 
@@ -557,9 +564,7 @@ message GroupDetail {
 // 群消息
 message  GroupMember {
   // PeerId
-  string peerId = 1;
-  // 群ID
-  string groupId = 2;
+  string id = 1;
   // 用户名称
   string name = 3;
   // 头像SHA1
@@ -613,7 +618,7 @@ message Session {
 // 系统消息
 message SystemMessage {
   // 系统操作类型
-  enum MsgType {
+  enum SystemType {
     // 申请加联系人
     ApplyAddContact = 0;
     // 邀请加群组
@@ -621,12 +626,12 @@ message SystemMessage {
   }
 
   string id = 1;
-  MsgType type = 2;
+  SystemType systemType = 2;
   string groupId = 3;
   Peer fromPeer = 4;
   string toPeerId = 5;
   string content = 6;
-  string State = 7;
+  string systemState = 7;
   int64 createTime = 8;
   int64 updateTime = 9;
 }

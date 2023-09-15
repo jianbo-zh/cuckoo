@@ -72,7 +72,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		return nil, fmt.Errorf("s.getGroupSvc error: %w", err)
 	}
 
-	groups, err := groupSvc.ListGroups(ctx)
+	groups, err := groupSvc.GetGroupSessions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("groupSvc.ListGroups error: %w", err)
 	}
@@ -103,7 +103,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 
 		sessions = append(sessions, &proto.Session{
 			Type:              proto.Session_ContactSession,
-			SessionId:         contact.PeerID.String(),
+			SessionId:         contact.ID.String(),
 			Name:              contact.Name,
 			Avatar:            contact.Avatar,
 			LastMessage:       "",

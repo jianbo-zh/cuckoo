@@ -3,9 +3,9 @@ syntax = "proto3";
 package contact.pb;
 
 message ContactMsg {
-  bytes peer_id = 1;
+  bytes peerId = 1;
   string name = 2;
   string avatar = 3;
-  int64 add_ts = 4;
-  int64 access_ts = 5;
+  int64 addTs = 4;
+  int64 accessTs = 5;
 }

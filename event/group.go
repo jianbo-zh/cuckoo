@@ -1,17 +1,17 @@
 package event
 
 import (
-	admpb "github.com/jianbo-zh/dchat/service/groupsvc/protocol/admin/pb"
+	admpb "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type EvtSendAdminLog struct {
-	MsgType admpb.Log_Type
+	MsgType admpb.Log_LogType
 	MsgData *admpb.Log
 }
 
 type EvtRecvAdminLog struct {
-	MsgType admpb.Log_Type
+	MsgType admpb.Log_LogType
 	MsgData *admpb.Log
 }
 

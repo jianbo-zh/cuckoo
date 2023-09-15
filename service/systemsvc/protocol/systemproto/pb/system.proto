@@ -3,37 +3,25 @@ syntax = "proto3";
 package system.pb;
 
 message Peer {
-    bytes peer_id = 1;
+    bytes peerId = 1;
     string name = 2;
     string avatar = 3;
 }
 
 message SystemMsg {
-    enum Type {
-        ContactApply = 0;
-        ContactApplyAck = 1;
-        InviteJoinGroup = 2;
-        InviteJoinGroupAck = 3;
-    }
-
-    enum State {
-        IsSended = 0;
-        IsAgree = 1;
-        IsReject = 2;
-    }
 
     string id = 1;
     string ack_id = 2;
-    Type type = 3;
-    string group_id = 4;
-    string group_name = 5;
-    string group_avatar = 6;
-    uint64 group_lamptime = 7;
-    Peer from_peer = 8;
-    Peer to_peer = 9;
+    string systemType = 3;
+    string groupId = 4;
+    string groupName = 5;
+    string groupAvatar = 6;
+    uint64 groupLamptime = 7;
+    Peer fromPeer = 8;
+    Peer toPeer = 9;
     string content = 10;
-    State state = 11;
-    int64 ctime = 12;
-    int64 utime = 13;
+    string systemState = 11;
+    int64 createTime = 12;
+    int64 updateTime = 13;
 }
 

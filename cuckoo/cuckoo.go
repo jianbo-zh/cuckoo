@@ -84,7 +84,7 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
 	}
 
-	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc)
+	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc, cuckoo.contactSvc)
 	if err != nil {
 		return nil, fmt.Errorf("group.NewGroupService error: %s", err.Error())
 	}
