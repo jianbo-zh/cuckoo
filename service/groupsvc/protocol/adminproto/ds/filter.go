@@ -7,12 +7,12 @@ import (
 	"github.com/ipfs/go-datastore/query"
 )
 
-type GroupFilter struct{}
+type GroupContainFilter struct {
+	Keywords string
+}
 
-func (filter GroupFilter) Filter(e query.Entry) bool {
-
-	keys := strings.Split(strings.Trim(e.Key, "/"), "/")
-	if len(keys) == 4 && keys[0] == "dchat" && keys[1] == "group" && keys[3] == "name" {
+func (filter GroupContainFilter) Filter(e query.Entry) bool {
+	if strings.Contains(e.Key, filter.Keywords) {
 		return true
 	}
 

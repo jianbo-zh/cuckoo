@@ -2,16 +2,14 @@ package ds
 
 import (
 	"context"
-	"errors"
 	"strings"
 
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	"google.golang.org/protobuf/proto"
 )
 
-func (a *AdminDs) GetRangeMessages(groupID string, startID string, endID string) ([]*pb.Log, error) {
+func (a *AdminDs) GetRangeLogs(groupID string, startID string, endID string) ([]*pb.Log, error) {
 	results, err := a.Query(context.Background(), query.Query{
 		Prefix:  adminDsKey.AdminLogPrefix(groupID),
 		Filters: []query.Filter{NewIDRangeFilter(startID, endID)},
@@ -39,7 +37,7 @@ func (a *AdminDs) GetRangeMessages(groupID string, startID string, endID string)
 	return msgs, nil
 }
 
-func (a *AdminDs) GetRangeIDs(groupID string, startID string, endID string) ([]string, error) {
+func (a *AdminDs) GetRangeLogIDs(groupID string, startID string, endID string) ([]string, error) {
 
 	results, err := a.Query(context.Background(), query.Query{
 		Prefix:   adminDsKey.AdminLogPrefix(groupID),
@@ -65,7 +63,7 @@ func (a *AdminDs) GetRangeIDs(groupID string, startID string, endID string) ([]s
 	return msgIDs, nil
 }
 
-func (a *AdminDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Log, error) {
+func (a *AdminDs) GetLogsByIDs(groupID string, msgIDs []string) ([]*pb.Log, error) {
 
 	ctx := context.Background()
 
@@ -86,25 +84,4 @@ func (a *AdminDs) GetMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Log, 
 	}
 
 	return msgs, nil
-}
-
-func (a *AdminDs) GetMessageHead(ctx context.Context, groupID string) (string, error) {
-	head, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", err
-	}
-
-	return string(head), nil
-}
-func (a *AdminDs) GetMessageTail(ctx context.Context, groupID string) (string, error) {
-	tail, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", err
-	}
-
-	return string(tail), nil
-}
-
-func (a *AdminDs) GetMessageLength(context.Context, string) (int32, error) {
-	return 0, nil
 }

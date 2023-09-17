@@ -12,35 +12,36 @@ import (
 type AdminIface interface {
 	ipfsds.Batching
 
-	GetLamportTime(ctx context.Context, groupID string) (uint64, error)
-	MergeLamportTime(ctx context.Context, groupID string, lamptime uint64) error
-	TickLamportTime(ctx context.Context, groupID string) (uint64, error)
+	GetLamptime(ctx context.Context, groupID string) (uint64, error)
+	MergeLamptime(ctx context.Context, groupID string, lamptime uint64) error
+	TickLamptime(ctx context.Context, groupID string) (uint64, error)
 
-	SaveLog(ctx context.Context, peerID peer.ID, groupID string, log *pb.Log) error
-	GetGroups(ctx context.Context) ([]Group, error)
-	GetGroupIDs(ctx context.Context) ([]string, error)
+	SaveLog(ctx context.Context, log *pb.Log) error
 
 	GetState(ctx context.Context, groupID string) (string, error)
+	GetName(ctx context.Context, groupID string) (string, error)
+	GetAvatar(ctx context.Context, groupID string) (string, error)
+	GetNotice(ctx context.Context, groupID string) (string, error)
+	GetAutoJoinGroup(ctx context.Context, groupID string) (bool, error)
+	GetCreator(ctx context.Context, groupID string) (peer.ID, error)
+	GetCreateTime(ctx context.Context, groupID string) (int64, error)
+	GetSessionIDs(ctx context.Context) ([]string, error)
+	GetMembers(ctx context.Context, groupID string) ([]types.GroupMember, error)
 
-	JoinGroupSaveLog(ctx context.Context, peerID peer.ID, groupID string, log *pb.Log) error
-	JoinGroup(ctx context.Context, group *types.Group) error
+	SetState(ctx context.Context, groupID string, state string) error
+	SetName(ctx context.Context, groupID string, name string) error
+	SetAvatar(ctx context.Context, groupID string, avatar string) error
+	SetAlias(ctx context.Context, groupID string, alias string) error
+	SetSession(ctx context.Context, groupID string) error
+
+	DeleteSession(ctx context.Context, groupID string) error
 	DeleteGroup(ctx context.Context, groupID string) error
-	GetGroup(ctx context.Context, groupID string) (*Group, error)
 
-	GroupName(ctx context.Context, groupID string) (string, error)
-	GroupLocalName(ctx context.Context, groupID string) (string, error)
-	GroupAvatar(ctx context.Context, groupID string) (string, error)
-	GroupLocalAvatar(ctx context.Context, groupID string) (string, error)
-	GroupNotice(ctx context.Context, groupID string) (string, error)
-	SetGroupLocalName(ctx context.Context, groupID string, name string) error
-	SetGroupLocalAvatar(ctx context.Context, groupID string, avatar string) error
-	GroupMemberLogs(ctx context.Context, groupID string) ([]*pb.Log, error)
+	GetLogHead(ctx context.Context, groupID string) (string, error)
+	GetLogTail(ctx context.Context, groupID string) (string, error)
+	GetLogLength(ctx context.Context, groupID string) (int, error)
 
-	GetMessageHead(ctx context.Context, groupID string) (string, error)
-	GetMessageTail(ctx context.Context, groupID string) (string, error)
-	GetMessageLength(ctx context.Context, groupID string) (int32, error)
-
-	GetRangeMessages(groupID string, startID string, endID string) ([]*pb.Log, error)
-	GetRangeIDs(groupID string, startID string, endID string) ([]string, error)
-	GetMessagesByIDs(string, []string) ([]*pb.Log, error)
+	GetRangeLogs(groupID string, startID string, endID string) ([]*pb.Log, error)
+	GetRangeLogIDs(groupID string, startID string, endID string) ([]string, error)
+	GetLogsByIDs(string, []string) ([]*pb.Log, error)
 }

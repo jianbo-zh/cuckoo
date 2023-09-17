@@ -102,7 +102,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 			switch evt := e.(type) {
 			case gevent.EvtHostBootComplete:
 				if evt.IsSucc {
-					groupIDs, err := g.adminProto.GetGroupIDs(ctx)
+					groupIDs, err := g.adminProto.GetSessionIDs(ctx)
 					if err != nil {
 						log.Errorf("get group ids error: %s", err.Error())
 						return
@@ -152,42 +152,17 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar stri
 		}
 	}
 
-	groupID, err := g.adminProto.CreateGroup(ctx, name, avatar, members)
-	if err != nil {
-		return nil, fmt.Errorf("proto create group error: %w", err)
-	}
-
-	return &types.Group{
-		ID:     groupID,
-		Name:   name,
-		Avatar: avatar,
-	}, nil
+	return g.adminProto.CreateGroup(ctx, name, avatar, members)
 }
 
+// GetGroup 获取群信息
 func (g *GroupService) GetGroup(ctx context.Context, groupID string) (*types.Group, error) {
-	grp, err := g.adminProto.GetGroup(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("adminSvc.GetGroup error: %w", err)
-	}
-
-	return &types.Group{
-		ID:     grp.ID,
-		Name:   grp.Name,
-		Avatar: grp.Avatar,
-	}, nil
+	return g.adminProto.GetGroup(ctx, groupID)
 }
 
+// GetGroupDetail 获取群详情
 func (g *GroupService) GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) {
-	grp, err := g.adminProto.GetGroupDetail(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("adminSvc.GetGroup error: %w", err)
-	}
-
-	return &types.GroupDetail{
-		ID:     grp.ID,
-		Name:   grp.Name,
-		Avatar: grp.Avatar,
-	}, nil
+	return g.adminProto.GetGroupDetail(ctx, groupID)
 }
 
 // AgreeJoinGroup 同意加入群
@@ -219,7 +194,6 @@ func (g *GroupService) ExitGroup(ctx context.Context, groupID string) error {
 		return err
 	}
 
-	// todo: 广播其他节点
 	return nil
 }
 
@@ -251,32 +225,17 @@ func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 		return err
 	}
 
-	// todo: 广播其他节点
 	return nil
 }
 
 // 群列表
 func (g *GroupService) GetGroups(ctx context.Context) ([]types.Group, error) {
-	grps, err := g.adminProto.GetGroups(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("proto get groups error: %w", err)
-	}
-
-	var groups []types.Group
-	for _, group := range grps {
-		groups = append(groups, types.Group{
-			ID:     group.ID,
-			Name:   group.Name,
-			Avatar: group.Avatar,
-		})
-	}
-
-	return groups, nil
+	return g.adminProto.GetSessions(ctx)
 }
 
 // 群列表
 func (g *GroupService) GetGroupSessions(ctx context.Context) ([]types.GroupSession, error) {
-	grps, err := g.adminProto.GetGroups(ctx)
+	grps, err := g.adminProto.GetSessions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("proto get groups error: %w", err)
 	}
@@ -334,21 +293,7 @@ func (g *GroupService) RemoveGroupMember(ctx context.Context, groupID string, me
 
 // 成员列表
 func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]types.GroupMember, error) {
-	members, err := g.adminProto.GetGroupMembers(ctx, groupID)
-	if err != nil {
-		return nil, err
-	}
-
-	membersList := make([]types.GroupMember, len(members))
-	for _, member := range members {
-		membersList = append(membersList, types.GroupMember{
-			ID:     peer.ID(member.Id),
-			Name:   member.Name,
-			Avatar: member.Avatar,
-		})
-	}
-
-	return membersList, nil
+	return g.adminProto.GetGroupMembers(ctx, groupID, keywords, offset, limit)
 }
 
 // 发送消息

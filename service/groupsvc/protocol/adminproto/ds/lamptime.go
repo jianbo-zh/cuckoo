@@ -9,13 +9,11 @@ import (
 	"github.com/multiformats/go-varint"
 )
 
-func (a *AdminDs) GetLamportTime(ctx context.Context, groupID string) (uint64, error) {
+func (a *AdminDs) GetLamptime(ctx context.Context, groupID string) (uint64, error) {
 	a.lamportMutex.Lock()
 	defer a.lamportMutex.Unlock()
 
-	key := lamportKey(groupID)
-
-	tbs, err := a.Get(ctx, key)
+	tbs, err := a.Get(ctx, adminDsKey.AdminLamptimeKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {
 			return 0, nil
@@ -26,15 +24,14 @@ func (a *AdminDs) GetLamportTime(ctx context.Context, groupID string) (uint64, e
 	return varint.ReadUvarint(bytes.NewReader(tbs))
 }
 
-func (a *AdminDs) TickLamportTime(ctx context.Context, groupID string) (uint64, error) {
+func (a *AdminDs) TickLamptime(ctx context.Context, groupID string) (uint64, error) {
 	a.lamportMutex.Lock()
 	defer a.lamportMutex.Unlock()
 
-	key := lamportKey(groupID)
-
 	lamptime := uint64(0)
+	lamptimeKey := adminDsKey.AdminLamptimeKey(groupID)
 
-	if tbs, err := a.Get(ctx, key); err != nil {
+	if tbs, err := a.Get(ctx, lamptimeKey); err != nil {
 
 		if !errors.Is(err, ds.ErrNotFound) {
 			return 0, err
@@ -47,26 +44,26 @@ func (a *AdminDs) TickLamportTime(ctx context.Context, groupID string) (uint64, 
 	buff := make([]byte, varint.MaxLenUvarint63)
 	len := varint.PutUvarint(buff, lamptime+1)
 
-	if err := a.Put(ctx, key, buff[:len]); err != nil {
+	if err := a.Put(ctx, lamptimeKey, buff[:len]); err != nil {
 		return 0, err
 	}
 
 	return lamptime + 1, nil
 }
 
-func (a *AdminDs) MergeLamportTime(ctx context.Context, groupID string, lamptime uint64) error {
+func (a *AdminDs) MergeLamptime(ctx context.Context, groupID string, lamptime uint64) error {
 	a.lamportMutex.Lock()
 	defer a.lamportMutex.Unlock()
 
-	key := lamportKey(groupID)
+	lamptimeKey := adminDsKey.AdminLamptimeKey(groupID)
 
-	bs, err := a.Get(ctx, key)
+	bs, err := a.Get(ctx, lamptimeKey)
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) { // 没找到，更新时间
 			buff := make([]byte, varint.MaxLenUvarint63)
 			len := varint.PutUvarint(buff, lamptime)
 
-			return a.Put(ctx, key, buff[:len])
+			return a.Put(ctx, lamptimeKey, buff[:len])
 		}
 
 		return err
@@ -81,7 +78,7 @@ func (a *AdminDs) MergeLamportTime(ctx context.Context, groupID string, lamptime
 		// 比当前大，更新时间
 		buff := make([]byte, varint.MaxLenUvarint63)
 		len := varint.PutUvarint(buff, lamptime)
-		return a.Put(ctx, key, buff[:len])
+		return a.Put(ctx, lamptimeKey, buff[:len])
 	}
 
 	return nil

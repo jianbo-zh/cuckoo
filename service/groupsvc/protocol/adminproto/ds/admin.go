@@ -2,6 +2,7 @@ package ds
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -24,102 +25,111 @@ var _ AdminIface = (*AdminDs)(nil)
 
 var adminDsKey = &datastore.GroupDsKey{}
 
+type LogRecorder struct {
+	logHead   string
+	logTail   string
+	logLength int
+}
+
 type AdminDs struct {
 	ds.Batching
 
 	lamportMutex sync.Mutex
+
+	logMutex   sync.Mutex
+	logRecords map[string]*LogRecorder
 }
 
 func AdminWrap(d ds.Batching) *AdminDs {
-	return &AdminDs{Batching: d}
+	return &AdminDs{
+		Batching:   d,
+		logRecords: make(map[string]*LogRecorder, 0),
+	}
 }
 
-func (a *AdminDs) SaveLog(ctx context.Context, hostID peer.ID, groupID string, msg *pb.Log) error {
+func (a *AdminDs) SaveLog(ctx context.Context, msg *pb.Log) error {
+	a.logMutex.Lock()
+	defer a.logMutex.Unlock()
 
+	_, err := a.Get(ctx, adminDsKey.AdminLogKey(msg.GroupId, msg.Id))
+	if err == nil {
+		return nil
+
+	} else if !errors.Is(err, ds.ErrNotFound) {
+		return fmt.Errorf("ds get key error: %w", err)
+	}
+
+	// 保存日志
 	bs, err := proto.Marshal(msg)
 	if err != nil {
+		return fmt.Errorf("bs proto.marshal error: %w", err)
+	}
+	if err = a.Put(ctx, adminDsKey.AdminLogKey(msg.GroupId, msg.Id), bs); err != nil {
 		return err
 	}
 
-	batch, err := a.Batch(ctx)
+	// 更新统计
+	logRecorder, err := a.getLogRecorder(ctx, msg.GroupId)
 	if err != nil {
-		return err
+		return fmt.Errorf("ds get log recorder error: %w", err)
+	}
+	if logRecorder.logHead == "" || msg.Id < logRecorder.logHead {
+		logRecorder.logHead = msg.Id
+	}
+	if msg.Id > logRecorder.logTail {
+		logRecorder.logTail = msg.Id
+	}
+	logRecorder.logLength++
+
+	// 更新缓存
+	err = a.syncLogCache(ctx, msg.GroupId, msg)
+	if err != nil {
+		return fmt.Errorf("update log cache error: %w", err)
 	}
 
-	if err = batch.Put(ctx, adminDsKey.AdminLogKey(groupID, msg.Id), bs); err != nil {
-		return err
-	}
-
-	headID, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return err
-	}
-
-	if len(headID) == 0 || msg.Id < string(headID) {
-		if err = batch.Put(ctx, adminDsKey.AdminLogHeadKey(groupID), []byte(msg.Id)); err != nil {
-			return err
-		}
-	}
-
-	tailID, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return err
-	}
-	if len(tailID) == 0 || msg.Id > string(tailID) {
-		if err = batch.Put(ctx, adminDsKey.AdminLogTailKey(groupID), []byte(msg.Id)); err != nil {
-			return err
-		}
-	}
-
-	switch msg.LogType {
-	case pb.Log_CREATE:
-		if err = batch.Put(ctx, adminDsKey.CreatorKey(groupID), []byte(msg.PeerId)); err != nil {
-			return err
-		}
-		if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte(types.GroupStateNormal)); err != nil {
-			return err
-		}
-		if err = batch.Put(ctx, adminDsKey.SessionKey(groupID), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
-			return err
-		}
-	case pb.Log_DISBAND:
-		if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte(types.GroupStateDisband)); err != nil {
-			return err
-		}
-	case pb.Log_NAME:
-		if err = batch.Put(ctx, adminDsKey.NameKey(groupID), msg.Payload); err != nil {
-			return err
-		}
-	case pb.Log_AVATAR:
-		if err = batch.Put(ctx, adminDsKey.AvatarKey(groupID), msg.Payload); err != nil {
-			return err
-		}
-	case pb.Log_NOTICE:
-		if err = batch.Put(ctx, adminDsKey.NoticeKey(groupID), msg.Payload); err != nil {
-			return err
-		}
-	case pb.Log_MEMBER:
-		switch msg.MemberOperate {
-		case pb.Log_REMOVE, pb.Log_EXIT:
-			if hostID == peer.ID(msg.Member.Id) {
-				if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte(types.GroupStateExit)); err != nil {
-					return err
-				}
-			}
-		case pb.Log_AGREE, pb.Log_APPLY:
-			if hostID == peer.ID(msg.Member.Id) {
-				// todo: 操作和状态有问题？
-				if err = batch.Put(ctx, adminDsKey.StateKey(groupID), []byte(types.GroupStateNormal)); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return batch.Commit(ctx)
+	return nil
 }
 
+// GetLogHead
+func (a *AdminDs) GetLogHead(ctx context.Context, groupID string) (string, error) {
+
+	logrecorder, err := a.getLogRecorder(ctx, groupID)
+	if err != nil {
+		return "", fmt.Errorf("ds get log recorder error: %w", err)
+	}
+
+	return logrecorder.logHead, nil
+}
+
+// GetLogTail
+func (a *AdminDs) GetLogTail(ctx context.Context, groupID string) (string, error) {
+
+	logrecorder, err := a.getLogRecorder(ctx, groupID)
+	if err != nil {
+		return "", fmt.Errorf("ds get log recorder error: %w", err)
+	}
+
+	return logrecorder.logTail, nil
+}
+
+// GetLogLength
+func (a *AdminDs) GetLogLength(ctx context.Context, groupID string) (int, error) {
+
+	logrecorder, err := a.getLogRecorder(ctx, groupID)
+	if err != nil {
+		return 0, fmt.Errorf("ds get log recorder error: %w", err)
+	}
+
+	return logrecorder.logLength, nil
+}
+
+// GetState 获取群组状态
 func (a *AdminDs) GetState(ctx context.Context, groupID string) (string, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return "", fmt.Errorf("check init cache error: %w", err)
+	}
+
 	value, err := a.Get(ctx, adminDsKey.StateKey(groupID))
 	if err != nil {
 		return "", fmt.Errorf("ds get state error: %w", err)
@@ -128,75 +138,216 @@ func (a *AdminDs) GetState(ctx context.Context, groupID string) (string, error) 
 	return string(value), nil
 }
 
-func (a *AdminDs) JoinGroupSaveLog(ctx context.Context, hostID peer.ID, groupID string, msg *pb.Log) error {
+// SetState 设置群组状态
+func (a *AdminDs) SetState(ctx context.Context, groupID string, state string) error {
 
-	bs, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	batch, err := a.Batch(ctx)
-	if err != nil {
-		return err
-	}
-
-	if err = batch.Put(ctx, adminDsKey.AdminLogKey(groupID, msg.Id), bs); err != nil {
-		return err
-	}
-
-	headID, err := a.Get(ctx, adminDsKey.AdminLogHeadKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return err
-	}
-
-	if len(headID) == 0 || msg.Id < string(headID) {
-		if err = batch.Put(ctx, adminDsKey.AdminLogHeadKey(groupID), []byte(msg.Id)); err != nil {
-			return err
-		}
-	}
-	tailID, err := a.Get(ctx, adminDsKey.AdminLogTailKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return err
-	}
-	if len(tailID) == 0 || msg.Id > string(tailID) {
-		if err = batch.Put(ctx, adminDsKey.AdminLogTailKey(groupID), []byte(msg.Id)); err != nil {
-			return err
-		}
-	}
-
-	return batch.Commit(ctx)
-}
-
-func (a *AdminDs) JoinGroup(ctx context.Context, group *types.Group) error {
-	batch, err := a.Batch(ctx)
-	if err != nil {
-		return err
-	}
-
-	if err = batch.Put(ctx, adminDsKey.NameKey(group.ID), []byte(group.Name)); err != nil {
-		return fmt.Errorf("batch.Put error: %w", err)
-	}
-
-	if err = batch.Put(ctx, adminDsKey.AvatarKey(group.ID), []byte(group.Avatar)); err != nil {
-		return fmt.Errorf("batch.Put error: %w", err)
-	}
-
-	if err = batch.Put(ctx, adminDsKey.StateKey(group.ID), []byte(types.GroupStateNormal)); err != nil {
-		return fmt.Errorf("batch.Put error: %w", err)
-	}
-
-	if err := batch.Put(ctx, adminDsKey.SessionKey(group.ID), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
-		return fmt.Errorf("batch.Put error: %w", err)
-	}
-
-	if err = batch.Commit(ctx); err != nil {
-		return fmt.Errorf("batch.Commit error: %w", err)
+	if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte(state)); err != nil {
+		return fmt.Errorf("ds set state error: %w", err)
 	}
 
 	return nil
 }
 
+// GetName 获取组名
+func (a *AdminDs) GetName(ctx context.Context, groupID string) (string, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return "", fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.NameKey(groupID))
+	if err != nil {
+		return "", fmt.Errorf("ds get name error: %w", err)
+	}
+
+	return string(value), nil
+}
+
+// SetName 设置组名
+func (a *AdminDs) SetName(ctx context.Context, groupID string, name string) error {
+
+	if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte(name)); err != nil {
+		return fmt.Errorf("ds set name error: %w", err)
+	}
+
+	return nil
+}
+
+// GetName 获取组别名
+func (a *AdminDs) GetAlias(ctx context.Context, groupID string) (string, error) {
+
+	value, err := a.Get(ctx, adminDsKey.AliasKey(groupID))
+	if err != nil {
+		return "", fmt.Errorf("ds get alias error: %w", err)
+	}
+
+	return string(value), nil
+}
+
+// SetName 设置组别名
+func (a *AdminDs) SetAlias(ctx context.Context, groupID string, alias string) error {
+
+	if err := a.Put(ctx, adminDsKey.AliasKey(groupID), []byte(alias)); err != nil {
+		return fmt.Errorf("ds set alias error: %w", err)
+	}
+
+	return nil
+}
+
+// GetName 获取组头像
+func (a *AdminDs) GetAvatar(ctx context.Context, groupID string) (string, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return "", fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.AvatarKey(groupID))
+	if err != nil {
+		return "", fmt.Errorf("ds get avatar error: %w", err)
+	}
+
+	return string(value), nil
+}
+
+// SetName 设置组头像
+func (a *AdminDs) SetAvatar(ctx context.Context, groupID string, avatar string) error {
+
+	if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte(avatar)); err != nil {
+		return fmt.Errorf("ds set avatar error: %w", err)
+	}
+
+	return nil
+}
+
+// GetName 获取组通知
+func (a *AdminDs) GetNotice(ctx context.Context, groupID string) (string, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return "", fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.NoticeKey(groupID))
+	if err != nil {
+		return "", fmt.Errorf("ds get notice error: %w", err)
+	}
+
+	return string(value), nil
+}
+
+// GetAutoJoinGroup 获取入群是否免审核
+func (a *AdminDs) GetAutoJoinGroup(ctx context.Context, groupID string) (bool, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return false, fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.AutoJoinGroupKey(groupID))
+	if err != nil {
+		return false, fmt.Errorf("ds get notice error: %w", err)
+	}
+
+	return string(value) == "true", nil
+}
+
+// GetName 获取组创建时间
+func (a *AdminDs) GetCreateTime(ctx context.Context, groupID string) (int64, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return 0, fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.CreateTimeKey(groupID))
+	if err != nil {
+		return 0, fmt.Errorf("ds get notice error: %w", err)
+	}
+
+	createTime, err := strconv.ParseInt(string(value), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse create time error: %w", err)
+	}
+
+	return createTime, nil
+}
+
+// GetCreator 获取群组创建者
+func (a *AdminDs) GetCreator(ctx context.Context, groupID string) (peer.ID, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return "", fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.CreatorKey(groupID))
+	if err != nil {
+		return "", fmt.Errorf("ds get creator error: %w", err)
+	}
+
+	return peer.ID(value), nil
+}
+
+// GetSessions 获取会话列表
+func (a *AdminDs) GetSessionIDs(ctx context.Context) ([]string, error) {
+	results, err := a.Query(ctx, query.Query{
+		Prefix: adminDsKey.SessionPrefix(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ds query error: %w", err)
+	}
+
+	var groupIDs []string
+	for result := range results.Next() {
+		if result.Error != nil {
+			return nil, fmt.Errorf("ds result error: %w", err)
+		}
+
+		groupIDs = append(groupIDs, strings.TrimPrefix(result.Key, adminDsKey.SessionPrefix()))
+	}
+
+	return groupIDs, nil
+}
+
+func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]types.GroupMember, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return nil, fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.MembersKey(groupID))
+	if err != nil {
+		if errors.Is(err, ds.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ds get member error: %w", err)
+	}
+
+	var members []types.GroupMember
+	if err = json.Unmarshal(value, &members); err != nil {
+		return nil, fmt.Errorf("json unmarshal error: %w", err)
+	}
+
+	return members, nil
+}
+
+// SetSession 设置会话
+func (a *AdminDs) SetSession(ctx context.Context, groupID string) error {
+	if err := a.Put(ctx, adminDsKey.SessionKey(groupID), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
+		return fmt.Errorf("ds set session error: %w", err)
+	}
+	return nil
+}
+
+// DeleteSession 删除会话
+func (a *AdminDs) DeleteSession(ctx context.Context, groupID string) error {
+	if err := a.Delete(ctx, adminDsKey.SessionKey(groupID)); err != nil {
+		return fmt.Errorf("ds delete session key error: %w", err)
+	}
+	return nil
+}
+
 func (a *AdminDs) DeleteGroup(ctx context.Context, groupID string) error {
+
+	if err := a.Delete(ctx, adminDsKey.SessionKey(groupID)); err != nil {
+		return fmt.Errorf("ds delete session key error: %w", err)
+	}
 
 	result, err := a.Query(ctx, query.Query{
 		Prefix: adminDsKey.AdminPrefix(groupID),
@@ -215,198 +366,312 @@ func (a *AdminDs) DeleteGroup(ctx context.Context, groupID string) error {
 		}
 	}
 
-	if err = a.Delete(ctx, adminDsKey.SessionKey(groupID)); err != nil {
-		return fmt.Errorf("ds delete session key error: %w", err)
-	}
-
 	return nil
 }
 
-func (a *AdminDs) GetGroupIDs(ctx context.Context) ([]string, error) {
+func (a *AdminDs) getLogRecorder(ctx context.Context, groupID string) (*LogRecorder, error) {
 
-	results, err := a.Query(ctx, query.Query{
-		Prefix: adminDsKey.SessionPrefix(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("ds query error: %w", err)
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return nil, fmt.Errorf("check init cache error: %w", err)
 	}
-
-	var groupIDs []string
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, fmt.Errorf("result.Error: %w", err)
-		}
-
-		groupIDs = append(groupIDs, strings.TrimPrefix(result.Key, adminDsKey.SessionPrefix()))
-	}
-
-	return groupIDs, nil
+	return a.logRecords[groupID], nil
 }
 
-func (a *AdminDs) GetGroup(ctx context.Context, groupID string) (*Group, error) {
-	namebs, err := a.Get(ctx, adminDsKey.LocalNameKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return nil, fmt.Errorf("a.Get group local name error: %w", err)
-	}
-	if len(namebs) == 0 {
-		namebs, err = a.Get(ctx, adminDsKey.NameKey(groupID))
-		if err != nil {
-			return nil, fmt.Errorf("a.Get group name error: %w", err)
-		}
+func (a *AdminDs) checkInitCache(ctx context.Context, groupID string) error {
+	if _, exists := a.logRecords[groupID]; exists {
+		return nil
 	}
 
-	avatarbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return nil, fmt.Errorf("a.Get group local avatar error: %w", err)
-	}
-	if len(avatarbs) == 0 {
-		avatarbs, err = a.Get(ctx, adminDsKey.AvatarKey(groupID))
-		if err != nil {
-			return nil, fmt.Errorf("a.Get group avatar error: %w", err)
-		}
-	}
+	a.logMutex.Lock()
+	defer a.logMutex.Unlock()
 
-	return &Group{
-		ID:     groupID,
-		Name:   string(namebs),
-		Avatar: string(avatarbs),
-	}, nil
+	return a.initLogCache(ctx, groupID)
 }
 
-func (a *AdminDs) GetGroups(ctx context.Context) ([]Group, error) {
-
-	results, err := a.Query(ctx, query.Query{
-		Prefix: adminDsKey.SessionPrefix(),
-		Orders: []query.Order{GroupOrderByValueTimeDescending{}},
-	})
-	if err != nil {
-		return nil, err
+// uploadLogCache 更新群组记录器
+func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
+	if _, exists := a.logRecords[groupID]; exists {
+		return nil
 	}
 
-	var groups []Group
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, err
+	result, err := a.Query(ctx, query.Query{
+		Prefix: adminDsKey.AdminLogPrefix(groupID),
+		Orders: []query.Order{query.OrderByKey{}}, // asc
+	})
+	if err != nil {
+		return fmt.Errorf("ds query error: %w", err)
+	}
+
+	var logHead, logTail string
+	var logLength int
+	var logCreator []byte
+	var logCreateTime []byte
+	var logName, logAvatar, logNotice []byte
+	var logAutoJoinGroup []byte
+
+	oks := make(map[string]*pb.Log_Member)
+	mmap := make(map[string]pb.Log_MemberOperate)
+
+	for entry := range result.Next() {
+		if entry.Error != nil {
+			return fmt.Errorf("ds result next error: %w", entry.Error)
 		}
 
-		fields := strings.Split(strings.Trim(result.Entry.Key, "/"), "/")
-		groupID := fields[len(fields)-1]
-
-		namebs, err := a.Get(ctx, adminDsKey.LocalNameKey(groupID))
-		if err != nil && !errors.Is(err, ds.ErrNotFound) {
-			return nil, fmt.Errorf("a.Get group local name error: %w", err)
+		if logHead == "" {
+			logHead = strings.TrimPrefix(string(entry.Key), adminDsKey.AdminLogPrefix(groupID))
 		}
-		if len(namebs) == 0 {
-			namebs, err = a.Get(ctx, adminDsKey.NameKey(groupID))
-			if err != nil {
-				return nil, fmt.Errorf("a.Get group name error: %w", err)
+
+		logTail = strings.TrimPrefix(string(entry.Key), adminDsKey.AdminLogPrefix(groupID))
+		logLength++
+
+		var log pb.Log
+		if err = proto.Unmarshal(entry.Value, &log); err != nil {
+			return fmt.Errorf("ds proto unmarshal error: %w", err)
+		}
+
+		switch log.LogType {
+		case pb.Log_CREATE:
+			logCreator = log.PeerId
+			logCreateTime = log.Payload
+		case pb.Log_NAME:
+			logName = log.Payload
+		case pb.Log_AVATAR:
+			logAvatar = log.Payload
+		case pb.Log_NOTICE:
+			logNotice = log.Payload
+		case pb.Log_AUTO_JOIN_GROUP:
+			logAutoJoinGroup = log.Payload // "true" or "false"
+		case pb.Log_MEMBER:
+			if lastState, exists := mmap[string(log.Member.Id)]; !exists {
+				mmap[string(log.Member.Id)] = log.MemberOperate
+
+			} else {
+				if log.MemberOperate == lastState {
+					continue
+				}
+
+				switch lastState {
+				case pb.Log_REMOVE, pb.Log_REJECTED, pb.Log_EXIT:
+					delete(mmap, string(log.Member.Id))
+					continue
+				case pb.Log_AGREE:
+					if log.MemberOperate == pb.Log_APPLY {
+						oks[string(log.Member.Id)] = log.Member
+					}
+				case pb.Log_APPLY:
+					if log.MemberOperate == pb.Log_AGREE {
+						oks[string(log.Member.Id)] = log.Member
+					}
+				default:
+					mmap[string(log.Member.Id)] = log.MemberOperate
+				}
 			}
+		default:
+			// other nothing to do
 		}
+	}
 
-		avatarbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
-		if err != nil && !errors.Is(err, ds.ErrNotFound) {
-			return nil, fmt.Errorf("a.Get group local avatar error: %w", err)
-		}
-		if len(avatarbs) == 0 {
-			avatarbs, err = a.Get(ctx, adminDsKey.AvatarKey(groupID))
-			if err != nil {
-				return nil, fmt.Errorf("a.Get group avatar error: %w", err)
-			}
-		}
+	if err = a.Put(ctx, adminDsKey.CreatorKey(groupID), logCreator); err != nil {
+		return fmt.Errorf("ds put creator key error: %w", err)
+	}
 
-		groups = append(groups, Group{
-			ID:     groupID,
-			Name:   string(namebs),
-			Avatar: string(avatarbs),
+	if err = a.Put(ctx, adminDsKey.CreateTimeKey(groupID), logCreateTime); err != nil {
+		return fmt.Errorf("ds put create time key error: %w", err)
+	}
+
+	if err = a.Put(ctx, adminDsKey.NameKey(groupID), logName); err != nil {
+		return fmt.Errorf("ds put name key error: %w", err)
+	}
+
+	if err = a.Put(ctx, adminDsKey.AvatarKey(groupID), logAvatar); err != nil {
+		return fmt.Errorf("ds put avatar key error: %w", err)
+	}
+
+	if err = a.Put(ctx, adminDsKey.NoticeKey(groupID), logNotice); err != nil {
+		return fmt.Errorf("ds put notice key error: %w", err)
+	}
+
+	if err = a.Put(ctx, adminDsKey.AutoJoinGroupKey(groupID), logAutoJoinGroup); err != nil {
+		return fmt.Errorf("ds put auto join group key error: %w", err)
+	}
+
+	var members []types.GroupMember
+	for _, member := range oks {
+		members = append(members, types.GroupMember{
+			ID:     peer.ID(member.Id),
+			Name:   member.Name,
+			Avatar: member.Avatar,
 		})
 	}
 
-	return groups, nil
-}
-
-func (a *AdminDs) GroupName(ctx context.Context, groupID string) (string, error) {
-
-	namebs, err := a.Get(ctx, adminDsKey.NameKey(groupID))
+	bsMembers, err := json.Marshal(members)
 	if err != nil {
-		return "", fmt.Errorf("a.Get group name error: %w", err)
+		return fmt.Errorf("json marshal member error: %w", err)
+	}
+	if err = a.Put(ctx, adminDsKey.MembersKey(groupID), bsMembers); err != nil {
+		return fmt.Errorf("ds put member key error: %w", err)
 	}
 
-	return string(namebs), nil
-}
-
-func (a *AdminDs) GroupLocalName(ctx context.Context, groupID string) (string, error) {
-
-	namebs, err := a.Get(ctx, adminDsKey.LocalNameKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", fmt.Errorf("a.Get group local name error: %w", err)
+	a.logRecords[groupID] = &LogRecorder{
+		logHead:   logHead,
+		logTail:   logTail,
+		logLength: logLength,
 	}
-
-	return string(namebs), nil
+	return nil
 }
 
-func (a *AdminDs) GroupAvatar(ctx context.Context, groupID string) (string, error) {
-
-	avatarbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", fmt.Errorf("a.Get group local avatar error: %w", err)
-	}
-
-	return string(avatarbs), nil
-}
-
-func (a *AdminDs) GroupLocalAvatar(ctx context.Context, groupID string) (string, error) {
-
-	avatarbs, err := a.Get(ctx, adminDsKey.LocalAvatarKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", fmt.Errorf("ds group local avatar error: %w", err)
-	}
-
-	return string(avatarbs), nil
-}
-
-func (a *AdminDs) GroupNotice(ctx context.Context, groupID string) (string, error) {
-
-	notice, err := a.Get(ctx, adminDsKey.NoticeKey(groupID))
-	if err != nil && !errors.Is(err, ds.ErrNotFound) {
-		return "", fmt.Errorf("ds group notice error: %w", err)
-	}
-
-	return string(notice), nil
-}
-
-func (a *AdminDs) SetGroupLocalName(ctx context.Context, groupID string, name string) error {
-	return a.Put(ctx, adminDsKey.LocalNameKey(groupID), []byte(name))
-}
-
-func (a *AdminDs) SetGroupLocalAvatar(ctx context.Context, groupID string, avatar string) error {
-	return a.Put(ctx, adminDsKey.LocalAvatarKey(groupID), []byte(avatar))
-}
-
-func (a *AdminDs) GroupMemberLogs(ctx context.Context, groupID string) ([]*pb.Log, error) {
-
-	results, err := a.Query(ctx, query.Query{
-		Prefix:  adminDsKey.AdminPrefix(groupID),
-		Orders:  []query.Order{GroupOrderByKeyDescending{}},
-		Filters: []query.Filter{GroupMemberFilter{}},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var memberLogs []*pb.Log
-
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, err
+func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, log *pb.Log) error {
+	switch log.LogType {
+	case pb.Log_CREATE:
+		if err := a.Put(ctx, adminDsKey.CreatorKey(groupID), log.PeerId); err != nil {
+			return fmt.Errorf("ds put creator key error: %w", err)
+		}
+		if err := a.Put(ctx, adminDsKey.CreateTimeKey(groupID), []byte(strconv.FormatInt(log.CreateTime, 10))); err != nil {
+			return fmt.Errorf("ds put create time key error: %w", err)
+		}
+	case pb.Log_NAME:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: "_name_",
+			}},
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
 		}
 
-		var pbmsg pb.Log
-		if err := proto.Unmarshal(result.Entry.Value, &pbmsg); err != nil {
-			return nil, err
+		var name string
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			name = string(entry.Value)
 		}
 
-		memberLogs = append(memberLogs, &pbmsg)
+		if err = a.Put(ctx, adminDsKey.NameKey(groupID), []byte(name)); err != nil {
+			return fmt.Errorf("ds save group name error: %w", err)
+		}
+
+	case pb.Log_AVATAR:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: "_avatar_",
+			}},
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
+		}
+
+		var avatar string
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			avatar = string(entry.Value)
+		}
+
+		if err = a.Put(ctx, adminDsKey.AvatarKey(groupID), []byte(avatar)); err != nil {
+			return fmt.Errorf("ds save group avatar error: %w", err)
+		}
+
+	case pb.Log_NOTICE:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: "_notice_",
+			}},
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
+		}
+
+		var notice string
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			notice = string(entry.Value)
+		}
+
+		if err = a.Put(ctx, adminDsKey.NoticeKey(groupID), []byte(notice)); err != nil {
+			return fmt.Errorf("ds save group notice error: %w", err)
+		}
+
+	case pb.Log_MEMBER:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: "_member_",
+			}},
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
+		}
+
+		oks := make(map[string]*pb.Log_Member)
+		mmap := make(map[string]pb.Log_MemberOperate)
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			if lastState, exists := mmap[string(log.Member.Id)]; !exists {
+				mmap[string(log.Member.Id)] = log.MemberOperate
+
+			} else {
+				if log.MemberOperate == lastState {
+					continue
+				}
+
+				switch lastState {
+				case pb.Log_REMOVE, pb.Log_REJECTED, pb.Log_EXIT:
+					delete(oks, string(log.Member.Id))
+					delete(mmap, string(log.Member.Id))
+					continue
+				case pb.Log_AGREE:
+					if log.MemberOperate == pb.Log_APPLY {
+						oks[string(log.Member.Id)] = log.Member
+					}
+				case pb.Log_APPLY:
+					if log.MemberOperate == pb.Log_AGREE {
+						oks[string(log.Member.Id)] = log.Member
+					}
+				default:
+					mmap[string(log.Member.Id)] = log.MemberOperate
+				}
+			}
+		}
+
+		var members []types.GroupMember
+		for _, member := range oks {
+			members = append(members, types.GroupMember{
+				ID:     peer.ID(member.Id),
+				Name:   member.Name,
+				Avatar: member.Avatar,
+			})
+		}
+
+		bsMembers, err := json.Marshal(members)
+		if err != nil {
+			return fmt.Errorf("json marshal member error: %w", err)
+		}
+		if err = a.Put(ctx, adminDsKey.MembersKey(groupID), bsMembers); err != nil {
+			return fmt.Errorf("ds put member key error: %w", err)
+		}
+
+	case pb.Log_DISBAND:
+		if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte("disband")); err != nil {
+			return fmt.Errorf("ds save group state error: %w", err)
+		}
 	}
 
-	return memberLogs, nil
+	return nil
 }

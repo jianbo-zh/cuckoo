@@ -88,14 +88,6 @@ func (g *GroupDsKey) AdminLogKey(groupID string, msgID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/logs/" + msgID)
 }
 
-func (g *GroupDsKey) AdminLogHeadKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/head")
-}
-
-func (g *GroupDsKey) AdminLogTailKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/tail")
-}
-
 func (g *GroupDsKey) CreatorKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/creator")
 }
@@ -108,20 +100,32 @@ func (g *GroupDsKey) NameKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/name")
 }
 
-func (g *GroupDsKey) LocalNameKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/localname")
-}
-
 func (g *GroupDsKey) AvatarKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/avatar")
 }
 
-func (g *GroupDsKey) LocalAvatarKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/localavatar")
-}
-
 func (g *GroupDsKey) NoticeKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/notice")
+}
+
+func (g *GroupDsKey) CreateTimeKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/createtime")
+}
+
+func (g *GroupDsKey) AutoJoinGroupKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/autojoingroup")
+}
+
+func (g *GroupDsKey) AliasKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/alias")
+}
+
+func (g *GroupDsKey) MembersKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/members")
+}
+
+func (g *GroupDsKey) AdminLamptimeKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/lamptime")
 }
 
 func (g *GroupDsKey) MsgLogKey(groupID string, msgID string) ipfsds.Key {
@@ -137,7 +141,7 @@ func (g *GroupDsKey) MsgLogTailKey(groupID string) ipfsds.Key {
 }
 
 func (g *GroupDsKey) NetworkLamptimeKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/network/lamportime")
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/network/lamptime")
 }
 
 /**

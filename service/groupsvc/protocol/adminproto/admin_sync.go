@@ -108,7 +108,7 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 		return err
 	}
 
-	err := a.data.MergeLamportTime(context.Background(), groupID, remoteSummary.Lamptime)
+	err := a.data.MergeLamptime(context.Background(), groupID, remoteSummary.Lamptime)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 
 	if localSummary.TailId > remoteSummary.TailId {
 		// 如果有最新的数据则发送给对方
-		msgs, err := a.getRangeMessages(groupID, remoteSummary.TailId, localSummary.TailId)
+		msgs, err := a.getRangeLogs(groupID, remoteSummary.TailId, localSummary.TailId)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.SyncLog, wt 
 	}
 
 	if len(moreIDs) > 0 {
-		msgs, err := a.getMessagesByIDs(groupID, moreIDs)
+		msgs, err := a.getLogsByIDs(groupID, moreIDs)
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ func (a *AdminProto) handleSyncPushMsg(groupID string, syncmsg *pb.SyncLog) erro
 		return err
 	}
 
-	if err := a.data.SaveLog(context.Background(), a.host.ID(), groupID, &msg); err != nil {
+	if err := a.data.SaveLog(context.Background(), &msg); err != nil {
 		return err
 	}
 	return nil
@@ -320,7 +320,7 @@ func (a *AdminProto) handleSyncPullMsg(groupID string, syncmsg *pb.SyncLog, wt p
 		return err
 	}
 
-	msgs, err := a.data.GetMessagesByIDs(groupID, pullmsg.Ids)
+	msgs, err := a.data.GetLogsByIDs(groupID, pullmsg.Ids)
 	if err != nil {
 		return err
 	}
@@ -347,25 +347,25 @@ func (a *AdminProto) getMessageSummary(groupID string) (*pb.DataSummary, error) 
 	ctx := context.Background()
 
 	// headID
-	headID, err := a.data.GetMessageHead(ctx, groupID)
+	headID, err := a.data.GetLogHead(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
 
 	// tailID
-	tailID, err := a.data.GetMessageTail(ctx, groupID)
+	tailID, err := a.data.GetLogTail(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
 
 	// len
-	length, err := a.data.GetMessageLength(ctx, groupID)
+	length, err := a.data.GetLogLength(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
 
 	// lamport time
-	lamptime, err := a.data.GetLamportTime(ctx, groupID)
+	lamptime, err := a.data.GetLamptime(ctx, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -373,17 +373,17 @@ func (a *AdminProto) getMessageSummary(groupID string) (*pb.DataSummary, error) 
 	return &pb.DataSummary{
 		HeadId:   headID,
 		TailId:   tailID,
-		Length:   length,
+		Length:   int32(length),
 		Lamptime: lamptime,
 	}, nil
 }
 
-func (a *AdminProto) getRangeMessages(groupID string, startID string, endID string) ([]*pb.Log, error) {
-	return a.data.GetRangeMessages(groupID, startID, endID)
+func (a *AdminProto) getRangeLogs(groupID string, startID string, endID string) ([]*pb.Log, error) {
+	return a.data.GetRangeLogs(groupID, startID, endID)
 }
 
 func (a *AdminProto) rangeHash(groupID string, startID string, endID string) ([]byte, error) {
-	ids, err := a.data.GetRangeIDs(groupID, startID, endID)
+	ids, err := a.data.GetRangeLogIDs(groupID, startID, endID)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func (a *AdminProto) rangeHash(groupID string, startID string, endID string) ([]
 }
 
 func (a *AdminProto) getRangeIDs(groupID string, startID string, endID string) (*pb.DataRangeIDs, error) {
-	ids, err := a.data.GetRangeIDs(groupID, startID, endID)
+	ids, err := a.data.GetRangeLogIDs(groupID, startID, endID)
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +410,6 @@ func (a *AdminProto) getRangeIDs(groupID string, startID string, endID string) (
 	}, nil
 }
 
-func (a *AdminProto) getMessagesByIDs(groupID string, msgIDs []string) ([]*pb.Log, error) {
-	return a.data.GetMessagesByIDs(groupID, msgIDs)
+func (a *AdminProto) getLogsByIDs(groupID string, msgIDs []string) ([]*pb.Log, error) {
+	return a.data.GetLogsByIDs(groupID, msgIDs)
 }

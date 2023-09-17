@@ -10,17 +10,19 @@ message Log {
     NAME = 1; // 设置群名
     AVATAR = 2; // 设置群头像
     NOTICE = 3; // 设置群公告
-    MEMBER = 4; // 群成员操作
-    DISBAND = 5; // 解散群
+    AUTO_JOIN_GROUP = 4; // 设置入群免审核
+    MEMBER = 5; // 群成员操作
+    DISBAND = 6; // 解散群
   }
 
   // 群成员具体操作
   enum MemberOperate {
-    APPLY = 0; // 申请
-    AGREE = 1; // 同意
-    REJECTED = 2; // 拒绝
-    REMOVE = 3; // 移除
-    EXIT = 4; // 退出
+    NONE = 0; // 无操作
+    APPLY = 1; // 申请
+    AGREE = 2; // 同意
+    REJECTED = 3; // 拒绝
+    REMOVE = 4; // 移除
+    EXIT = 5; // 退出
   }
 
   message Member {
@@ -36,7 +38,7 @@ message Log {
   string groupId = 2;
 
   // 操作人
-  string peerId = 3;
+  bytes peerId = 3;
 
   // 日志类型
   LogType logType = 4;
