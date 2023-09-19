@@ -52,7 +52,7 @@ func NewSystemService(ctx context.Context, lhost host.Host, ids ipfsds.Batching,
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
 
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtInviteJoinGroup)}, eventbus.Name("system_message"))
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtInviteJoinGroup), new(myevent.EvtApplyAddContact)}, eventbus.Name("send_system_message"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 	}
@@ -76,48 +76,81 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 				return
 			}
 
-			evt := e.(myevent.EvtInviteJoinGroup)
-
-			account, err := s.accountSvc.GetAccount(ctx)
-			if err != nil {
-				log.Errorf("get account error: %s", err.Error())
-				continue
-			}
-
-			for _, peerID := range evt.PeerIDs {
+			switch evt := e.(type) {
+			case myevent.EvtApplyAddContact: // 申请添加联系人
+				account, err := s.accountSvc.GetAccount(ctx)
+				if err != nil {
+					log.Errorf("get account error: %s", err.Error())
+					continue
+				}
 
 				msg := pb.SystemMsg{
-					Id:            GenMsgID(account.ID),
-					AckId:         "",
-					SystemType:    types.SystemTypeInviteJoinGroup,
-					GroupId:       evt.GroupID,
-					GroupName:     evt.GroupName,
-					GroupAvatar:   evt.GroupAvatar,
-					GroupLamptime: evt.GroupLamptime,
-					FromPeer: &pb.Peer{
+					Id:         GenMsgID(account.ID),
+					SystemType: types.SystemTypeApplyAddContact,
+					Group:      nil,
+					FromPeer: &pb.SystemMsg_Peer{
 						PeerId: []byte(account.ID),
 						Name:   account.Name,
 						Avatar: account.Avatar,
 					},
-					ToPeer: &pb.Peer{
-						PeerId: []byte(peerID),
-						Name:   "",
-						Avatar: "",
-					},
-					Content:     "",
+					ToPeerId:    []byte(evt.PeerID),
+					Content:     evt.Content,
 					SystemState: types.SystemStateSended,
 					CreateTime:  time.Now().Unix(),
 					UpdateTime:  time.Now().Unix(),
 				}
 
 				if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
-					log.Errorf("systemProto.SaveMessage error: %s", err.Error())
+					log.Errorf("systemProto.SaveMessage error: %v", err)
 					continue
 				}
 
-				err = s.systemProto.SendMessage(ctx, &msg)
+				if err = s.systemProto.SendMessage(ctx, &msg); err != nil {
+					log.Errorf("systemProto.SendMessage error: %v", err)
+					continue
+				}
+
+			case myevent.EvtInviteJoinGroup: // 邀请加入群组
+				account, err := s.accountSvc.GetAccount(ctx)
 				if err != nil {
-					log.Errorf("systemProto.SendMessage error: %s", err.Error())
+					log.Errorf("get account error: %s", err.Error())
+					continue
+				}
+
+				for _, peerID := range evt.PeerIDs {
+					msg := pb.SystemMsg{
+						Id:         GenMsgID(account.ID),
+						SystemType: types.SystemTypeInviteJoinGroup,
+						Group: &pb.SystemMsg_Group{
+							Id:       evt.GroupID,
+							Name:     evt.GroupName,
+							Avatar:   evt.GroupAvatar,
+							Lamptime: evt.GroupLamptime,
+						},
+						FromPeer: &pb.SystemMsg_Peer{
+							PeerId: []byte(account.ID),
+							Name:   account.Name,
+							Avatar: account.Avatar,
+						},
+						ToPeerId:    []byte(peerID),
+						Content:     "",
+						SystemState: types.SystemStateSended,
+						CreateTime:  time.Now().Unix(),
+						UpdateTime:  time.Now().Unix(),
+					}
+
+					if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
+						log.Errorf("systemProto.SaveMessage error: %v", err)
+						continue
+					}
+
+					fmt.Println("send system message: ", msg.String())
+
+					err = s.systemProto.SendMessage(ctx, &msg)
+					if err != nil {
+						log.Errorf("systemProto.SendMessage error: %v", err)
+						continue
+					}
 				}
 			}
 
@@ -130,7 +163,7 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 func (s *SystemSvc) goHandleMessage() {
 	for msg := range s.msgCh {
 
-		toPeerID := peer.ID(msg.ToPeer.PeerId)
+		toPeerID := peer.ID(msg.ToPeerId)
 		if toPeerID != s.host.ID() {
 			// 不是自己的数据
 			log.Warn("toPeerID is not equal")
@@ -156,7 +189,11 @@ func (s *SystemSvc) goHandleMessage() {
 			if account.AutoAddContact {
 				// 添加为好友
 				fmt.Println("auto add contact avatar: ", msg.FromPeer.Avatar)
-				if err = s.contactSvc.AddContact(ctx, peer.ID(msg.FromPeer.PeerId), msg.FromPeer.Name, msg.FromPeer.Avatar); err != nil {
+				if err = s.contactSvc.AgreeAddContact(ctx, &types.Peer{
+					ID:     peer.ID(msg.FromPeer.PeerId),
+					Name:   msg.FromPeer.Name,
+					Avatar: msg.FromPeer.Avatar,
+				}); err != nil {
 					log.Errorf("contactSvc.AddContact error: %s", err.Error())
 					continue
 				}
@@ -183,9 +220,9 @@ func (s *SystemSvc) goHandleMessage() {
 			}
 
 			if account.AutoJoinGroup {
+
 				// 创建群组
-				fmt.Println("groupID ", msg.GroupId, "name ", msg.GroupName, "avatar ", msg.GroupAvatar)
-				if err = s.groupSvc.AgreeJoinGroup(ctx, msg.GroupId, msg.GroupName, msg.GroupAvatar, msg.GroupLamptime); err != nil {
+				if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Group.Lamptime); err != nil {
 					log.Errorf("groupSvc.JoinGroup error: %s", err.Error())
 					continue
 				}
@@ -209,21 +246,20 @@ func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, cont
 		return fmt.Errorf("accountSvc.GetAccount error: %w", err)
 	}
 
+	if err = s.contactSvc.ApplyAddContact(ctx, peer0, content); err != nil {
+		return fmt.Errorf("svc apply add contact error: %w", err)
+	}
+
 	msg := pb.SystemMsg{
 		Id:         GenMsgID(account.ID),
-		AckId:      "",
 		SystemType: types.SystemTypeApplyAddContact,
-		GroupId:    "",
-		FromPeer: &pb.Peer{
+		Group:      nil,
+		FromPeer: &pb.SystemMsg_Peer{
 			PeerId: []byte(account.ID),
 			Name:   account.Name,
 			Avatar: account.Avatar,
 		},
-		ToPeer: &pb.Peer{
-			PeerId: []byte(peer0.ID),
-			Name:   peer0.Name,
-			Avatar: peer0.Avatar,
-		},
+		ToPeerId:    []byte(peer0.ID),
 		Content:     content,
 		SystemState: types.SystemStateSended,
 		CreateTime:  time.Now().Unix(),
@@ -253,17 +289,12 @@ func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit 
 		sysmsgs = append(sysmsgs, types.SystemMessage{
 			ID:         msg.Id,
 			SystemType: msg.SystemType,
-			GroupID:    msg.GroupId,
-			Sender: types.Peer{
+			FromPeer: types.Peer{
 				ID:     peer.ID(msg.FromPeer.PeerId),
 				Name:   msg.FromPeer.Name,
 				Avatar: msg.FromPeer.Avatar,
 			},
-			Receiver: types.Peer{
-				ID:     peer.ID(msg.ToPeer.PeerId),
-				Name:   msg.ToPeer.Name,
-				Avatar: msg.ToPeer.Avatar,
-			},
+			ToPeerID:    peer.ID(msg.ToPeerId),
 			Content:     msg.Content,
 			SystemState: msg.SystemState,
 			CreateTime:  msg.CreateTime,
@@ -274,10 +305,9 @@ func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit 
 	return sysmsgs, nil
 }
 
-func (s *SystemSvc) AgreeAddContact(ctx context.Context, ackID string) error {
+func (s *SystemSvc) AgreeAddContact(ctx context.Context, msgID string) error {
 	// 发送同意加好友消息
-	// todo: ...
-	if err := s.systemProto.UpdateMessageState(ctx, ackID, types.SystemStateAgreed); err != nil {
+	if err := s.systemProto.UpdateMessageState(ctx, msgID, types.SystemStateAgreed); err != nil {
 		return fmt.Errorf("systemProto.UpdateMessageState error: %w", err)
 	}
 

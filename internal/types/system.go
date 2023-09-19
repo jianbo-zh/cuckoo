@@ -1,5 +1,7 @@
 package types
 
+import "github.com/libp2p/go-libp2p/core/peer"
+
 const (
 	SystemTypeApplyAddContact string = "apply_add_contact"
 	SystemTypeInviteJoinGroup string = "invite_join_group"
@@ -15,8 +17,8 @@ type SystemMessage struct {
 	ID          string
 	SystemType  string
 	GroupID     string
-	Sender      Peer
-	Receiver    Peer
+	FromPeer    Peer
+	ToPeerID    peer.ID
 	Content     string
 	SystemState string
 	CreateTime  int64

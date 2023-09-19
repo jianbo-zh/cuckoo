@@ -44,13 +44,9 @@ func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lh
 
 func (c *ContactSvc) Close() {}
 
-func (c *ContactSvc) AgreeAddContact(ctx context.Context, peerID peer.ID, ackID string) error {
-	return nil
-}
-
 func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]types.Contact, error) {
-	var contacts []types.Contact
 
+	var contacts []types.Contact
 	result, err := c.contactProto.GetContactsByPeerIDs(ctx, peerIDs)
 	if err != nil {
 		return nil, err
@@ -58,7 +54,7 @@ func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID
 
 	for _, pi := range result {
 		contacts = append(contacts, types.Contact{
-			ID:     pi.PeerID,
+			ID:     peer.ID(pi.PeerId),
 			Name:   pi.Name,
 			Avatar: pi.Avatar,
 		})
@@ -122,9 +118,11 @@ func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*types.Con
 func (c *ContactSvc) SetContactName(ctx context.Context, peerID peer.ID, name string) error {
 	return c.contactProto.SetContactName(ctx, peerID, name)
 }
-
-func (c *ContactSvc) AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error {
-	return c.contactProto.AddContact(ctx, peerID, name, avatar)
+func (c *ContactSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, content string) error {
+	return c.contactProto.ApplyAddContact(ctx, peer0, content)
+}
+func (c *ContactSvc) AgreeAddContact(ctx context.Context, peer0 *types.Peer) error {
+	return c.contactProto.AgreeAddContact(ctx, peer0)
 }
 
 func (c *ContactSvc) DeleteContact(ctx context.Context, peerID peer.ID) error {

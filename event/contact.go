@@ -8,3 +8,7 @@ import (
 type EvtSyncPeers struct {
 	PeerIDs []peer.ID
 }
+
+type EvtReceivePeerStream struct {
+	PeerID peer.ID
+}

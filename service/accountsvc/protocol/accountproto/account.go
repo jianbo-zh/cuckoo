@@ -55,10 +55,14 @@ func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, a
 
 func (a *AccountProto) CreateAccount(ctx context.Context, account *pb.Account) (*pb.Account, error) {
 	_, err := a.data.GetAccount(ctx)
-	if !errors.Is(err, ipfsds.ErrNotFound) {
+	if err == nil {
 		return nil, fmt.Errorf("account is exists")
+
+	} else if !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("get account error: %w", err)
 	}
 
+	account.PeerId = []byte(a.host.ID())
 	err = a.data.CreateAccount(ctx, account)
 	if err != nil {
 		return nil, fmt.Errorf("ds create account error: %w", err)

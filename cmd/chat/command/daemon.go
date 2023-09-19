@@ -258,7 +258,6 @@ func autoRelayFeeder(ctx context.Context, h host.Host, dualDHT *ddht.DHT, cfgPee
 			continue
 		}
 
-		fmt.Println("do get closest peers")
 		closestPeers, err := dualDHT.WAN.GetClosestPeers(ctx, h.ID().String())
 		if err != nil {
 			// no-op: usually 'failed to find any peer in table' during startup

@@ -37,7 +37,6 @@ func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lh
 func (a *AccountSvc) CreateAccount(ctx context.Context, account types.Account) (*types.Account, error) {
 
 	pbAccount, err := a.accountProto.CreateAccount(ctx, &pb.Account{
-		PeerId:         []byte(account.ID),
 		Name:           account.Name,
 		Avatar:         account.Avatar,
 		AutoAddContact: account.AutoAddContact,

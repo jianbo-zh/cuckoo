@@ -81,13 +81,13 @@ func (a *SystemDS) GetSystemMessageList(ctx context.Context, offset int, limit i
 
 	var msgs []*pb.SystemMsg
 
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, result.Error
+	for entry := range results.Next() {
+		if entry.Error != nil {
+			return nil, entry.Error
 		}
 
 		var msg pb.SystemMsg
-		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
+		if err := proto.Unmarshal(entry.Value, &msg); err != nil {
 			return nil, err
 		}
 

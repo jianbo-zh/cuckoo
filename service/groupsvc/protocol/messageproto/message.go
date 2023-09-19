@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("message")
+var log = logging.Logger("group-message")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -98,6 +98,11 @@ func (m *MessageProto) messageHandler(s network.Stream) {
 				log.Errorf("save group message error: %v", err)
 			}
 
+			err = m.data.MergeLamportTime(context.Background(), msg.GroupId, msg.Lamportime)
+			if err != nil {
+				log.Errorf("update lamport time error: %v", err)
+			}
+
 			// 转发消息
 			err = m.broadcastMessage(context.Background(), msg.GroupId, &msg, remotePeerID)
 			if err != nil {
@@ -119,7 +124,7 @@ func (m *MessageProto) syncHandler(stream network.Stream) {
 	var syncmsg pb.GroupSyncMessage
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	if err := rd.ReadMsg(&syncmsg); err != nil {
-		log.Errorf("read msg error: %v", err)
+		log.Errorf("pbio read sync init msg error: %v", err)
 		return
 	}
 
@@ -128,11 +133,13 @@ func (m *MessageProto) syncHandler(stream network.Stream) {
 	// 发送同步摘要
 	summary, err := m.getMessageSummary(groupID)
 	if err != nil {
+		log.Errorf("get msg summary error: %v", err)
 		return
 	}
 
 	bs, err := proto.Marshal(summary)
 	if err != nil {
+		log.Errorf("proto marshal summary error: %v", err)
 		return
 	}
 
@@ -141,6 +148,7 @@ func (m *MessageProto) syncHandler(stream network.Stream) {
 		Type:    pb.GroupSyncMessage_SUMMARY,
 		Payload: bs,
 	}); err != nil {
+		log.Errorf("pbio write sync summary error: %v", err)
 		return
 	}
 
@@ -173,8 +181,10 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 			}
 			m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
-			// 启动同步
-			m.sync(evt.GroupID, evt.PeerID)
+			// 启动同步：peerID 大的主动发起
+			if m.host.ID() > evt.PeerID {
+				go m.goSync(evt.GroupID, evt.PeerID)
+			}
 
 		case <-ctx.Done():
 			return
@@ -183,7 +193,7 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 }
 
 func (m *MessageProto) GetMessageList(ctx context.Context, groupID string, offset int, limit int) ([]*pb.Message, error) {
-	msgs, err := m.data.ListMessages(ctx, groupID, offset, limit)
+	msgs, err := m.data.GetMessages(ctx, groupID, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("m.data.ListMessages error: %w", err)
 	}

@@ -22,8 +22,9 @@ type EvtGroupConnectChange struct {
 }
 
 type Groups struct {
-	GroupID string
-	PeerIDs []peer.ID
+	GroupID     string
+	PeerIDs     []peer.ID
+	AcptPeerIDs []peer.ID
 }
 type EvtGroupsInit struct {
 	Groups []Groups
@@ -35,6 +36,7 @@ type EvtGroupsChange struct {
 }
 
 type EvtGroupMemberChange struct {
-	GroupID string
-	PeerIDs []peer.ID
+	GroupID     string
+	PeerIDs     []peer.ID
+	AcptPeerIDs []peer.ID
 }

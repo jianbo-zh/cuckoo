@@ -46,6 +46,8 @@ service ContactSvc {
   rpc SetContactName(SetContactNameRequest) returns (SetContactNameReply) {}
   // 删除联系人
   rpc DeleteContact(DeleteContactRequest) returns (DeleteContactReply) {}
+  // 申请添加联系人
+  rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
 }
 
 // 群服务
@@ -93,7 +95,6 @@ service SessionSvc {
 // 系统服务
 service SystemSvc {
   rpc GetSystemMessages(GetSystemMessagesRequest) returns (GetSystemMessagesReply) {}
-  rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
   rpc AgreeAddContact(AgreeAddContactRequest) returns (AgreeAddContactReply) {}
   rpc RejectAddContact(RejectAddContactRequest) returns (RejectAddContactReply) {}
 

@@ -91,11 +91,11 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
 	}
 
-	contacts, err := contactSvc.GetContacts(ctx)
+	contacts, err := contactSvc.GetContactSessions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("contactSvc.GetContact error: %w", err)
 	}
-	fmt.Printf("get contacts size: %d\n", len(contacts))
+
 	for i, contact := range contacts {
 		if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
 			continue

@@ -8,7 +8,6 @@ import (
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ proto.SystemSvcServer = (*SystemSvc)(nil)
@@ -52,50 +51,6 @@ func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.Clear
 	}()
 
 	reply = &proto.ClearSystemMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-	}
-	return reply, nil
-}
-
-func (c *SystemSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAddContactRequest) (reply *proto.ApplyAddContactReply, err error) {
-
-	log.Infoln("ApplyAddContact request: ", request.String())
-	defer func() {
-		if e := recover(); e != nil {
-			log.Panicln("ApplyAddContact panic: ", e)
-		} else if err != nil {
-			log.Errorln("ApplyAddContact error: ", err.Error())
-		} else {
-			log.Infoln("ApplyAddContact reply: ", reply.String())
-		}
-	}()
-
-	systemSvc, err := c.getSystemSvc()
-	if err != nil {
-		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
-	}
-
-	peerID, err := peer.Decode(request.PeerId)
-	if err != nil {
-		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
-	}
-
-	peer0 := &types.Peer{
-		ID:     peerID,
-		Name:   request.Name,
-		Avatar: request.Avatar,
-	}
-
-	fmt.Println("systemSvc.ApplyAddContact", request.Name, request.Avatar, request.Content)
-	err = systemSvc.ApplyAddContact(ctx, peer0, request.Content)
-	if err != nil {
-		return nil, fmt.Errorf("peerSvc.AddPeer error: %w", err)
-	}
-
-	reply = &proto.ApplyAddContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -208,11 +163,11 @@ func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSys
 			SystemType: msgType,
 			GroupId:    msg.GroupID,
 			FromPeer: &proto.Peer{
-				Id:     msg.Sender.ID.String(),
-				Name:   msg.Sender.Name,
-				Avatar: msg.Sender.Avatar,
+				Id:     msg.FromPeer.ID.String(),
+				Name:   msg.FromPeer.Name,
+				Avatar: msg.FromPeer.Avatar,
 			},
-			ToPeerId:    msg.Receiver.ID.String(),
+			ToPeerId:    msg.ToPeerID.String(),
 			Content:     msg.Content,
 			SystemState: msg.SystemState,
 			CreateTime:  msg.CreateTime,

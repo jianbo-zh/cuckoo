@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"time"
 
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,17 +18,20 @@ func (p *PeerMessageProto) RunSync(peerID peer.ID) {
 	ctx := context.Background()
 	stream, err := p.host.NewStream(ctx, peerID, SYNC_ID)
 	if err != nil {
+		log.Errorf("host sync new stream error: %v", err)
 		return
 	}
 	defer stream.Close()
 
 	summary, err := p.getMessageSummary(peerID)
 	if err != nil {
+		log.Errorf("get message summary error: %v", err)
 		return
 	}
 
 	bs, err := proto.Marshal(summary)
 	if err != nil {
+		log.Errorf("proto marshal summary error: %v", err)
 		return
 	}
 
@@ -36,11 +40,11 @@ func (p *PeerMessageProto) RunSync(peerID peer.ID) {
 		Type:    pb.PeerSyncMessage_SUMMARY,
 		Payload: bs,
 	}); err != nil {
+		log.Errorf("pbio write summary msg error: %v", err)
 		return
 	}
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-
 	err = p.loopSync(peerID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)
@@ -49,14 +53,19 @@ func (p *PeerMessageProto) RunSync(peerID peer.ID) {
 
 func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
 
+	peerID := stream.Conn().RemotePeer()
 	defer stream.Close()
 
-	peerID := stream.Conn().RemotePeer()
+	// 触发接收流
+	p.emitters.evtReceivePeerStream.Emit(gevent.EvtReceivePeerStream{
+		PeerID: peerID,
+	})
+
+	// 后台同步处理
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	wt := pbio.NewDelimitedWriter(stream)
 
-	// 后台同步处理
 	err := p.loopSync(peerID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)

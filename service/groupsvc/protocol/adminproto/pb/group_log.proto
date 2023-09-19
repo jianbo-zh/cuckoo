@@ -18,11 +18,12 @@ message Log {
   // 群成员具体操作
   enum MemberOperate {
     NONE = 0; // 无操作
-    APPLY = 1; // 申请
-    AGREE = 2; // 同意
-    REJECTED = 3; // 拒绝
-    REMOVE = 4; // 移除
-    EXIT = 5; // 退出
+    CREATOR = 1; // 创建者
+    APPLY = 2; // 申请
+    AGREE = 3; // 同意
+    REJECTED = 4; // 拒绝
+    REMOVE = 5; // 移除
+    EXIT = 6; // 退出
   }
 
   message Member {

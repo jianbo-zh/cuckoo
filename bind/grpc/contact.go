@@ -7,6 +7,7 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -593,6 +594,49 @@ func (c *ContactSvc) SetContactName(ctx context.Context, request *proto.SetConta
 			Message: "ok",
 		},
 		Name: request.Name,
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAddContactRequest) (reply *proto.ApplyAddContactReply, err error) {
+
+	log.Infoln("ApplyAddContact request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("ApplyAddContact panic: ", e)
+		} else if err != nil {
+			log.Errorln("ApplyAddContact error: ", err.Error())
+		} else {
+			log.Infoln("ApplyAddContact reply: ", reply.String())
+		}
+	}()
+
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
+	}
+
+	peerID, err := peer.Decode(request.PeerId)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
+	}
+
+	peer0 := &types.Peer{
+		ID:     peerID,
+		Name:   request.Name,
+		Avatar: request.Avatar,
+	}
+
+	err = contactSvc.ApplyAddContact(ctx, peer0, request.Content)
+	if err != nil {
+		return nil, fmt.Errorf("peerSvc.AddPeer error: %w", err)
+	}
+
+	reply = &proto.ApplyAddContactReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
 	}
 	return reply, nil
 }

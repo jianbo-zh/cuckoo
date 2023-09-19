@@ -22,7 +22,7 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("network")
+var log = logging.Logger("group-network")
 
 const (
 	CONN_ID    = protocol.GroupConnID_v100
@@ -31,7 +31,8 @@ const (
 	ServiceName = "group.connect"
 	maxMsgSize  = 4 * 1024 // 4K
 
-	HeartbeatTimeout = 3 * time.Second
+	HeartbeatInterval = 3 * time.Second
+	HeartbeatTimeout  = 8 * time.Second
 )
 
 type NetworkProto struct {
@@ -81,7 +82,8 @@ func NewNetworkProto(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids i
 	// EvtGroupsInit 第一步获取组信息
 	sub, err := ebus.Subscribe([]any{new(gevent.EvtGroupsInit), new(gevent.EvtGroupsChange), new(gevent.EvtGroupMemberChange)})
 	if err != nil {
-		return nil, fmt.Errorf("subscribe event error: %v", err)
+		return nil, fmt.Errorf("subscribe event error: %w", err)
+
 	} else {
 		go networksvc.subscribeHandler(context.Background(), sub)
 	}
@@ -92,12 +94,11 @@ func NewNetworkProto(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids i
 // connectHandler 接收组网请求
 func (n *NetworkProto) connectHandler(stream network.Stream) {
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-	defer rd.Close()
-
 	var connInit pb.ConnectInit
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	if err := rd.ReadMsg(&connInit); err != nil {
 		log.Errorf("read msg error: %v", err)
+		stream.Reset()
 		return
 	}
 
@@ -105,8 +106,9 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer()
 
 	// 判断对方是否在群里面
-	if _, exists := n.groupPeers[groupID][peerID]; !exists {
+	if _, exists := n.groupPeers[groupID].AcptPeerIDs[peerID]; !exists {
 		log.Errorf("not group peer, refuse conn")
+		stream.Reset()
 		return
 	}
 
@@ -116,6 +118,7 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&pb.ConnectInit{GroupId: groupID, BootTs: hostBootTs, ConnTimes: hostConnTimes}); err != nil {
 		log.Errorf("write msg error: %v", err)
+		stream.Reset()
 		return
 	}
 
@@ -125,6 +128,7 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 
 	if _, exists := n.network[groupID][peerID]; exists {
 		log.Errorf("conn is exists")
+		stream.Reset()
 		return
 	}
 
@@ -146,11 +150,12 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 		var wg sync.WaitGroup
 
 		wg.Add(2)
-		go n.readStream(&wg, groupID, peerID, peerConn.reader, peerConn.doneCh, peerBootTs, peerConnTimes)
+		go n.readStream(&wg, groupID, peerID, stream, peerConn.reader, peerConn.doneCh, peerBootTs, peerConnTimes)
 		go n.writeStream(&wg, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
-		defer n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
+		stream.Close()
+		n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
 	}()
 
 }
@@ -215,7 +220,7 @@ func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscript
 				}
 
 			case gevent.EvtGroupMemberChange:
-				n.updateNetwork(evt.GroupID, evt.PeerIDs)
+				n.updateNetwork(evt.GroupID, evt.PeerIDs, evt.AcptPeerIDs)
 			}
 
 		case <-ctx.Done():

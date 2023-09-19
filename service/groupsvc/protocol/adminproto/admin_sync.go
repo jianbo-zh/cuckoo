@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"fmt"
 	"time"
 
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
@@ -28,7 +29,9 @@ import (
 // 3，发送区间消息KEY
 // 4，发送对方没有的消息ID
 
-func (a *AdminProto) sync(groupID string, peerID peer.ID) {
+func (a *AdminProto) goSync(groupID string, peerID peer.ID) {
+
+	log.Infoln("sync group admin log start")
 
 	stream, err := a.host.NewStream(context.Background(), peerID, SYNC_ID)
 	if err != nil {
@@ -62,34 +65,34 @@ func (a *AdminProto) loopSync(groupID string, stream network.Stream, rd pbio.Rea
 		// 设置读取超时，
 		stream.SetReadDeadline(time.Now().Add(5 * StreamTimeout))
 		if err := rd.ReadMsg(&syncmsg); err != nil {
-			return err
+			return fmt.Errorf("pbio read sync msg error: %w", err)
 		}
 		stream.SetReadDeadline(time.Time{})
 
 		switch syncmsg.Type {
 		case pb.SyncLog_SUMMARY:
 			if err := a.handleSyncSummary(groupID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync summary error: %w", err)
 			}
 
 		case pb.SyncLog_RANGE_HASH:
 			if err := a.handleSyncRangeHash(groupID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync range hash error: %w", err)
 			}
 
 		case pb.SyncLog_RANGE_IDS:
 			if err := a.handleSyncRangeIDs(groupID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync range ids error: %w", err)
 			}
 
 		case pb.SyncLog_PUSH_MSG:
 			if err := a.handleSyncPushMsg(groupID, &syncmsg); err != nil {
-				return err
+				return fmt.Errorf("handle sync push msg error: %w", err)
 			}
 
 		case pb.SyncLog_PULL_MSG:
 			if err := a.handleSyncPullMsg(groupID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync pull msg error: %w", err)
 			}
 
 		case pb.SyncLog_DONE:
@@ -105,17 +108,19 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 
 	var remoteSummary pb.DataSummary
 	if err := proto.Unmarshal(syncmsg.Payload, &remoteSummary); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal summary msg error: %w", err)
 	}
+
+	fmt.Println("receive summary msg: ", remoteSummary.String())
 
 	err := a.data.MergeLamptime(context.Background(), groupID, remoteSummary.Lamptime)
 	if err != nil {
-		return err
+		return fmt.Errorf("merge lamptime error: %w", err)
 	}
 
 	localSummary, err := a.getMessageSummary(groupID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get local summary msg error: %w", err)
 	}
 
 	if !remoteSummary.IsEnd {
@@ -123,14 +128,14 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 		localSummary.IsEnd = true
 		payload, err := proto.Marshal(localSummary)
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal local summary error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.SyncLog{
 			Type:    pb.SyncLog_SUMMARY,
 			Payload: payload,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write summary msg error: %w", err)
 		}
 	}
 
@@ -138,26 +143,26 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 		// 如果有最新的数据则发送给对方
 		msgs, err := a.getRangeLogs(groupID, remoteSummary.TailId, localSummary.TailId)
 		if err != nil {
-			return err
+			return fmt.Errorf("get range logs error: %w", err)
 		}
 
 		for _, msg := range msgs {
 			bs, err := proto.Marshal(msg)
 			if err != nil {
-				return err
+				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
 
 			if err = wt.WriteMsg(&pb.SyncLog{
 				Type:    pb.SyncLog_PUSH_MSG,
 				Payload: bs,
 			}); err != nil {
-				return err
+				return fmt.Errorf("pbio write push msg error: %w", err)
 			}
 		}
 	}
 
-	if localSummary.HeadId > remoteSummary.HeadId {
-		// 当前数据要少些，则作为同步主动方
+	if localSummary.HeadId < remoteSummary.HeadId {
+		// 谁有更早的历史数据，则发起同步
 		startID := localSummary.HeadId
 		endID := remoteSummary.TailId
 
@@ -167,7 +172,7 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 
 		hash, err := a.rangeHash(groupID, startID, endID)
 		if err != nil {
-			return err
+			return fmt.Errorf("range hash error: %w", err)
 		}
 
 		bs, err := proto.Marshal(&pb.DataRangeHash{
@@ -176,14 +181,14 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 			Hash:    hash,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.SyncLog{
 			Type:    pb.SyncLog_RANGE_HASH,
 			Payload: bs,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write range hash error: %w", err)
 		}
 	}
 
@@ -193,36 +198,41 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.SyncLog, wt p
 func (a *AdminProto) handleSyncRangeHash(groupID string, syncmsg *pb.SyncLog, wt pbio.WriteCloser) error {
 	var hashmsg pb.DataRangeHash
 	if err := proto.Unmarshal(syncmsg.Payload, &hashmsg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal msg payload error: %w", err)
 	}
+
+	fmt.Println("receive range hash msg: ", hashmsg.String())
 
 	// 我也计算hash
 	hashBytes, err := a.rangeHash(groupID, hashmsg.StartId, hashmsg.EndId)
 	if err != nil {
-		log.Errorf("range hash error: %v", err)
+		return fmt.Errorf("range hash error: %w", err)
 	}
 
 	if bytes.Equal(hashmsg.Hash, hashBytes) {
 		// hash相同，不需要再同步了
-		return wt.WriteMsg(&pb.SyncLog{Type: pb.SyncLog_DONE})
+		err = wt.WriteMsg(&pb.SyncLog{Type: pb.SyncLog_DONE})
+		if err != nil {
+			return fmt.Errorf("pbio write done msg error: %w", err)
+		}
 	}
 
 	// hash 不同，则消息不一致，则同步消息ID
 	hashids, err := a.getRangeIDs(groupID, hashmsg.StartId, hashmsg.EndId)
 	if err != nil {
-		return err
+		return fmt.Errorf("get range ids error: %w", err)
 	}
 
 	bs, err := proto.Marshal(hashids)
 	if err != nil {
-		return err
+		return fmt.Errorf("proto marshal error: %w", err)
 	}
 
 	if err = wt.WriteMsg(&pb.SyncLog{
 		Type:    pb.SyncLog_RANGE_IDS,
 		Payload: bs,
 	}); err != nil {
-		return err
+		return fmt.Errorf("pbio write range ids msg error: %w", err)
 	}
 
 	return nil
@@ -231,12 +241,14 @@ func (a *AdminProto) handleSyncRangeHash(groupID string, syncmsg *pb.SyncLog, wt
 func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.SyncLog, wt pbio.WriteCloser) error {
 	var idmsg pb.DataRangeIDs
 	if err := proto.Unmarshal(syncmsg.Payload, &idmsg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
+
+	fmt.Println("receive range ids msg: ", idmsg.String())
 
 	idmsg2, err := a.getRangeIDs(groupID, idmsg.StartId, idmsg.EndId)
 	if err != nil {
-		return err
+		return fmt.Errorf("get range ids error: %w", err)
 	}
 
 	// 比较不同点
@@ -258,20 +270,20 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.SyncLog, wt 
 	if len(moreIDs) > 0 {
 		msgs, err := a.getLogsByIDs(groupID, moreIDs)
 		if err != nil {
-			return err
+			return fmt.Errorf("get logs by ids error: %w", err)
 		}
 
 		for _, msg := range msgs {
 			bs, err := proto.Marshal(msg)
 			if err != nil {
-				return err
+				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
 
 			if err = wt.WriteMsg(&pb.SyncLog{
 				Type:    pb.SyncLog_PUSH_MSG,
 				Payload: bs,
 			}); err != nil {
-				return err
+				return fmt.Errorf("pbio write push msg error: %w", err)
 			}
 		}
 	}
@@ -288,14 +300,14 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.SyncLog, wt 
 			Ids: lessIDs,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal pull msg error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.SyncLog{
 			Type:    pb.SyncLog_PULL_MSG,
 			Payload: bs,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write pull msg error: %w", err)
 		}
 	}
 
@@ -305,37 +317,42 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.SyncLog, wt 
 func (a *AdminProto) handleSyncPushMsg(groupID string, syncmsg *pb.SyncLog) error {
 	var msg pb.Log
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
+	fmt.Println("receive push msg: ", msg.String())
+
 	if err := a.data.SaveLog(context.Background(), &msg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
+
 	return nil
 }
 
 func (a *AdminProto) handleSyncPullMsg(groupID string, syncmsg *pb.SyncLog, wt pbio.WriteCloser) error {
 	var pullmsg pb.DataPullMsg
 	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
+
+	fmt.Println("receive pull msg: ", pullmsg.String())
 
 	msgs, err := a.data.GetLogsByIDs(groupID, pullmsg.Ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("data get logs by ids error: %w", err)
 	}
 
 	for _, msg := range msgs {
 		bs, err := proto.Marshal(msg)
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal msg error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.SyncLog{
 			Type:    pb.SyncLog_PUSH_MSG,
 			Payload: bs,
 		}); err != nil {
-			return err
+			return fmt.Errorf("proto write push msg error: %w", err)
 		}
 	}
 
@@ -349,25 +366,25 @@ func (a *AdminProto) getMessageSummary(groupID string) (*pb.DataSummary, error) 
 	// headID
 	headID, err := a.data.GetLogHead(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get log head error: %w", err)
 	}
 
 	// tailID
 	tailID, err := a.data.GetLogTail(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get log tail error: %w", err)
 	}
 
 	// len
 	length, err := a.data.GetLogLength(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get log length error: %w", err)
 	}
 
 	// lamport time
 	lamptime, err := a.data.GetLamptime(ctx, groupID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get lamptime error: %w", err)
 	}
 
 	return &pb.DataSummary{
@@ -385,12 +402,12 @@ func (a *AdminProto) getRangeLogs(groupID string, startID string, endID string) 
 func (a *AdminProto) rangeHash(groupID string, startID string, endID string) ([]byte, error) {
 	ids, err := a.data.GetRangeLogIDs(groupID, startID, endID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get range log ids error: %w", err)
 	}
 	hash := sha1.New()
 	for _, id := range ids {
 		if _, err = hash.Write([]byte(id)); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("hash write id error: %w", err)
 		}
 	}
 
@@ -400,7 +417,7 @@ func (a *AdminProto) rangeHash(groupID string, startID string, endID string) ([]
 func (a *AdminProto) getRangeIDs(groupID string, startID string, endID string) (*pb.DataRangeIDs, error) {
 	ids, err := a.data.GetRangeLogIDs(groupID, startID, endID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get range log ids error: %w", err)
 	}
 
 	return &pb.DataRangeIDs{

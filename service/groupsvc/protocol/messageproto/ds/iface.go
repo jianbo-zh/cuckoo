@@ -16,7 +16,7 @@ type MessageIface interface {
 
 	GetMessage(context.Context, GroupID, string) (*pb.Message, error)
 	SaveMessage(context.Context, GroupID, *pb.Message) error
-	ListMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*pb.Message, error)
+	GetMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*pb.Message, error)
 	ClearMessage(ctx context.Context, groupID GroupID) error
 
 	GetMessageHead(context.Context, GroupID) (string, error)

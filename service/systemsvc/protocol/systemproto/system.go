@@ -78,7 +78,7 @@ func (s *SystemProto) GetMessage(ctx context.Context, msgID string) (*pb.SystemM
 func (s *SystemProto) GetMessageList(ctx context.Context, offset int, limit int) ([]*pb.SystemMsg, error) {
 	msgs, err := s.data.GetSystemMessageList(ctx, offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("s.data.GetSystemMessageList error: %w", err)
+		return nil, fmt.Errorf("data get system message list error: %w", err)
 	}
 
 	return msgs, nil
@@ -96,9 +96,9 @@ func (s *SystemProto) UpdateMessageState(ctx context.Context, msgID string, stat
 func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMsg) error {
 
 	fmt.Println("host.NewStream start")
-	stream, err := s.host.NewStream(ctx, peer.ID(msg.ToPeer.PeerId), ID)
+	stream, err := s.host.NewStream(ctx, peer.ID(msg.ToPeerId), ID)
 	if err != nil {
-		return fmt.Errorf("a.host.NewStream error: %w,%s", err, peer.ID(msg.ToPeer.PeerId).String())
+		return fmt.Errorf("a.host.NewStream error: %w,%s", err, peer.ID(msg.ToPeerId).String())
 	}
 
 	wt := pbio.NewDelimitedWriter(stream)

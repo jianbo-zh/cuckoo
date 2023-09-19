@@ -9,3 +9,8 @@ type EvtInviteJoinGroup struct {
 	GroupAvatar   string
 	GroupLamptime uint64
 }
+
+type EvtApplyAddContact struct {
+	PeerID  peer.ID
+	Content string
+}

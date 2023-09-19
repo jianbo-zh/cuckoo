@@ -11,7 +11,6 @@ import (
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	admin "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto"
-	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	message "github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto"
 	network "github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto"
 	logging "github.com/jianbo-zh/go-log"
@@ -104,19 +103,24 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 				if evt.IsSucc {
 					groupIDs, err := g.adminProto.GetSessionIDs(ctx)
 					if err != nil {
-						log.Errorf("get group ids error: %s", err.Error())
+						log.Errorf("get group ids error: %v", err)
 						return
 					}
 					var groups []gevent.Groups
 					for _, groupID := range groupIDs {
-						memeberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
+						connMemberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
 						if err != nil {
-							log.Errorf("get member ids error: %s", err.Error())
+							log.Errorf("get member ids error: %v", err)
+						}
+						acptMemeberIDs, err := g.adminProto.GetAgreeMemberIDs(ctx, groupID)
+						if err != nil {
+							log.Errorf("get accept member ids error: %v", err)
 							return
 						}
 						groups = append(groups, gevent.Groups{
-							GroupID: groupID,
-							PeerIDs: memeberIDs,
+							GroupID:     groupID,
+							PeerIDs:     connMemberIDs,
+							AcptPeerIDs: acptMemeberIDs,
 						})
 					}
 
@@ -138,21 +142,17 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 // 创建群
 func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*types.Group, error) {
 
+	account, err := g.accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
 	contacts, err := g.contactSvc.GetContactsByPeerIDs(ctx, memberIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get contacts by ids error: %w", err)
 	}
 
-	members := make([]*pb.Log_Member, len(contacts))
-	for i, contact := range contacts {
-		members[i] = &pb.Log_Member{
-			Id:     []byte(contact.ID),
-			Name:   contact.Name,
-			Avatar: contact.Avatar,
-		}
-	}
-
-	return g.adminProto.CreateGroup(ctx, name, avatar, members)
+	return g.adminProto.CreateGroup(ctx, account, name, avatar, contacts)
 }
 
 // GetGroup 获取群信息

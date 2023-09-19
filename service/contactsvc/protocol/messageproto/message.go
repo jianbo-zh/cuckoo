@@ -22,7 +22,7 @@ import (
 
 // 消息服务
 
-var log = logging.Logger("message")
+var log = logging.Logger("contact-message")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -42,6 +42,7 @@ type PeerMessageProto struct {
 		evtPushOfflineMessage event.Emitter
 		evtPullOfflineMessage event.Emitter
 		evtReceiveMessage     event.Emitter
+		evtReceivePeerStream  event.Emitter
 	}
 }
 
@@ -63,6 +64,11 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	// 触发器：获取离线消息
 	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&gevent.PullOfflineMessageEvt{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
+	}
+
+	// 触发器：peer流进入
+	if msgsvc.emitters.evtReceivePeerStream, err = eventBus.Emitter(&gevent.EvtReceivePeerStream{}); err != nil {
+		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 触发器：接收到消息
@@ -105,7 +111,7 @@ func (p *PeerMessageProto) handleAppSubs(ctx context.Context, sub event.Subscrip
 			fmt.Println("start sync peers message")
 
 			if ev, ok := e.(gevent.EvtSyncPeers); ok {
-				fmt.Printf("peerIDs: %v", ev.PeerIDs)
+				fmt.Printf("peerIDs: %v\n", ev.PeerIDs)
 				for _, peerID := range ev.PeerIDs {
 					p.RunSync(peerID)
 				}
@@ -151,6 +157,12 @@ func (p *PeerMessageProto) handleHostSubs(ctx context.Context, sub event.Subscri
 
 func (p *PeerMessageProto) Handler(stream network.Stream) {
 
+	// 触发接收流
+	p.emitters.evtReceivePeerStream.Emit(gevent.EvtReceivePeerStream{
+		PeerID: stream.Conn().RemotePeer(),
+	})
+
+	// 开始处理流
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	defer rd.Close()
 
@@ -184,13 +196,12 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 	p.emitters.evtReceiveMessage.Emit(gevent.EvtReceivePeerMessage{
 		MsgID:      msg.Id,
 		FromPeerID: peer.ID(msg.FromPeerId),
-		MsgType:    gevent.MsgTypeText,
-		MimeType:   "text/plain",
+		MsgType:    msg.MsgType,
+		MimeType:   msg.MimeType,
 		Payload:    msg.Payload,
 		Timestamp:  msg.Timestamp,
 	})
 
-	fmt.Println("receive ->", string(msg.Payload))
 }
 
 func (p *PeerMessageProto) HasMessage(peerID peer.ID, msgID string) (bool, error) {

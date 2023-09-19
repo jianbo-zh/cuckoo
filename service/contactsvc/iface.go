@@ -8,7 +8,8 @@ import (
 )
 
 type ContactServiceIface interface {
-	AddContact(ctx context.Context, peerID peer.ID, name string, avatar string) error
+	ApplyAddContact(ctx context.Context, peer0 *types.Peer, content string) error
+	AgreeAddContact(ctx context.Context, peer0 *types.Peer) error
 	GetContact(ctx context.Context, peerID peer.ID) (*types.Contact, error)
 	GetContacts(ctx context.Context) ([]types.Contact, error)
 	GetContactSessions(ctx context.Context) ([]types.ContactSession, error)

@@ -22,9 +22,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
+	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("message")
+var log = logging.Logger("group-admin")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -51,6 +52,7 @@ type AdminProto struct {
 	emitters struct {
 		evtSendAdminLog    event.Emitter
 		evtInviteJoinGroup event.Emitter
+		evtGroupsChange    event.Emitter
 	}
 
 	groupConns map[string]map[peer.ID]struct{}
@@ -67,8 +69,8 @@ func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*A
 		groupStats: make(map[string]*GroupLogStats),
 	}
 
-	lhost.SetStreamHandler(ID, admsvc.Handler)
-	lhost.SetStreamHandler(SYNC_ID, admsvc.Handler)
+	lhost.SetStreamHandler(ID, admsvc.handler)
+	lhost.SetStreamHandler(SYNC_ID, admsvc.syncHandler)
 
 	if admsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
@@ -76,6 +78,10 @@ func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*A
 
 	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&gevent.EvtInviteJoinGroup{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
+	}
+
+	if admsvc.emitters.evtGroupsChange, err = eventBus.Emitter(&gevent.EvtGroupsChange{}); err != nil {
+		return nil, fmt.Errorf("set group change emitter error: %v", err)
 	}
 
 	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
@@ -89,32 +95,73 @@ func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*A
 	return admsvc, nil
 }
 
-func (a *AdminProto) Handler(s network.Stream) {
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Errorf("failed to attaching stream to identify service: %v", err)
-		s.Reset()
+func (m *AdminProto) syncHandler(stream network.Stream) {
+	defer stream.Close()
+
+	// 获取同步GroupID
+	var syncmsg pb.SyncLog
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	if err := rd.ReadMsg(&syncmsg); err != nil {
+		log.Errorf("pbio read sync init msg error: %v", err)
 		return
 	}
-	defer s.Close()
 
-	rd := pbio.NewDelimitedReader(s, maxMsgSize)
+	groupID := syncmsg.GroupId
+
+	summary, err := m.getMessageSummary(groupID)
+	if err != nil {
+		log.Errorf("get msg summary error: %v", err)
+		return
+	}
+
+	bs, err := proto.Marshal(summary)
+	if err != nil {
+		log.Errorf("proto marshal summary error: %v", err)
+		return
+	}
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err = wt.WriteMsg(&pb.SyncLog{
+		Type:    pb.SyncLog_SUMMARY,
+		Payload: bs,
+	}); err != nil {
+		log.Errorf("pbio write sync summary error: %v", err)
+		return
+	}
+
+	// 后台同步处理
+	err = m.loopSync(groupID, stream, rd, wt)
+	if err != nil {
+		log.Errorf("loop sync error: %v", err)
+	}
+}
+
+func (a *AdminProto) handler(stream network.Stream) {
+	if err := stream.Scope().SetService(ServiceName); err != nil {
+		log.Errorf("failed to attaching stream to identify service: %v", err)
+		stream.Reset()
+		return
+	}
+	defer stream.Close()
+
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	defer rd.Close()
 
-	s.SetDeadline(time.Now().Add(StreamTimeout))
+	stream.SetDeadline(time.Now().Add(StreamTimeout))
 
 	var msg pb.Log
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %v", err)
-		s.Reset()
+		stream.Reset()
 		return
 	}
 
-	s.SetReadDeadline(time.Time{})
+	stream.SetReadDeadline(time.Time{})
 
 	err := a.data.SaveLog(context.Background(), &msg)
 	if err != nil {
 		log.Errorf("save log error: %v", err)
-		s.Reset()
+		stream.Reset()
 		return
 	}
 }
@@ -140,8 +187,10 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 			}
 			a.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
-			// 启动同步
-			a.sync(evt.GroupID, evt.PeerID)
+			// 启动同步: peerID小的主动发起
+			if a.host.ID() < evt.PeerID {
+				a.goSync(evt.GroupID, evt.PeerID)
+			}
 
 		case <-ctx.Done():
 			return
@@ -182,10 +231,6 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		return fmt.Errorf("save log error: %w", err)
 	}
 
-	if err = a.data.SetSession(ctx, group.ID); err != nil {
-		return fmt.Errorf("ds set group session error: %w", err)
-	}
-
 	if err = a.data.SetName(ctx, group.ID, group.Name); err != nil {
 		return fmt.Errorf("ds set group name error: %w", err)
 	}
@@ -198,10 +243,26 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		return fmt.Errorf("ds set group state error: %w", err)
 	}
 
+	if err = a.data.SetSession(ctx, group.ID); err != nil {
+		return fmt.Errorf("ds set group session error: %w", err)
+	}
+
+	if err = a.emitters.evtGroupsChange.Emit(gevent.EvtGroupsChange{
+		AddGroups: []gevent.Groups{
+			{
+				GroupID:     group.ID,
+				PeerIDs:     []peer.ID{},
+				AcptPeerIDs: []peer.ID{},
+			},
+		},
+	}); err != nil {
+		return fmt.Errorf("emite add group error: %w", err)
+	}
+
 	return nil
 }
 
-func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string, members []*pb.Log_Member) (*types.Group, error) {
+func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, name string, avatar string, members []types.Contact) (*types.Group, error) {
 
 	hostID := a.host.ID()
 	groupID := uuid.NewString()
@@ -212,26 +273,23 @@ func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string
 		return nil, err
 	}
 	createLog := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "create", hostID.String()),
-		GroupId:       groupID,
-		PeerId:        []byte(hostID),
-		LogType:       pb.Log_CREATE,
-		Member:        nil,
+		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "create", hostID.String()),
+		GroupId: groupID,
+		PeerId:  []byte(hostID),
+		LogType: pb.Log_CREATE,
+		Member: &pb.Log_Member{
+			Id:     []byte(account.ID),
+			Name:   account.Name,
+			Avatar: account.Avatar,
+		},
 		MemberOperate: pb.Log_NONE,
-		Payload:       []byte(groupID),
+		Payload:       []byte(hostID),
 		CreateTime:    time.Now().Unix(),
 		Lamportime:    lamptime,
 		Signature:     []byte(""),
 	}
 
 	if err = a.data.SaveLog(ctx, &createLog); err != nil {
-		return nil, err
-	}
-
-	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_CREATE,
-		MsgData: &createLog,
-	}); err != nil {
 		return nil, err
 	}
 
@@ -255,12 +313,6 @@ func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string
 	if err = a.data.SaveLog(ctx, &nameLog); err != nil {
 		return nil, err
 	}
-	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_NAME,
-		MsgData: &nameLog,
-	}); err != nil {
-		return nil, err
-	}
 
 	// 设置头像
 	lamptime, err = a.data.TickLamptime(ctx, groupID)
@@ -282,17 +334,40 @@ func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string
 	if err = a.data.SaveLog(ctx, &avatarLog); err != nil {
 		return nil, err
 	}
-	if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_AVATAR,
-		MsgData: &nameLog,
-	}); err != nil {
+
+	var memberIDs []peer.ID
+	memberIDs = append(memberIDs, account.ID)
+
+	// 设置创建者
+	lamptime, err = a.data.TickLamptime(ctx, groupID)
+	if err != nil {
 		return nil, err
 	}
 
-	// 设置成员
-	var memberIDs []peer.ID
+	memberLog := pb.Log{
+		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
+		GroupId: groupID,
+		PeerId:  []byte(hostID),
+		LogType: pb.Log_MEMBER,
+		Member: &pb.Log_Member{
+			Id:     []byte(account.ID),
+			Name:   account.Name,
+			Avatar: account.Avatar,
+		},
+		MemberOperate: pb.Log_CREATOR,
+		Payload:       []byte(hostID),
+		CreateTime:    time.Now().Unix(),
+		Lamportime:    lamptime,
+		Signature:     []byte(""),
+	}
+
+	if err = a.data.SaveLog(ctx, &memberLog); err != nil {
+		return nil, err
+	}
+
+	// 设置其他成员
 	for _, member := range members {
-		memberIDs = append(memberIDs, peer.ID(member.Id))
+		memberIDs = append(memberIDs, member.ID)
 
 		lamptime, err = a.data.TickLamptime(ctx, groupID)
 		if err != nil {
@@ -300,13 +375,17 @@ func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string
 		}
 
 		memberLog := pb.Log{
-			Id:            fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
-			GroupId:       groupID,
-			PeerId:        []byte(hostID),
-			LogType:       pb.Log_MEMBER,
-			Member:        member,
+			Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
+			GroupId: groupID,
+			PeerId:  []byte(hostID),
+			LogType: pb.Log_MEMBER,
+			Member: &pb.Log_Member{
+				Id:     []byte(member.ID),
+				Name:   member.Name,
+				Avatar: member.Avatar,
+			},
 			MemberOperate: pb.Log_AGREE,
-			Payload:       []byte(""),
+			Payload:       []byte(member.ID),
 			CreateTime:    time.Now().Unix(),
 			Lamportime:    lamptime,
 			Signature:     []byte(""),
@@ -315,13 +394,27 @@ func (a *AdminProto) CreateGroup(ctx context.Context, name string, avatar string
 		if err = a.data.SaveLog(ctx, &memberLog); err != nil {
 			return nil, err
 		}
+	}
 
-		if err := a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-			MsgType: pb.Log_MEMBER,
-			MsgData: &memberLog,
-		}); err != nil {
-			return nil, err
-		}
+	if err = a.data.SetState(ctx, groupID, types.GroupStateNormal); err != nil {
+		return nil, fmt.Errorf("ds set group state error: %w", err)
+	}
+
+	if err = a.data.SetSession(ctx, groupID); err != nil {
+		return nil, fmt.Errorf("ds set group session error: %w", err)
+	}
+
+	// 触发新增群组
+	if err = a.emitters.evtGroupsChange.Emit(gevent.EvtGroupsChange{
+		AddGroups: []gevent.Groups{
+			{
+				GroupID:     groupID,
+				PeerIDs:     []peer.ID{account.ID},
+				AcptPeerIDs: memberIDs,
+			},
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("emite add group error: %w", err)
 	}
 
 	// 发送邀请消息
@@ -837,6 +930,20 @@ func (a *AdminProto) RemoveMember(ctx context.Context, groupID string, memberID 
 
 func (a *AdminProto) GetMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error) {
 	members, err := a.data.GetMembers(ctx, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("ds get group members error: %w", err)
+	}
+
+	memberIDs := make([]peer.ID, len(members))
+	for i, member := range members {
+		memberIDs[i] = member.ID
+	}
+
+	return memberIDs, nil
+}
+
+func (a *AdminProto) GetAgreeMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error) {
+	members, err := a.data.GetAgreeMembers(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("ds get group members error: %w", err)
 	}

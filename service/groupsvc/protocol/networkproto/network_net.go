@@ -22,9 +22,22 @@ func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
 	for _, group := range groups {
 		for _, peerID := range group.PeerIDs {
 			if _, exists := n.groupPeers[group.GroupID]; !exists {
-				n.groupPeers[group.GroupID] = make(map[peer.ID]struct{})
+				n.groupPeers[group.GroupID] = GroupPeer{
+					PeerIDs:     make(map[peer.ID]struct{}),
+					AcptPeerIDs: make(map[peer.ID]struct{}),
+				}
 			}
-			n.groupPeers[group.GroupID][peerID] = struct{}{}
+			n.groupPeers[group.GroupID].PeerIDs[peerID] = struct{}{}
+		}
+
+		for _, peerID := range group.AcptPeerIDs {
+			if _, exists := n.groupPeers[group.GroupID]; !exists {
+				n.groupPeers[group.GroupID] = GroupPeer{
+					PeerIDs:     make(map[peer.ID]struct{}),
+					AcptPeerIDs: make(map[peer.ID]struct{}),
+				}
+			}
+			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
 		}
 	}
 
@@ -50,9 +63,17 @@ func (n *NetworkProto) addNetwork(groups []gevent.Groups) error {
 	defer n.groupPeersMutex.Unlock()
 
 	for _, group := range groups {
-		n.groupPeers[group.GroupID] = make(map[peer.ID]struct{})
+		n.groupPeers[group.GroupID] = GroupPeer{
+			PeerIDs:     make(map[peer.ID]struct{}),
+			AcptPeerIDs: make(map[peer.ID]struct{}),
+		}
+
 		for _, peerID := range group.PeerIDs {
-			n.groupPeers[group.GroupID][peerID] = struct{}{}
+			n.groupPeers[group.GroupID].PeerIDs[peerID] = struct{}{}
+		}
+
+		for _, peerID := range group.AcptPeerIDs {
+			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
 		}
 	}
 
@@ -98,7 +119,7 @@ func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
 	return nil
 }
 
-func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID) {
+func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPeerIDs []peer.ID) {
 	n.groupPeersMutex.Lock()
 	defer n.groupPeersMutex.Unlock()
 
@@ -107,14 +128,22 @@ func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID) {
 		peerIDsMap[peerID] = struct{}{}
 	}
 
+	acptPeerIDsMap := make(map[peer.ID]struct{}, len(acptPeerIDs))
+	for _, peerID := range acptPeerIDs {
+		acptPeerIDsMap[peerID] = struct{}{}
+	}
+
 	var removePeerIDs []peer.ID
-	for peerID := range n.groupPeers[groupID] {
-		if _, exists := peerIDsMap[peerID]; !exists {
+	for peerID := range n.groupPeers[groupID].AcptPeerIDs {
+		if _, exists := acptPeerIDsMap[peerID]; !exists {
 			removePeerIDs = append(removePeerIDs, peerID)
 		}
 	}
 
-	n.groupPeers[groupID] = peerIDsMap
+	n.groupPeers[groupID] = GroupPeer{
+		PeerIDs:     peerIDsMap,
+		AcptPeerIDs: acptPeerIDsMap,
+	}
 
 	if len(removePeerIDs) > 0 {
 		for _, peerID := range removePeerIDs {
@@ -127,7 +156,7 @@ func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID) {
 	}
 }
 
-func (n *NetworkProto) handleFindPeers(ctx context.Context, groupID GroupID, peerCh <-chan peer.AddrInfo) error {
+func (n *NetworkProto) handleFindPeers(ctx context.Context, groupID GroupID, peerCh <-chan peer.AddrInfo) {
 	var foundPeerIDs []peer.ID
 
 	hostID := n.host.ID()
@@ -136,10 +165,15 @@ Loop:
 	for i := 0; i < 5; i++ {
 		select {
 		case peer := <-peerCh:
-			if peer.ID != hostID {
+			if peer.ID == hostID {
 				continue
 			}
 
+			if peer.ID.String() == "" {
+				continue
+			}
+
+			fmt.Println("find peer: ", peer.ID.String())
 			foundPeerIDs = append(foundPeerIDs, peer.ID)
 
 			// 交换路由表信息
@@ -155,7 +189,8 @@ Loop:
 
 	if len(foundPeerIDs) == 0 {
 		// 没有找到则返回
-		return fmt.Errorf("not found peer")
+		log.Warnf("not found group peer")
+		return
 	}
 
 	// 更新完路由后，需要组网了
@@ -172,22 +207,33 @@ Loop:
 		}
 	}
 
+	fmt.Println("onlinesMap", onlinesMap)
+
 	var onlinePeerIDs []peer.ID
 	for peerID := range onlinesMap {
-		if _, exists := n.groupPeers[groupID][peerID]; exists {
+		if len(n.groupPeers[groupID].PeerIDs) == 0 { // 如果无主动连接Peer，则所有都可以连
+			onlinePeerIDs = append(onlinePeerIDs, peerID)
+
+		} else if _, exists := n.groupPeers[groupID].PeerIDs[peerID]; exists { // 有主动连接Peer，则检查是否在其中
 			onlinePeerIDs = append(onlinePeerIDs, peerID)
 		}
 	}
 
+	fmt.Println("onlinePeerIDs", onlinePeerIDs)
+
 	if len(onlinePeerIDs) == 0 {
-		return fmt.Errorf("not found valid peer")
+		log.Warnln("not found valid peer")
+		return
 	}
 
 	// 获取组网节点
 	connAlgo := NewConnAlgo(hostID, onlinePeerIDs)
 	for _, peerID := range connAlgo.GetClosestPeers() {
-		n.connect(groupID, peerID)
-	}
+		if err := n.connect(groupID, peerID); err != nil {
+			log.Errorln("connect error: ", err.Error())
+			return
+		}
 
-	return nil
+		log.Infoln("connected peer: ", peerID.String())
+	}
 }

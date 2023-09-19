@@ -74,7 +74,7 @@ func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb
 	return batch.Commit(ctx)
 }
 
-func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*msgpb.Message, error) {
+func (m *MessageDs) GetMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*msgpb.Message, error) {
 
 	results, err := m.Query(ctx, query.Query{
 		Prefix: adminDsKey.MsgLogPrefix(groupID),
@@ -93,14 +93,15 @@ func (m *MessageDs) ListMessages(ctx context.Context, groupID GroupID, offset in
 		}
 
 		var msg msgpb.Message
-		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
+		err = proto.Unmarshal(result.Entry.Value, &msg)
+		if err != nil {
 			return nil, err
 		}
 
 		msgs = append(msgs, &msg)
 	}
 
-	return msgs, nil
+	return reverse(msgs), nil
 }
 
 func (m *MessageDs) ClearMessage(ctx context.Context, groupID GroupID) error {
@@ -143,4 +144,11 @@ func (m *MessageDs) GetMessageTail(ctx context.Context, groupID GroupID) (string
 
 func (m *MessageDs) GetMessageLength(context.Context, GroupID) (int32, error) {
 	return 0, nil
+}
+
+func reverse[T any](s []T) []T {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
 }

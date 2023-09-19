@@ -19,37 +19,48 @@ func (a *AccountDsKey) Key() ipfsds.Key {
 /**
  * contact 联系人Key
  */
-const contactKeyPrefix = "/dchat/peer/peer/"
-const contactMsgKeyPrefix = "/dchat/peer/message/"
+const contactKeyPrefix = "/dchat/peer/"
+const contactSessionKeyPrefix = "/dchat/peer/session/"
 
 type ContactDsKey struct{}
 
-func (c *ContactDsKey) Prefix() string {
-	return contactKeyPrefix
+func (c *ContactDsKey) SessionPrefix() string {
+	return contactSessionKeyPrefix
 }
-
-func (c *ContactDsKey) ContactKey(peerID peer.ID) ipfsds.Key {
-	return ipfsds.NewKey(contactKeyPrefix + peerID.String())
+func (c *ContactDsKey) ContactPrefix(peerID peer.ID) string {
+	return contactKeyPrefix + peerID.String() + "/"
 }
 
 func (c *ContactDsKey) MsgPrefix(peerID peer.ID) string {
-	return contactMsgKeyPrefix + peerID.String() + "/message/"
+	return contactKeyPrefix + peerID.String() + "/message/"
+}
+
+func (c *ContactDsKey) SessionKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(contactSessionKeyPrefix + peerID.String())
+}
+
+func (c *ContactDsKey) DetailKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(contactKeyPrefix + peerID.String() + "/detail")
+}
+
+func (c *ContactDsKey) StateKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(contactKeyPrefix + peerID.String() + "/state")
 }
 
 func (c *ContactDsKey) MsgLogPrefix(peerID peer.ID) string {
-	return contactMsgKeyPrefix + peerID.String() + "/message/logs/"
+	return contactKeyPrefix + peerID.String() + "/message/logs/"
 }
 
 func (c *ContactDsKey) MsgLogKey(peerID peer.ID, msgID string) ipfsds.Key {
-	return ipfsds.NewKey(contactMsgKeyPrefix + peerID.String() + "/message/logs/" + msgID)
+	return ipfsds.NewKey(contactKeyPrefix + peerID.String() + "/message/logs/" + msgID)
 }
 
 func (c *ContactDsKey) MsgHeadKey(peerID peer.ID) ipfsds.Key {
-	return ipfsds.NewKey(contactMsgKeyPrefix + peerID.String() + "/message/head")
+	return ipfsds.NewKey(contactKeyPrefix + peerID.String() + "/message/head")
 }
 
 func (c *ContactDsKey) MsgTailKey(peerID peer.ID) ipfsds.Key {
-	return ipfsds.NewKey(contactMsgKeyPrefix + peerID.String() + "/message/tail")
+	return ipfsds.NewKey(contactKeyPrefix + peerID.String() + "/message/tail")
 }
 
 /**
@@ -121,7 +132,11 @@ func (g *GroupDsKey) AliasKey(groupID string) ipfsds.Key {
 }
 
 func (g *GroupDsKey) MembersKey(groupID string) ipfsds.Key {
-	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/members")
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/members") // 正式成员
+}
+
+func (g *GroupDsKey) AgreeMembersKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/agree_members") // 包括准成员（包括群主同意入群的）
 }
 
 func (g *GroupDsKey) AdminLamptimeKey(groupID string) ipfsds.Key {

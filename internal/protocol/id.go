@@ -12,7 +12,7 @@ const (
 
 const (
 	GroupAdminID_v100     = "/dchat/group/admin/1.0.0"
-	GroupAdminSyncID_v100 = "/dchat/group/syncmsg/1.0.0"
+	GroupAdminSyncID_v100 = "/dchat/group/syncadmin/1.0.0"
 
 	GroupMessageID_v100     = "/dchat/group/msg/1.0.0"
 	GroupMessageSyncID_v100 = "/dchat/group/syncmsg/1.0.0"

@@ -13,12 +13,12 @@ type ConnAlgo struct {
 	orderQueue []peer.ID
 }
 
-func NewConnAlgo(peerID peer.ID, otherPeerIDs []peer.ID) *ConnAlgo {
+func NewConnAlgo(hostID peer.ID, otherPeerIDs []peer.ID) *ConnAlgo {
 	unimap := make(map[uint64]peer.ID, len(otherPeerIDs)+1)
 
-	hash := sha256.Sum256([]byte(peerID))
+	hash := sha256.Sum256([]byte(hostID))
 	peerBint := big.NewInt(0).SetBytes(hash[:]).Uint64()
-	unimap[peerBint] = peerID
+	unimap[peerBint] = hostID
 
 	for _, pid := range otherPeerIDs {
 		hash := sha256.Sum256([]byte(pid))
@@ -30,8 +30,10 @@ func NewConnAlgo(peerID peer.ID, otherPeerIDs []peer.ID) *ConnAlgo {
 	}
 
 	orderUints := make([]uint64, len(unimap))
+	i := 0
 	for val := range unimap {
-		orderUints = append(orderUints, val)
+		orderUints[i] = val
+		i++
 	}
 
 	sort.Slice(orderUints, func(i, j int) bool {
@@ -44,7 +46,7 @@ func NewConnAlgo(peerID peer.ID, otherPeerIDs []peer.ID) *ConnAlgo {
 		if bint == peerBint {
 			peerIndex = i
 		}
-		orderQueue = append(orderQueue, unimap[bint])
+		orderQueue[i] = unimap[bint]
 	}
 
 	return &ConnAlgo{
