@@ -17,6 +17,7 @@ type AdminIface interface {
 	TickLamptime(ctx context.Context, groupID string) (uint64, error)
 
 	SaveLog(ctx context.Context, log *pb.Log) error
+	GetLog(ctx context.Context, groupID string, logID string) (*pb.Log, error)
 
 	GetState(ctx context.Context, groupID string) (string, error)
 	GetName(ctx context.Context, groupID string) (string, error)

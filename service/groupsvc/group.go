@@ -326,6 +326,30 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 	return message, nil
 }
 
+// 获取消息消息
+func (g *GroupService) GetGroupMessage(ctx context.Context, groupID string, msgID string) (*types.GroupMessage, error) {
+	msg, err := g.messageProto.GetMessage(ctx, groupID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
+	}
+
+	message := &types.GroupMessage{
+		ID:      msg.Id,
+		GroupID: msg.GroupId,
+		FromPeer: types.GroupMember{
+			ID:     peer.ID(msg.Member.Id),
+			Name:   msg.Member.Name,
+			Avatar: msg.Member.Avatar,
+		},
+		MsgType:    msg.MsgType,
+		MimeType:   msg.MimeType,
+		Payload:    msg.Payload,
+		CreateTime: msg.CreateTime,
+	}
+
+	return message, nil
+}
+
 // 消息列表
 func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]types.GroupMessage, error) {
 	msgs, err := g.messageProto.GetMessageList(ctx, groupID, offset, limit)

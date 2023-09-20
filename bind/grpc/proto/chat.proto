@@ -81,6 +81,8 @@ service GroupSvc {
   // 发送消息
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
   // 获取聊天记录
+  rpc GetGroupMessage(GetGroupMessageRequest) returns (GetGroupMessageReply) {}
+  // 获取聊天记录
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 清空聊天记录
   rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
@@ -291,6 +293,15 @@ message GetGroupsRequest {}
 message GetGroupsReply {
   Result result = 1;
   repeated Group groups = 2;
+}
+
+message GetGroupMessageRequest {
+  string groupId = 1;
+  string msgId = 2;
+}
+message GetGroupMessageReply {
+  Result result = 1;
+  GroupMessage message = 2;
 }
 
 message GetGroupMessagesRequest {

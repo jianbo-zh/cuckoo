@@ -40,6 +40,10 @@ type MessageProto struct {
 	data ds.MessageIface
 
 	groupConns map[string]map[peer.ID]struct{}
+
+	emitters struct {
+		evtReceiveGroupMessage event.Emitter
+	}
 }
 
 func NewMessageProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageProto, error) {
@@ -52,6 +56,11 @@ func NewMessageProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*Mes
 
 	h.SetStreamHandler(ID, msgsvc.messageHandler)
 	h.SetStreamHandler(SYNC_ID, msgsvc.syncHandler)
+
+	// 接收群消息
+	if msgsvc.emitters.evtReceiveGroupMessage, err = eventBus.Emitter(&gevent.EvtReceiveGroupMessage{}); err != nil {
+		return nil, fmt.Errorf("set receive group msg emitter error: %v", err)
+	}
 
 	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
 	if err != nil {
@@ -98,9 +107,23 @@ func (m *MessageProto) messageHandler(s network.Stream) {
 				log.Errorf("save group message error: %v", err)
 			}
 
+			// 更新本地lamptime
 			err = m.data.MergeLamportTime(context.Background(), msg.GroupId, msg.Lamportime)
 			if err != nil {
 				log.Errorf("update lamport time error: %v", err)
+			}
+
+			// 触发接收消息
+			if err = m.emitters.evtReceiveGroupMessage.Emit(gevent.EvtReceiveGroupMessage{
+				MsgID:      msg.Id,
+				GroupID:    msg.GroupId,
+				FromPeerID: peer.ID(msg.Member.Id),
+				MsgType:    msg.MsgType,
+				MimeType:   msg.MimeType,
+				Payload:    msg.Payload,
+				Timestamp:  msg.CreateTime,
+			}); err != nil {
+				log.Errorln("emit receive group msg error: %w", err)
 			}
 
 			// 转发消息
@@ -190,6 +213,15 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 			return
 		}
 	}
+}
+
+func (m *MessageProto) GetMessage(ctx context.Context, groupID string, msgID string) (*pb.Message, error) {
+	msgs, err := m.data.GetMessage(ctx, groupID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("m.data.ListMessages error: %w", err)
+	}
+
+	return msgs, nil
 }
 
 func (m *MessageProto) GetMessageList(ctx context.Context, groupID string, offset int, limit int) ([]*pb.Message, error) {

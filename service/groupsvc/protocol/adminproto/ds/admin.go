@@ -47,6 +47,20 @@ func AdminWrap(d ds.Batching) *AdminDs {
 	}
 }
 
+func (a *AdminDs) GetLog(ctx context.Context, groupID string, logID string) (*pb.Log, error) {
+	value, err := a.Get(ctx, adminDsKey.AdminLogKey(groupID, logID))
+	if err != nil {
+		return nil, fmt.Errorf("ds get admin log error: %w", err)
+	}
+
+	var log *pb.Log
+	if err = proto.Unmarshal(value, log); err != nil {
+		return nil, fmt.Errorf("proto unmarshal error: %w", err)
+	}
+
+	return log, nil
+}
+
 func (a *AdminDs) SaveLog(ctx context.Context, msg *pb.Log) error {
 
 	_, err := a.Get(ctx, adminDsKey.AdminLogKey(msg.GroupId, msg.Id))
@@ -457,7 +471,7 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 		switch pblog.LogType {
 		case pb.Log_CREATE:
 			logCreator = pblog.PeerId
-			logCreateTime = pblog.Payload
+			logCreateTime = []byte(strconv.FormatInt(pblog.CreateTime, 10))
 		case pb.Log_NAME:
 			logName = pblog.Payload
 		case pb.Log_AVATAR:
@@ -605,10 +619,11 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 	case pb.Log_NAME:
 		result, err := a.Query(ctx, query.Query{
 			Prefix: adminDsKey.AdminLogPrefix(groupID),
-			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Orders: []query.Order{query.OrderByKeyDescending{}}, // desc, limit 1
 			Filters: []query.Filter{GroupContainFilter{
-				Keywords: "_name_",
+				Keywords: KwName,
 			}},
+			Limit: 1,
 		})
 		if err != nil {
 			return fmt.Errorf("ds query error: %w", err)
@@ -635,10 +650,11 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 	case pb.Log_AVATAR:
 		result, err := a.Query(ctx, query.Query{
 			Prefix: adminDsKey.AdminLogPrefix(groupID),
-			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Orders: []query.Order{query.OrderByKeyDescending{}}, // desc, limit 1
 			Filters: []query.Filter{GroupContainFilter{
-				Keywords: "_avatar_",
+				Keywords: KwAvatar,
 			}},
+			Limit: 1,
 		})
 		if err != nil {
 			return fmt.Errorf("ds query error: %w", err)
@@ -665,10 +681,11 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 	case pb.Log_NOTICE:
 		result, err := a.Query(ctx, query.Query{
 			Prefix: adminDsKey.AdminLogPrefix(groupID),
-			Orders: []query.Order{query.OrderByKey{}}, // asc
+			Orders: []query.Order{query.OrderByKeyDescending{}}, // desc, limit 1
 			Filters: []query.Filter{GroupContainFilter{
-				Keywords: "_notice_",
+				Keywords: KwNotice,
 			}},
+			Limit: 1,
 		})
 		if err != nil {
 			return fmt.Errorf("ds query error: %w", err)
@@ -691,13 +708,43 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 		if err = a.Put(ctx, adminDsKey.NoticeKey(groupID), notice); err != nil {
 			return fmt.Errorf("ds save group notice error: %w", err)
 		}
+	case pb.Log_AUTO_JOIN_GROUP:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKeyDescending{}}, // desc, limit 1
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: KwAutoJoin,
+			}},
+			Limit: 1,
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
+		}
+
+		var autoJoinGroup []byte
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			var pblog pb.Log
+			if err := proto.Unmarshal(entry.Value, &pblog); err != nil {
+				return fmt.Errorf("proto unmarshal error: %w", err)
+			}
+
+			autoJoinGroup = pblog.Payload
+		}
+
+		if err = a.Put(ctx, adminDsKey.AutoJoinGroupKey(groupID), autoJoinGroup); err != nil {
+			return fmt.Errorf("ds save group notice error: %w", err)
+		}
 
 	case pb.Log_MEMBER:
 		result, err := a.Query(ctx, query.Query{
 			Prefix: adminDsKey.AdminLogPrefix(groupID),
 			Orders: []query.Order{query.OrderByKey{}}, // asc
 			Filters: []query.Filter{GroupContainFilter{
-				Keywords: "_member_",
+				Keywords: KwMember,
 			}},
 		})
 		if err != nil {

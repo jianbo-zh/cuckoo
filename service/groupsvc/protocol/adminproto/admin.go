@@ -4,6 +4,7 @@ package adminproto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -50,7 +51,6 @@ type AdminProto struct {
 	data ds.AdminIface
 
 	emitters struct {
-		evtSendAdminLog    event.Emitter
 		evtInviteJoinGroup event.Emitter
 		evtGroupsChange    event.Emitter
 	}
@@ -71,10 +71,6 @@ func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*A
 
 	lhost.SetStreamHandler(ID, admsvc.handler)
 	lhost.SetStreamHandler(SYNC_ID, admsvc.syncHandler)
-
-	if admsvc.emitters.evtSendAdminLog, err = eventBus.Emitter(&gevent.EvtSendAdminLog{}); err != nil {
-		return nil, fmt.Errorf("set emitter error: %v", err)
-	}
 
 	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&gevent.EvtInviteJoinGroup{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
@@ -137,6 +133,9 @@ func (m *AdminProto) syncHandler(stream network.Stream) {
 }
 
 func (a *AdminProto) handler(stream network.Stream) {
+
+	remotePeerID := stream.Conn().RemotePeer()
+
 	if err := stream.Scope().SetService(ServiceName); err != nil {
 		log.Errorf("failed to attaching stream to identify service: %v", err)
 		stream.Reset()
@@ -158,11 +157,28 @@ func (a *AdminProto) handler(stream network.Stream) {
 
 	stream.SetReadDeadline(time.Time{})
 
-	err := a.data.SaveLog(context.Background(), &msg)
-	if err != nil {
-		log.Errorf("save log error: %v", err)
-		stream.Reset()
-		return
+	ctx := context.Background()
+	if _, err := a.data.GetLog(ctx, msg.GroupId, msg.Id); err != nil {
+		if errors.Is(err, ipfsds.ErrNotFound) {
+			// 保存日志
+			if err = a.data.SaveLog(ctx, &msg); err != nil {
+				log.Errorf("save log error: %v", err)
+				stream.Reset()
+				return
+			}
+
+			// 转发消息
+			err = a.broadcastMessage(msg.GroupId, &msg, remotePeerID)
+			if err != nil {
+				log.Errorf("a.broadcast message error: %v", err)
+				stream.Reset()
+				return
+			}
+		} else {
+			log.Errorf("data get admin log error: %v", err)
+			stream.Reset()
+			return
+		}
 	}
 }
 
@@ -198,6 +214,58 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 	}
 }
 
+// 发送消息
+func (a *AdminProto) broadcastMessage(groupID string, msg *pb.Log, excludePeerIDs ...peer.ID) error {
+
+	connectPeerIDs := a.getConnectPeers(groupID)
+	fmt.Printf("get connect peers: %v\n", connectPeerIDs)
+
+	for _, peerID := range connectPeerIDs {
+		if len(excludePeerIDs) > 0 {
+			isExcluded := false
+			for _, excludePeerID := range excludePeerIDs {
+				if peerID == excludePeerID {
+					isExcluded = true
+				}
+			}
+			if isExcluded {
+				continue
+			}
+		}
+
+		go a.goSendAdminMessage(peerID, msg)
+	}
+
+	return nil
+}
+
+func (a *AdminProto) getConnectPeers(groupID string) []peer.ID {
+	var peerIDs []peer.ID
+	for peerID := range a.groupConns[groupID] {
+		peerIDs = append(peerIDs, peerID)
+	}
+	return peerIDs
+}
+
+// 发送消息（指定peerID）
+func (a *AdminProto) goSendAdminMessage(peerID peer.ID, msg *pb.Log) {
+	stream, err := a.host.NewStream(context.Background(), peerID, ID)
+	if err != nil {
+		log.Errorf("host new stream error: %v", err)
+		return
+	}
+
+	stream.SetWriteDeadline(time.Now().Add(StreamTimeout))
+
+	wt := pbio.NewDelimitedWriter(stream)
+	defer wt.Close()
+
+	if err := wt.WriteMsg(msg); err != nil {
+		log.Errorf("pbio write admin msg error: %v", err)
+		return
+	}
+}
+
 // AgreeJoinGroup 同意加入群
 func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account, group *types.Group, lamptime uint64) error {
 
@@ -205,13 +273,13 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		return fmt.Errorf("data merge lamptime error: %w", err)
 	}
 
-	lamportime, err := a.data.TickLamptime(ctx, group.ID)
+	lamptime, err := a.data.TickLamptime(ctx, group.ID)
 	if err != nil {
 		return fmt.Errorf("data tick lamptime error: %w", err)
 	}
 
 	memberLog := &pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamportime, "member", account.ID.String()),
+		Id:      logIdMember(lamptime, account.ID),
 		GroupId: group.ID,
 		PeerId:  []byte(account.ID),
 		LogType: pb.Log_MEMBER,
@@ -223,7 +291,7 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		MemberOperate: pb.Log_APPLY,
 		Payload:       []byte(""),
 		CreateTime:    time.Now().Unix(),
-		Lamportime:    lamportime,
+		Lamportime:    lamptime,
 		Signature:     []byte(""),
 	}
 
@@ -273,7 +341,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		return nil, err
 	}
 	createLog := pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "create", hostID.String()),
+		Id:      logIdCreate(lamptime, hostID),
 		GroupId: groupID,
 		PeerId:  []byte(hostID),
 		LogType: pb.Log_CREATE,
@@ -299,7 +367,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		return nil, err
 	}
 	nameLog := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "name", hostID.String()),
+		Id:            logIdName(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_NAME,
@@ -320,7 +388,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		return nil, err
 	}
 	avatarLog := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "avatar", hostID.String()),
+		Id:            logIdAvatar(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_AVATAR,
@@ -345,7 +413,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 	}
 
 	memberLog := pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
+		Id:      logIdMember(lamptime, hostID),
 		GroupId: groupID,
 		PeerId:  []byte(hostID),
 		LogType: pb.Log_MEMBER,
@@ -375,7 +443,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		}
 
 		memberLog := pb.Log{
-			Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
+			Id:      logIdMember(lamptime, hostID),
 			GroupId: groupID,
 			PeerId:  []byte(hostID),
 			LogType: pb.Log_MEMBER,
@@ -448,7 +516,7 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *types.Account, grou
 	}
 
 	pbmsg := pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "exit", account.ID.String()),
+		Id:      logIdExit(lamptime, account.ID),
 		GroupId: groupID,
 		PeerId:  []byte(account.ID),
 		LogType: pb.Log_MEMBER,
@@ -465,14 +533,11 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *types.Account, grou
 	}
 
 	if err = a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	if err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_MEMBER,
-		MsgData: &pbmsg,
-	}); err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	if err = a.data.SetState(ctx, groupID, types.GroupStateExit); err != nil {
@@ -498,7 +563,7 @@ func (a *AdminProto) DeleteGroup(ctx context.Context, account *types.Account, gr
 		}
 
 		pbmsg := pb.Log{
-			Id:      fmt.Sprintf("%d_%s_%s", lamptime, "exit", account.ID.String()),
+			Id:      logIdExit(lamptime, account.ID),
 			GroupId: groupID,
 			PeerId:  []byte(account.ID),
 			LogType: pb.Log_MEMBER,
@@ -515,15 +580,11 @@ func (a *AdminProto) DeleteGroup(ctx context.Context, account *types.Account, gr
 		}
 
 		if err = a.data.SaveLog(ctx, &pbmsg); err != nil {
-			return err
+			return fmt.Errorf("data save log error: %w", err)
 		}
 
-		err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-			MsgType: pb.Log_MEMBER,
-			MsgData: &pbmsg,
-		})
-		if err != nil {
-			return err
+		if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+			return fmt.Errorf("broadcast msg error: %w", err)
 		}
 	}
 
@@ -543,7 +604,7 @@ func (a *AdminProto) DisbandGroup(ctx context.Context, account *types.Account, g
 	}
 
 	pbmsg := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, types.GroupStateDisband, account.ID.String()),
+		Id:            logIdDisband(lamptime, account.ID),
 		GroupId:       groupID,
 		PeerId:        []byte(account.ID),
 		LogType:       pb.Log_DISBAND,
@@ -556,14 +617,11 @@ func (a *AdminProto) DisbandGroup(ctx context.Context, account *types.Account, g
 	}
 
 	if err = a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	if err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_DISBAND,
-		MsgData: &pbmsg,
-	}); err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -603,13 +661,13 @@ func (a *AdminProto) GetSessions(ctx context.Context) ([]types.Group, error) {
 
 func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group, error) {
 	name, err := a.data.GetName(ctx, groupID)
-	if err != nil {
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get name error: %w", err)
 	}
 
 	avatar, err := a.data.GetAvatar(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("data get name error: %w", err)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get avatar error: %w", err)
 	}
 
 	return &types.Group{
@@ -621,28 +679,28 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group
 
 func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) {
 	name, err := a.data.GetName(ctx, groupID)
-	if err != nil {
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get name error: %w", err)
 	}
 
 	avatar, err := a.data.GetAvatar(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("data get name error: %w", err)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get avatar error: %w", err)
 	}
 
 	notice, err := a.data.GetNotice(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("data get name error: %w", err)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get notice error: %w", err)
 	}
 
 	autoJoinGroup, err := a.data.GetAutoJoinGroup(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("data get name error: %w", err)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get auto join group error: %w", err)
 	}
 
 	createTime, err := a.data.GetCreateTime(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("data get name error: %w", err)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get create time error: %w", err)
 	}
 
 	return &types.GroupDetail{
@@ -665,7 +723,7 @@ func (a *AdminProto) SetGroupName(ctx context.Context, groupID string, name stri
 	}
 
 	pbmsg := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "name", hostID.String()),
+		Id:            logIdName(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_NAME,
@@ -678,15 +736,11 @@ func (a *AdminProto) SetGroupName(ctx context.Context, groupID string, name stri
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_NAME,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -711,7 +765,7 @@ func (a *AdminProto) SetGroupAvatar(ctx context.Context, groupID string, avatar 
 	}
 
 	pbmsg := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "avatar", hostID.String()),
+		Id:            logIdAvatar(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_AVATAR,
@@ -724,15 +778,11 @@ func (a *AdminProto) SetGroupAvatar(ctx context.Context, groupID string, avatar 
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_AVATAR,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -753,7 +803,7 @@ func (a *AdminProto) SetGroupAutoJoin(ctx context.Context, groupID string, isAut
 	}
 
 	pbmsg := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "options", hostID.String()),
+		Id:            logIdAutojoin(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_AUTO_JOIN_GROUP,
@@ -766,15 +816,11 @@ func (a *AdminProto) SetGroupAutoJoin(ctx context.Context, groupID string, isAut
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_AVATAR,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -789,7 +835,7 @@ func (a *AdminProto) SetGroupNotice(ctx context.Context, groupID string, notice 
 	}
 
 	pbmsg := pb.Log{
-		Id:            fmt.Sprintf("%d_%s_%s", lamptime, "notice", hostID.String()),
+		Id:            logIdNotice(lamptime, hostID),
 		GroupId:       groupID,
 		PeerId:        []byte(hostID),
 		LogType:       pb.Log_NOTICE,
@@ -802,15 +848,11 @@ func (a *AdminProto) SetGroupNotice(ctx context.Context, groupID string, notice 
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_NOTICE,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -820,6 +862,10 @@ func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member
 	hostID := a.host.ID()
 
 	creator, err := a.data.GetCreator(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("data get creator error: %w", err)
+	}
+
 	if hostID != creator {
 		return fmt.Errorf("no permission to review join group")
 	}
@@ -835,7 +881,7 @@ func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member
 	}
 
 	pbmsg := pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String),
+		Id:      logIdMember(lamptime, hostID),
 		GroupId: groupID,
 		PeerId:  []byte(hostID),
 		LogType: pb.Log_MEMBER,
@@ -852,15 +898,11 @@ func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_MEMBER,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil
@@ -870,6 +912,10 @@ func (a *AdminProto) RemoveMember(ctx context.Context, groupID string, memberID 
 	hostID := a.host.ID()
 
 	creator, err := a.data.GetCreator(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("data get creator error: %w", err)
+	}
+
 	if hostID != creator {
 		return fmt.Errorf("no permission to remove member")
 	}
@@ -897,7 +943,7 @@ func (a *AdminProto) RemoveMember(ctx context.Context, groupID string, memberID 
 	}
 
 	pbmsg := pb.Log{
-		Id:      fmt.Sprintf("%d_%s_%s", lamptime, "member", hostID.String()),
+		Id:      logIdMember(lamptime, hostID),
 		GroupId: groupID,
 		PeerId:  []byte(hostID),
 		LogType: pb.Log_MEMBER,
@@ -914,15 +960,11 @@ func (a *AdminProto) RemoveMember(ctx context.Context, groupID string, memberID 
 	}
 
 	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
-		return err
+		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	err = a.emitters.evtSendAdminLog.Emit(gevent.EvtSendAdminLog{
-		MsgType: pb.Log_MEMBER,
-		MsgData: &pbmsg,
-	})
-	if err != nil {
-		return err
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil

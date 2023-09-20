@@ -554,6 +554,51 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 	return reply, nil
 }
 
+func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupMessageRequest) (reply *proto.GetGroupMessageReply, err error) {
+
+	log.Infoln("GetGroupMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetGroupMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetGroupMessage error: ", err.Error())
+		} else {
+			log.Infoln("GetGroupMessage reply: ", reply.String())
+		}
+	}()
+
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	msg, err := groupSvc.GetGroupMessage(ctx, request.GroupId, request.MsgId)
+	if err != nil {
+		return nil, fmt.Errorf("groupSvc.ListMessage error: %w", err)
+	}
+
+	reply = &proto.GetGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: &proto.GroupMessage{
+			Id:      msg.ID,
+			GroupId: msg.GroupID,
+			Sender: &proto.Peer{
+				Id:     msg.FromPeer.ID.String(),
+				Name:   msg.FromPeer.Name,
+				Avatar: msg.FromPeer.Avatar,
+			},
+			MsgType:    encodeMsgType(msg.MsgType),
+			MimeType:   msg.MimeType,
+			Payload:    msg.Payload,
+			CreateTime: msg.CreateTime,
+		},
+	}
+	return reply, nil
+}
+
 func (g *GroupSvc) GetGroupMessages(ctx context.Context, request *proto.GetGroupMessagesRequest) (reply *proto.GetGroupMessagesReply, err error) {
 
 	log.Infoln("GetGroupMessages request: ", request.String())

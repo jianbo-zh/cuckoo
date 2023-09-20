@@ -75,7 +75,27 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
 
 		case myevent.EvtReceiveGroupMessage:
-			// todo:
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadGroupMessage{
+				MsgId:   evt.MsgID,
+				GroupId: evt.GroupID,
+			})
+			if err != nil {
+				return fmt.Errorf("proto.Marshal error: %w", err)
+			}
+
+			reply := proto.SubscribeCommonEventReply{
+				Event: &proto.CommonEvent{
+					Type:    proto.CommonEvent_GroupMessage,
+					Payload: payload,
+				},
+			}
+
+			err = server.Send(&reply)
+			if err != nil {
+				return fmt.Errorf("server.Send error: %w", err)
+			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
 		default:
 			// nothing to do
 		}

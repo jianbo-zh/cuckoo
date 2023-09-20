@@ -830,6 +830,7 @@ const (
 	GroupSvc_GetGroupMembers_FullMethodName   = "/chat.GroupSvc/GetGroupMembers"
 	GroupSvc_RemoveGroupMember_FullMethodName = "/chat.GroupSvc/RemoveGroupMember"
 	GroupSvc_SendGroupMessage_FullMethodName  = "/chat.GroupSvc/SendGroupMessage"
+	GroupSvc_GetGroupMessage_FullMethodName   = "/chat.GroupSvc/GetGroupMessage"
 	GroupSvc_GetGroupMessages_FullMethodName  = "/chat.GroupSvc/GetGroupMessages"
 	GroupSvc_ClearGroupMessage_FullMethodName = "/chat.GroupSvc/ClearGroupMessage"
 )
@@ -866,6 +867,8 @@ type GroupSvcClient interface {
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberReply, error)
 	// 发送消息
 	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 获取聊天记录
+	GetGroupMessage(ctx context.Context, in *GetGroupMessageRequest, opts ...grpc.CallOption) (*GetGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
@@ -1006,6 +1009,15 @@ func (c *groupSvcClient) SendGroupMessage(ctx context.Context, in *SendGroupMess
 	return out, nil
 }
 
+func (c *groupSvcClient) GetGroupMessage(ctx context.Context, in *GetGroupMessageRequest, opts ...grpc.CallOption) (*GetGroupMessageReply, error) {
+	out := new(GetGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error) {
 	out := new(GetGroupMessagesReply)
 	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessages_FullMethodName, in, out, opts...)
@@ -1056,6 +1068,8 @@ type GroupSvcServer interface {
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error)
 	// 发送消息
 	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
+	// 获取聊天记录
+	GetGroupMessage(context.Context, *GetGroupMessageRequest) (*GetGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
@@ -1108,6 +1122,9 @@ func (UnimplementedGroupSvcServer) RemoveGroupMember(context.Context, *RemoveGro
 }
 func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) GetGroupMessage(context.Context, *GetGroupMessageRequest) (*GetGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessage not implemented")
 }
 func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessages not implemented")
@@ -1380,6 +1397,24 @@ func _GroupSvc_SendGroupMessage_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupSvc_GetGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).GetGroupMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_GetGroupMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).GetGroupMessage(ctx, req.(*GetGroupMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GroupSvc_GetGroupMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetGroupMessagesRequest)
 	if err := dec(in); err != nil {
@@ -1478,6 +1513,10 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendGroupMessage",
 			Handler:    _GroupSvc_SendGroupMessage_Handler,
+		},
+		{
+			MethodName: "GetGroupMessage",
+			Handler:    _GroupSvc_GetGroupMessage_Handler,
 		},
 		{
 			MethodName: "GetGroupMessages",

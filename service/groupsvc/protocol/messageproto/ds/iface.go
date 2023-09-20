@@ -14,7 +14,7 @@ type MessageIface interface {
 	MergeLamportTime(context.Context, GroupID, uint64) error
 	TickLamportTime(context.Context, GroupID) (uint64, error)
 
-	GetMessage(context.Context, GroupID, string) (*pb.Message, error)
+	GetMessage(ctx context.Context, groupID GroupID, msgID string) (*pb.Message, error)
 	SaveMessage(context.Context, GroupID, *pb.Message) error
 	GetMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*pb.Message, error)
 	ClearMessage(ctx context.Context, groupID GroupID) error
