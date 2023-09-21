@@ -18,8 +18,8 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	}
 
 	// 获取本地路由表
-	localRoutingTable := n.getRoutingTable()
-	bs, err := json.Marshal(localRoutingTable)
+	localGRT := n.getRoutingTable(groupID)
+	bs, err := json.Marshal(localGRT)
 	if err != nil {
 		return err
 	}
@@ -28,30 +28,32 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	wt := pbio.NewDelimitedWriter(stream)
 	defer wt.Close()
 
-	if err = wt.WriteMsg(&pb.RoutingTable{Payload: bs}); err != nil {
+	if err = wt.WriteMsg(&pb.RoutingTable{GroupId: groupID, Payload: bs}); err != nil {
 		return err
 	}
 
 	// 接收对方路由表
-	var prt pb.RoutingTable
+	var msg pb.RoutingTable
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-	if err = rd.ReadMsg(&prt); err != nil {
+	if err = rd.ReadMsg(&msg); err != nil {
 		return err
 	}
 
-	var remoteRoutingTable RoutingTable
-	if err = json.Unmarshal(prt.Payload, &remoteRoutingTable); err != nil {
+	var remoteGRT GroupRoutingTable
+	if err = json.Unmarshal(msg.Payload, &remoteGRT); err != nil {
 		return err
 	}
 
 	// 合并更新到本地路由
-	n.mergeRoutingTable(remoteRoutingTable)
+	n.mergeRoutingTable(groupID, remoteGRT)
 
 	return nil
 }
 
 // updateRoutingTable 更新本地路由表
 func (n *NetworkProto) updateRoutingTable(groupID GroupID, conn ConnectPair) bool {
+	n.routingTableMutex.Lock()
+	defer n.routingTableMutex.Unlock()
 
 	if _, exists := n.routingTable[groupID]; !exists {
 		n.routingTable[groupID] = make(map[ConnKey]ConnectPair)
@@ -96,7 +98,7 @@ func (n *NetworkProto) updateRoutingTable(groupID GroupID, conn ConnectPair) boo
 }
 
 // getRoutingTable 获取路由表
-func (n *NetworkProto) getRoutingTable() RoutingTable {
+func (n *NetworkProto) getRoutingTable(groupID string) GroupRoutingTable {
 	n.routingTableMutex.Lock()
 	defer n.routingTableMutex.Unlock()
 
@@ -104,11 +106,15 @@ func (n *NetworkProto) getRoutingTable() RoutingTable {
 		n.routingTable = make(RoutingTable)
 	}
 
-	return n.routingTable
+	if _, exists := n.routingTable[groupID]; !exists {
+		n.routingTable[groupID] = make(GroupRoutingTable)
+	}
+
+	return n.routingTable[groupID]
 }
 
 // mergeRoutingTable 合并路由表
-func (n *NetworkProto) mergeRoutingTable(rt RoutingTable) {
+func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingTable) {
 	n.routingTableMutex.Lock()
 	defer n.routingTableMutex.Unlock()
 
@@ -116,71 +122,69 @@ func (n *NetworkProto) mergeRoutingTable(rt RoutingTable) {
 		n.routingTable = make(RoutingTable)
 	}
 
-	for groupID, conns := range rt {
-		if _, exists := n.routingTable[groupID]; !exists {
-			n.routingTable[groupID] = conns
+	if _, exists := n.routingTable[groupID]; !exists {
+		n.routingTable[groupID] = remoteGRT
 
-		} else {
-			// todo: 复制一份路由表
-			grtable := n.routingTable[groupID]
+	} else {
+		// todo: 复制一份路由表
+		localGRT := n.routingTable[groupID]
 
-			// 合并路由
-			for key, conn := range conns {
-				connPair, exists := grtable[key]
-				if !exists {
-					grtable[key] = conn
-				}
-
-				if conn.BootTs0 > connPair.BootTs0 || conn.BootTs1 > connPair.BootTs1 {
-					grtable[key] = conn
-
-				} else if conn.BootTs0 == connPair.BootTs0 && conn.BootTs1 == connPair.BootTs1 {
-					if conn.ConnTimes0 > connPair.ConnTimes0 && conn.ConnTimes1 > connPair.ConnTimes1 {
-						grtable[key] = conn
-					}
-				}
+		// 合并路由
+		for key, conn := range remoteGRT {
+			connPair, exists := localGRT[key]
+			if !exists {
+				localGRT[key] = conn
 			}
 
-			// 找到 peer 最大值 rtime, lamportime
-			pmax := make(map[peer.ID][2]uint64)
-			for _, conn := range grtable {
-				if _, exists := pmax[conn.PeerID0]; !exists {
+			if conn.BootTs0 > connPair.BootTs0 || conn.BootTs1 > connPair.BootTs1 {
+				localGRT[key] = conn
+
+			} else if conn.BootTs0 == connPair.BootTs0 && conn.BootTs1 == connPair.BootTs1 {
+				if conn.ConnTimes0 > connPair.ConnTimes0 && conn.ConnTimes1 > connPair.ConnTimes1 {
+					localGRT[key] = conn
+				}
+			}
+		}
+
+		// 找到 peer 最大值 rtime, lamportime
+		pmax := make(map[peer.ID][2]uint64)
+		for _, conn := range localGRT {
+			if _, exists := pmax[conn.PeerID0]; !exists {
+				pmax[conn.PeerID0] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
+
+			} else {
+				if conn.BootTs0 > pmax[conn.PeerID0][0] {
 					pmax[conn.PeerID0] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
 
-				} else {
-					if conn.BootTs0 > pmax[conn.PeerID0][0] {
-						pmax[conn.PeerID0] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
-
-					} else if conn.BootTs0 == pmax[conn.PeerID0][0] && conn.ConnTimes0 > pmax[conn.PeerID0][1] {
-						pmax[conn.PeerID0] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
-					}
+				} else if conn.BootTs0 == pmax[conn.PeerID0][0] && conn.ConnTimes0 > pmax[conn.PeerID0][1] {
+					pmax[conn.PeerID0] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
 				}
+			}
 
-				if _, exists := pmax[conn.PeerID1]; !exists {
+			if _, exists := pmax[conn.PeerID1]; !exists {
+				pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
+
+			} else {
+				if conn.BootTs0 > pmax[conn.PeerID1][0] {
 					pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
 
-				} else {
-					if conn.BootTs0 > pmax[conn.PeerID1][0] {
-						pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
-
-					} else if conn.BootTs0 == pmax[conn.PeerID1][0] && conn.ConnTimes0 > pmax[conn.PeerID1][1] {
-						pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
-					}
+				} else if conn.BootTs0 == pmax[conn.PeerID1][0] && conn.ConnTimes0 > pmax[conn.PeerID1][1] {
+					pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
 				}
 			}
-
-			// 剔除无效的连接
-			for key, conn := range grtable {
-				if conn.BootTs0 < pmax[conn.PeerID0][0] ||
-					conn.BootTs1 < pmax[conn.PeerID1][0] ||
-					(conn.BootTs0 == pmax[conn.PeerID0][0] && conn.ConnTimes0 < pmax[conn.PeerID0][1]) ||
-					(conn.BootTs1 == pmax[conn.PeerID1][0] && conn.ConnTimes1 < pmax[conn.PeerID1][1]) {
-
-					delete(grtable, key)
-				}
-			}
-
-			n.routingTable[groupID] = grtable
 		}
+
+		// 剔除无效的连接
+		for key, conn := range localGRT {
+			if conn.BootTs0 < pmax[conn.PeerID0][0] ||
+				conn.BootTs1 < pmax[conn.PeerID1][0] ||
+				(conn.BootTs0 == pmax[conn.PeerID0][0] && conn.ConnTimes0 < pmax[conn.PeerID0][1]) ||
+				(conn.BootTs1 == pmax[conn.PeerID1][0] && conn.ConnTimes1 < pmax[conn.PeerID1][1]) {
+
+				delete(localGRT, key)
+			}
+		}
+
+		n.routingTable[groupID] = localGRT
 	}
 }

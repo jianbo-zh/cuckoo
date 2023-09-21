@@ -78,7 +78,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 
 				} else if len(contactIDs) > 0 {
 					c.emitters.evtSyncPeers.Emit(gevent.EvtSyncPeers{
-						PeerIDs: contactIDs,
+						ContactIDs: contactIDs,
 					})
 				}
 			case gevent.EvtReceivePeerStream:
@@ -153,7 +153,7 @@ func (c *ContactProto) AgreeAddContact(ctx context.Context, peer0 *types.Peer) e
 
 	// 启动同步，连接对方
 	if err := c.emitters.evtSyncPeers.Emit(gevent.EvtSyncPeers{
-		PeerIDs: []peer.ID{peer0.ID},
+		ContactIDs: []peer.ID{peer0.ID},
 	}); err != nil {
 		return fmt.Errorf("emit sync peer error: %w", err)
 	}

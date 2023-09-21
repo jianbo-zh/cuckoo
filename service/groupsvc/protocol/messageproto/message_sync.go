@@ -162,35 +162,32 @@ func (m *MessageProto) handleSyncSummary(groupID string, syncmsg *pb.GroupSyncMe
 		}
 	}
 
-	if localSummary.HeadId > remoteSummary.HeadId {
-		// 当前数据要少些，则作为同步主动方
-		startID := localSummary.HeadId
-		endID := remoteSummary.TailId
+	// 当前数据要少些，则作为同步主动方
+	startID := localSummary.HeadId
+	if remoteSummary.HeadId < localSummary.HeadId {
+		startID = remoteSummary.HeadId
+	}
 
-		if localSummary.TailId < remoteSummary.TailId {
-			endID = localSummary.TailId
-		}
+	endID := remoteSummary.TailId
+	hash, err := m.rangeHash(groupID, startID, endID)
+	if err != nil {
+		return fmt.Errorf("range hash error: %w", err)
+	}
 
-		hash, err := m.rangeHash(groupID, startID, endID)
-		if err != nil {
-			return fmt.Errorf("range hash error: %w", err)
-		}
+	bs, err := proto.Marshal(&pb.DataRangeHash{
+		StartId: startID,
+		EndId:   endID,
+		Hash:    hash,
+	})
+	if err != nil {
+		return fmt.Errorf("proto marshal range hash error: %w", err)
+	}
 
-		bs, err := proto.Marshal(&pb.DataRangeHash{
-			StartId: startID,
-			EndId:   endID,
-			Hash:    hash,
-		})
-		if err != nil {
-			return fmt.Errorf("proto marshal range hash error: %w", err)
-		}
-
-		if err = wt.WriteMsg(&pb.GroupSyncMessage{
-			Type:    pb.GroupSyncMessage_RANGE_HASH,
-			Payload: bs,
-		}); err != nil {
-			return fmt.Errorf("pbio write range hash msg error: %w", err)
-		}
+	if err = wt.WriteMsg(&pb.GroupSyncMessage{
+		Type:    pb.GroupSyncMessage_RANGE_HASH,
+		Payload: bs,
+	}); err != nil {
+		return fmt.Errorf("pbio write range hash msg error: %w", err)
 	}
 
 	return nil
@@ -211,9 +208,6 @@ func (m *MessageProto) handleSyncRangeHash(groupID string, syncmsg *pb.GroupSync
 
 	if bytes.Equal(hashmsg.Hash, hashBytes) {
 		// hash相同，不需要再同步了
-		if err = wt.WriteMsg(&pb.GroupSyncMessage{Type: pb.GroupSyncMessage_DONE}); err != nil {
-			return fmt.Errorf("pbio write sync done msg error: %w", err)
-		}
 		return nil
 	}
 

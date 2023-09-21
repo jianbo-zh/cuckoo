@@ -192,20 +192,28 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 				return
 			}
 
-			evt := e.(gevent.EvtGroupConnectChange)
-			if !evt.IsConnected { // 断开连接
-				delete(a.groupConns[evt.GroupID], evt.PeerID)
-			}
+			switch evt := e.(type) {
+			case gevent.EvtGroupConnectChange:
+				if evt.IsConnected {
+					if _, exists := a.groupConns[evt.GroupID]; !exists {
+						a.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
+					}
 
-			// 新建连接
-			if _, exists := a.groupConns[evt.GroupID]; !exists {
-				a.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
-			}
-			a.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
+					if _, exists := a.groupConns[evt.GroupID][evt.PeerID]; !exists {
+						a.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
-			// 启动同步: peerID小的主动发起
-			if a.host.ID() < evt.PeerID {
-				a.goSync(evt.GroupID, evt.PeerID)
+						if a.host.ID() < evt.PeerID {
+							// 小方主动发起同步
+							a.goSync(evt.GroupID, evt.PeerID)
+						}
+					}
+					log.Debugln("event connect peer: ", evt.PeerID.String())
+
+				} else {
+					log.Debugln("event disconnect peer: ", evt.PeerID.String())
+					delete(a.groupConns[evt.GroupID], evt.PeerID)
+				}
+
 			}
 
 		case <-ctx.Done():

@@ -29,26 +29,21 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 
 	// 发送组网请求，同步Lamport时钟
 	wt := pbio.NewDelimitedWriter(stream)
-	if err := wt.WriteMsg(&pb.ConnectInit{GroupId: groupID, BootTs: hostBootTs, ConnTimes: hostConnTimes}); err != nil {
+	sendConnInit := pb.ConnectInit{
+		GroupId:   groupID,
+		BootTs:    hostBootTs,
+		ConnTimes: hostConnTimes,
+	}
+	if err := wt.WriteMsg(&sendConnInit); err != nil {
 		stream.Reset()
 		return fmt.Errorf("wt write msg error: %w", err)
 	}
 
+	var recvConnInit pb.ConnectInit
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-
-	var connInit pb.ConnectInit
-	if err := rd.ReadMsg(&connInit); err != nil {
+	if err := rd.ReadMsg(&recvConnInit); err != nil {
 		stream.Reset()
 		return fmt.Errorf("rd read msg error: %w", err)
-	}
-
-	if _, exists := n.network[groupID]; !exists {
-		n.network[groupID] = make(map[peer.ID]*Connect)
-	}
-
-	if _, exists := n.network[groupID][peerID]; exists {
-		stream.Reset()
-		return fmt.Errorf("peer connect is exists")
 	}
 
 	peerConn := Connect{
@@ -59,35 +54,54 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		writer: wt,
 	}
 
-	peerBootTs := connInit.BootTs
-	peerConnTimes := connInit.ConnTimes
-
-	fmt.Println("2222")
-
-	// 触发已连接事件
-	err = n.triggerConnected(groupID, peerID, peerBootTs, peerConnTimes, hostConnTimes, &peerConn)
-	if err != nil {
-		stream.Reset()
-		return fmt.Errorf("trigger connected error: %w", err)
+	// 更新网络状态
+	n.networkMutex.Lock()
+	if _, exists := n.network[groupID]; !exists {
+		n.network[groupID] = make(map[peer.ID]*Connect)
 	}
+
+	if _, exists := n.network[groupID][peerID]; exists {
+		n.networkMutex.Unlock()
+		stream.Reset()
+		return fmt.Errorf("peer connect is exists")
+	}
+
+	n.network[groupID][peerID] = &peerConn
+	n.networkMutex.Unlock()
+
+	peerBootTs := recvConnInit.BootTs
+	peerConnTimes := recvConnInit.ConnTimes
 
 	go func() {
 		var wg sync.WaitGroup
 
 		wg.Add(2)
-		go n.readStream(&wg, groupID, peerID, stream, peerConn.reader, peerConn.doneCh, peerBootTs, peerConnTimes)
-		go n.writeStream(&wg, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
+		go n.readStream(&wg, stream, groupID, peerID, peerConn.reader, peerConn.doneCh)
+		go n.writeStream(&wg, stream, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
 		stream.Close()
 		n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
 	}()
 
+	// 触发连接改变事件
+	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
+		GroupID:     groupID,
+		PeerID:      peerID,
+		IsConnected: true,
+	}); err != nil {
+		return err
+	}
+
+	// 转发连接改变事件
+	n.updateRoutingAndForward(groupID, peerID,
+		n.connectPair(groupID, n.host.ID(), n.bootTs, hostConnTimes, peerID, peerBootTs, peerConnTimes, StateConnected))
+
 	return nil
 }
 
 // handleConnectRead 读取连接信息
-func (n *NetworkProto) readStream(wg *sync.WaitGroup, groupID GroupID, fromPeerID peer.ID, stream network.Stream, reader pbio.ReadCloser, doneCh <-chan struct{}, peerBootTs, peerConnTimes uint64) {
+func (n *NetworkProto) readStream(wg *sync.WaitGroup, stream network.Stream, groupID GroupID, peerID peer.ID, reader pbio.ReadCloser, doneCh <-chan struct{}) {
 
 	defer wg.Done()
 
@@ -100,9 +114,21 @@ func (n *NetworkProto) readStream(wg *sync.WaitGroup, groupID GroupID, fromPeerI
 			return
 		default:
 			connMaintain.Reset()
-			if err = reader.ReadMsg(&connMaintain); err != nil {
-				log.Errorf("read msg error: %v", err)
-				return
+
+			//  离线判断（接收方验证）
+			if !n.isHeartbeatSender(n.host.ID(), peerID) {
+				stream.SetReadDeadline(time.Now().Add(HeartbeatTimeout))
+				if err = reader.ReadMsg(&connMaintain); err != nil {
+					log.Errorf("read msg error: %v", err)
+					return
+				}
+				stream.SetReadDeadline(time.Time{})
+
+			} else {
+				if err = reader.ReadMsg(&connMaintain); err != nil {
+					log.Errorf("read msg error: %v", err)
+					return
+				}
 			}
 
 			if connMaintain.Type == pb.ConnectMaintain_Heartbeat || len(connMaintain.Payload) == 0 {
@@ -116,13 +142,13 @@ func (n *NetworkProto) readStream(wg *sync.WaitGroup, groupID GroupID, fromPeerI
 				return
 			}
 
-			n.forwardConnectChanged(groupID, fromPeerID, conn)
+			n.updateRoutingAndForward(groupID, peerID, conn)
 		}
 	}
 }
 
 // handleConnectWrite 处理连接写信息
-func (n *NetworkProto) writeStream(wg *sync.WaitGroup, groupID string, toPeerID peer.ID, writer pbio.WriteCloser, sendCh <-chan ConnectPair, doneCh <-chan struct{}) {
+func (n *NetworkProto) writeStream(wg *sync.WaitGroup, stream network.Stream, groupID string, peerID peer.ID, writer pbio.WriteCloser, sendCh <-chan ConnectPair, doneCh <-chan struct{}) {
 	defer wg.Done()
 
 	var err error
@@ -142,12 +168,17 @@ func (n *NetworkProto) writeStream(wg *sync.WaitGroup, groupID string, toPeerID 
 			}
 
 		case <-time.After(HeartbeatInterval):
-			if n.host.ID().String() < toPeerID.String() { // 单边发送心跳
+			//  离线判断（发送方验证）
+			if n.isHeartbeatSender(n.host.ID(), peerID) {
+				stream.SetWriteDeadline(time.Now().Add(HeartbeatTimeout))
 				err = writer.WriteMsg(&pb.ConnectMaintain{Type: pb.ConnectMaintain_Heartbeat})
 				if err != nil {
 					log.Errorf("write heartbeat msg error: %v", err)
 					return
 				}
+				stream.SetWriteDeadline(time.Time{})
+
+				log.Debugln("send heartbeat")
 			}
 
 		case <-doneCh:
@@ -157,33 +188,24 @@ func (n *NetworkProto) writeStream(wg *sync.WaitGroup, groupID string, toPeerID 
 }
 
 func (n *NetworkProto) disconnect(groupID GroupID, peerID peer.ID) error {
+	n.networkMutex.Lock()
+	defer n.networkMutex.Unlock()
+
 	if _, exists := n.network[groupID][peerID]; !exists {
 		return fmt.Errorf("conn not exists")
 	}
 
 	// disconnect signal
 	close(n.network[groupID][peerID].doneCh)
-
 	return nil
 }
 
-func (n *NetworkProto) triggerConnected(groupID GroupID, peerID peer.ID, peerBootTs uint64, peerConnTimes uint64, hostConnTimes uint64, conn *Connect) error {
-	n.network[groupID][peerID] = conn
-
-	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
-		GroupID:     groupID,
-		PeerID:      peerID,
-		IsConnected: true,
-	}); err != nil {
-		return err
-	}
-
-	return n.forwardConnectChanged(groupID, peerID,
-		n.getConnectPair(groupID, n.host.ID(), peerID, n.bootTs, peerBootTs, hostConnTimes, peerConnTimes, StateConnected))
-}
-
 func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peerBootTs uint64, peerConnTimes uint64) error {
-	delete(n.network[groupID], peerID)
+	n.networkMutex.Lock()
+	if _, exists := n.network[groupID]; exists {
+		delete(n.network[groupID], peerID)
+	}
+	n.networkMutex.Unlock()
 
 	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
 		GroupID:     groupID,
@@ -193,25 +215,24 @@ func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peer
 		return err
 	}
 
-	return n.forwardConnectChanged(groupID, peerID,
-		n.getConnectPair(groupID, n.host.ID(), peerID, n.bootTs, peerBootTs, n.incrConnTimes(), peerConnTimes, StateDisconnected))
+	log.Infof("trigger disconnect: %s, %s", groupID, peerID.String())
+
+	return n.updateRoutingAndForward(groupID, peerID,
+		n.connectPair(groupID, n.host.ID(), n.bootTs, n.incrConnTimes(), peerID, peerBootTs, peerConnTimes, StateDisconnected))
 }
 
-func (n *NetworkProto) forwardConnectChanged(groupID GroupID, peerID peer.ID, conn ConnectPair) error {
-	fmt.Println("forward connect changed")
+func (n *NetworkProto) updateRoutingAndForward(groupID GroupID, peerID peer.ID, conn ConnectPair) error {
 	// 更新路由表
 	if isUpdated := n.updateRoutingTable(groupID, conn); !isUpdated {
 		return nil
 	}
-
-	fmt.Println("routing updated")
+	log.Debugln("update group routing table")
 
 	// 转发路由连接
 	if err := n.handleForwardConnect(groupID, peerID, conn); err != nil {
 		return fmt.Errorf("forward connect error: %w", err)
 	}
-
-	fmt.Println("forward connect")
+	log.Debugln("forword peer connect")
 
 	return nil
 }
@@ -229,7 +250,8 @@ func (n *NetworkProto) handleForwardConnect(groupID GroupID, excludePeerID peer.
 	return nil
 }
 
-func (n *NetworkProto) getConnectPair(groupID GroupID, hostID, peerID peer.ID, hostBootTs, peerBootTs, hostConnTimes, peerConnTimes uint64, state ConnState) ConnectPair {
+func (n *NetworkProto) connectPair(groupID GroupID, hostID peer.ID, hostBootTs uint64, hostConnTimes uint64,
+	peerID peer.ID, peerBootTs uint64, peerConnTimes uint64, state ConnState) ConnectPair {
 
 	if hostID.String() < peerID.String() {
 		return ConnectPair{
@@ -254,4 +276,8 @@ func (n *NetworkProto) getConnectPair(groupID GroupID, hostID, peerID peer.ID, h
 		ConnTimes1: hostConnTimes,
 		State:      state,
 	}
+}
+
+func (n *NetworkProto) isHeartbeatSender(hostID peer.ID, peerID peer.ID) bool {
+	return n.host.ID().String() < peerID.String()
 }

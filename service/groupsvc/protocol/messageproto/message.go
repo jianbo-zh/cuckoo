@@ -192,21 +192,27 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 				return
 			}
 
-			evt := e.(gevent.EvtGroupConnectChange)
+			switch evt := e.(type) {
+			case gevent.EvtGroupConnectChange:
+				if evt.IsConnected {
+					if _, exists := m.groupConns[evt.GroupID]; !exists {
+						m.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
+					}
 
-			if !evt.IsConnected { // 断开连接
-				delete(m.groupConns[evt.GroupID], evt.PeerID)
-			}
+					if _, exists := m.groupConns[evt.GroupID][evt.PeerID]; !exists {
+						m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
-			// 新建连接
-			if _, exists := m.groupConns[evt.GroupID]; !exists {
-				m.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
-			}
-			m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
+						if m.host.ID() > evt.PeerID {
+							// 大方主动发起同步
+							go m.goSync(evt.GroupID, evt.PeerID)
+						}
+					}
+					log.Debugln("event connect peer: ", evt.PeerID.String())
 
-			// 启动同步：peerID 大的主动发起
-			if m.host.ID() > evt.PeerID {
-				go m.goSync(evt.GroupID, evt.PeerID)
+				} else {
+					log.Debugln("event disconnect peer: ", evt.PeerID.String())
+					delete(m.groupConns[evt.GroupID], evt.PeerID)
+				}
 			}
 
 		case <-ctx.Done():

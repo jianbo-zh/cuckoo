@@ -77,12 +77,12 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	}
 
 	// 订阅：同步Peer的消息
-	gsubs, err := eventBus.Subscribe([]any{new(gevent.EvtSyncPeers)})
+	sub, err := eventBus.Subscribe([]any{new(gevent.EvtSyncPeers)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
 
 	} else {
-		go msgsvc.handleAppSubs(context.Background(), gsubs)
+		go msgsvc.subscribeHandler(context.Background(), sub)
 	}
 
 	// 订阅：开始拉取离线消息事件
@@ -97,7 +97,7 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	return &msgsvc, nil
 }
 
-func (p *PeerMessageProto) handleAppSubs(ctx context.Context, sub event.Subscription) {
+func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subscription) {
 	defer sub.Close()
 
 	for {
@@ -108,12 +108,12 @@ func (p *PeerMessageProto) handleAppSubs(ctx context.Context, sub event.Subscrip
 				return
 			}
 
-			fmt.Println("start sync peers message")
+			switch evt := e.(type) {
+			case gevent.EvtSyncPeers:
+				log.Debugln("event sync peers")
 
-			if ev, ok := e.(gevent.EvtSyncPeers); ok {
-				fmt.Printf("peerIDs: %v\n", ev.PeerIDs)
-				for _, peerID := range ev.PeerIDs {
-					p.RunSync(peerID)
+				for _, contactID := range evt.ContactIDs {
+					go p.goSync(contactID)
 				}
 			}
 

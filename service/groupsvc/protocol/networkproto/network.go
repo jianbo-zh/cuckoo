@@ -31,8 +31,8 @@ const (
 	ServiceName = "group.connect"
 	maxMsgSize  = 4 * 1024 // 4K
 
-	HeartbeatInterval = 3 * time.Second
-	HeartbeatTimeout  = 8 * time.Second
+	HeartbeatInterval = 5 * time.Second
+	HeartbeatTimeout  = 11 * time.Second
 )
 
 type NetworkProto struct {
@@ -42,12 +42,13 @@ type NetworkProto struct {
 	discv *drouting.RoutingDiscovery
 
 	routingTable      RoutingTable
-	routingTableMutex sync.Mutex
+	routingTableMutex sync.RWMutex
 
-	network Network
+	network      Network
+	networkMutex sync.RWMutex
 
 	groupPeers      GroupPeers
-	groupPeersMutex sync.Mutex
+	groupPeersMutex sync.RWMutex
 
 	bootTs    uint64 // boot timestamp
 	connTimes uint64 // connect change(connect & disconnect) count
@@ -106,11 +107,15 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer()
 
 	// 判断对方是否在群里面
-	if _, exists := n.groupPeers[groupID].AcptPeerIDs[peerID]; !exists {
-		log.Errorf("not group peer, refuse conn")
-		stream.Reset()
-		return
+	n.groupPeersMutex.RLock()
+	if _, exists := n.groupPeers[groupID]; exists {
+		if _, exists := n.groupPeers[groupID].AcptPeerIDs[peerID]; !exists {
+			log.Errorf("not group peer, refuse conn")
+			stream.Reset()
+			return
+		}
 	}
+	n.groupPeersMutex.RUnlock()
 
 	hostBootTs := n.bootTs
 	hostConnTimes := n.incrConnTimes()
@@ -118,16 +123,6 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&pb.ConnectInit{GroupId: groupID, BootTs: hostBootTs, ConnTimes: hostConnTimes}); err != nil {
 		log.Errorf("write msg error: %v", err)
-		stream.Reset()
-		return
-	}
-
-	if _, exists := n.network[groupID]; !exists {
-		n.network[groupID] = make(map[peer.ID]*Connect)
-	}
-
-	if _, exists := n.network[groupID][peerID]; exists {
-		log.Errorf("conn is exists")
 		stream.Reset()
 		return
 	}
@@ -140,24 +135,49 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 		writer: wt,
 	}
 
+	// 更新网络状态
+	n.networkMutex.Lock()
+	if _, exists := n.network[groupID]; !exists {
+		n.network[groupID] = make(map[peer.ID]*Connect)
+	}
+
+	if _, exists := n.network[groupID][peerID]; exists {
+		log.Errorf("conn is exists")
+		n.networkMutex.Unlock()
+		stream.Reset()
+		return
+	}
+	n.network[groupID][peerID] = &peerConn
+	n.networkMutex.Unlock()
+
+	// 保持网络连接
 	peerBootTs := connInit.BootTs
 	peerConnTimes := connInit.ConnTimes
-
-	// 触发已连接事件
-	n.triggerConnected(groupID, peerID, peerBootTs, peerConnTimes, hostConnTimes, &peerConn)
 
 	go func() {
 		var wg sync.WaitGroup
 
 		wg.Add(2)
-		go n.readStream(&wg, groupID, peerID, stream, peerConn.reader, peerConn.doneCh, peerBootTs, peerConnTimes)
-		go n.writeStream(&wg, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
+		go n.readStream(&wg, stream, groupID, peerID, peerConn.reader, peerConn.doneCh)
+		go n.writeStream(&wg, stream, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
 		stream.Close()
 		n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
 	}()
 
+	// 触发连接改变事件
+	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
+		GroupID:     groupID,
+		PeerID:      peerID,
+		IsConnected: true,
+	}); err != nil {
+		log.Errorf("emit group connect change error: %w", err)
+	}
+
+	// 转发连接改变事件
+	n.updateRoutingAndForward(groupID, peerID,
+		n.connectPair(groupID, n.host.ID(), n.bootTs, hostConnTimes, peerID, peerBootTs, peerConnTimes, StateConnected))
 }
 
 // routingHandler 接收更新路由表请求
@@ -166,21 +186,22 @@ func (n *NetworkProto) routingHandler(stream network.Stream) {
 	defer rd.Close()
 
 	// 接收对方路由表
-	var prt pb.RoutingTable
-	if err := rd.ReadMsg(&prt); err != nil {
+	var msg pb.RoutingTable
+	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("read msg error: %v", err)
 		return
 	}
+	groupID := msg.GroupId
 
-	var remoteRoutingTable RoutingTable
-	if err := json.Unmarshal(prt.Payload, &remoteRoutingTable); err != nil {
+	var remoteGRT GroupRoutingTable
+	if err := json.Unmarshal(msg.Payload, &remoteGRT); err != nil {
 		log.Errorf("json unmarshal error: %v", err)
 		return
 	}
 
 	// 获取本地路由表
-	localRoutingTable := n.getRoutingTable()
-	bs, err := json.Marshal(localRoutingTable)
+	localGRT := n.getRoutingTable(groupID)
+	bs, err := json.Marshal(localGRT)
 	if err != nil {
 		log.Errorf("json marshal error: %v", err)
 		return
@@ -188,13 +209,13 @@ func (n *NetworkProto) routingHandler(stream network.Stream) {
 
 	// 发送本地路由表
 	wt := pbio.NewDelimitedWriter(stream)
-	if err = wt.WriteMsg(&pb.RoutingTable{Payload: bs}); err != nil {
+	if err = wt.WriteMsg(&pb.RoutingTable{GroupId: groupID, Payload: bs}); err != nil {
 		log.Errorf("write msg error: %v", err)
 		return
 	}
 
 	// 合并更新到本地路由
-	n.mergeRoutingTable(remoteRoutingTable)
+	n.mergeRoutingTable(groupID, remoteGRT)
 }
 
 func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscription) {

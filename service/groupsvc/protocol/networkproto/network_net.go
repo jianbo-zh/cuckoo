@@ -16,8 +16,6 @@ import (
 func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
-	defer n.groupPeersMutex.Unlock()
-
 	n.groupPeers = make(GroupPeers)
 	for _, group := range groups {
 		for _, peerID := range group.PeerIDs {
@@ -40,6 +38,7 @@ func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
 			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
 		}
 	}
+	n.groupPeersMutex.Unlock()
 
 	ctx := context.Background()
 	for _, group := range groups {
@@ -60,8 +59,6 @@ func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
 func (n *NetworkProto) addNetwork(groups []gevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
-	defer n.groupPeersMutex.Unlock()
-
 	for _, group := range groups {
 		n.groupPeers[group.GroupID] = GroupPeer{
 			PeerIDs:     make(map[peer.ID]struct{}),
@@ -76,9 +73,9 @@ func (n *NetworkProto) addNetwork(groups []gevent.Groups) error {
 			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
 		}
 	}
+	n.groupPeersMutex.Unlock()
 
 	ctx := context.Background()
-
 	for _, group := range groups {
 		if _, exists := n.network[group.GroupID]; exists {
 			continue
@@ -99,12 +96,12 @@ func (n *NetworkProto) addNetwork(groups []gevent.Groups) error {
 }
 
 func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
-	n.groupPeersMutex.Lock()
-	defer n.groupPeersMutex.Unlock()
 
+	n.groupPeersMutex.Lock()
 	for _, groupID := range groupIDs {
 		delete(n.groupPeers, groupID)
 	}
+	n.groupPeersMutex.Unlock()
 
 	for _, groupID := range groupIDs {
 		if _, exists := n.network[groupID]; exists {
@@ -112,7 +109,9 @@ func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
 				n.disconnect(groupID, peerID)
 			}
 
+			n.networkMutex.Lock()
 			delete(n.network, groupID)
+			n.networkMutex.Unlock()
 		}
 	}
 
@@ -120,8 +119,6 @@ func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
 }
 
 func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPeerIDs []peer.ID) {
-	n.groupPeersMutex.Lock()
-	defer n.groupPeersMutex.Unlock()
 
 	peerIDsMap := make(map[peer.ID]struct{}, len(peerIDs))
 	for _, peerID := range peerIDs {
@@ -133,10 +130,13 @@ func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPee
 		acptPeerIDsMap[peerID] = struct{}{}
 	}
 
+	n.groupPeersMutex.Lock()
 	var removePeerIDs []peer.ID
-	for peerID := range n.groupPeers[groupID].AcptPeerIDs {
-		if _, exists := acptPeerIDsMap[peerID]; !exists {
-			removePeerIDs = append(removePeerIDs, peerID)
+	if _, exists := n.groupPeers[groupID]; exists {
+		for peerID := range n.groupPeers[groupID].AcptPeerIDs {
+			if _, exists := acptPeerIDsMap[peerID]; !exists {
+				removePeerIDs = append(removePeerIDs, peerID)
+			}
 		}
 	}
 
@@ -144,6 +144,7 @@ func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPee
 		PeerIDs:     peerIDsMap,
 		AcptPeerIDs: acptPeerIDsMap,
 	}
+	n.groupPeersMutex.Unlock()
 
 	if len(removePeerIDs) > 0 {
 		for _, peerID := range removePeerIDs {
@@ -199,8 +200,7 @@ Loop:
 		onlinesMap[peerID] = struct{}{}
 	}
 
-	rtable := n.getRoutingTable()
-	for _, conn := range rtable[groupID] {
+	for _, conn := range n.getRoutingTable(groupID) {
 		if conn.State == StateConnected {
 			onlinesMap[conn.PeerID0] = struct{}{}
 			onlinesMap[conn.PeerID1] = struct{}{}
@@ -209,6 +209,7 @@ Loop:
 
 	fmt.Println("onlinesMap", onlinesMap)
 
+	n.groupPeersMutex.RLock()
 	var onlinePeerIDs []peer.ID
 	for peerID := range onlinesMap {
 		if len(n.groupPeers[groupID].PeerIDs) == 0 { // 如果无主动连接Peer，则所有都可以连
@@ -218,6 +219,7 @@ Loop:
 			onlinePeerIDs = append(onlinePeerIDs, peerID)
 		}
 	}
+	n.groupPeersMutex.RUnlock()
 
 	fmt.Println("onlinePeerIDs", onlinePeerIDs)
 

@@ -3,5 +3,6 @@ syntax = "proto3";
 package network.pb;
 
 message RoutingTable {
-  bytes payload = 1;
+  string groupId = 1;
+  bytes payload = 2;
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"fmt"
 	"time"
 
 	gevent "github.com/jianbo-zh/dchat/event"
@@ -14,16 +15,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (p *PeerMessageProto) RunSync(peerID peer.ID) {
+func (p *PeerMessageProto) goSync(contactID peer.ID) {
+	log.Debugln("start sync contact: ", contactID.String())
+
 	ctx := context.Background()
-	stream, err := p.host.NewStream(ctx, peerID, SYNC_ID)
+	stream, err := p.host.NewStream(ctx, contactID, SYNC_ID)
 	if err != nil {
 		log.Errorf("host sync new stream error: %v", err)
 		return
 	}
 	defer stream.Close()
 
-	summary, err := p.getMessageSummary(peerID)
+	summary, err := p.getMessageSummary(contactID)
 	if err != nil {
 		log.Errorf("get message summary error: %v", err)
 		return
@@ -45,13 +48,16 @@ func (p *PeerMessageProto) RunSync(peerID peer.ID) {
 	}
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-	err = p.loopSync(peerID, stream, rd, wt)
+	err = p.loopSync(contactID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)
 	}
+
+	log.Debugln("end sync contact: ", contactID.String())
 }
 
 func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
+	log.Infoln("handle sync contact")
 
 	peerID := stream.Conn().RemotePeer()
 	defer stream.Close()
@@ -62,7 +68,6 @@ func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
 	})
 
 	// 后台同步处理
-
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	wt := pbio.NewDelimitedWriter(stream)
 
@@ -82,34 +87,39 @@ func (p *PeerMessageProto) loopSync(peerID peer.ID, stream network.Stream, rd pb
 		// 设置读取超时，
 		stream.SetReadDeadline(time.Now().Add(5 * StreamTimeout))
 		if err := rd.ReadMsg(&syncmsg); err != nil {
-			return err
+			return fmt.Errorf("pbio read sync msg error: %w", err)
 		}
 		stream.SetReadDeadline(time.Time{})
 
 		switch syncmsg.Type {
 		case pb.PeerSyncMessage_SUMMARY:
+			log.Debugln("read sync msg summary")
 			if err := p.handleSyncSummary(peerID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync summary error: %w", err)
 			}
 
 		case pb.PeerSyncMessage_RANGE_HASH:
+			log.Debugln("read sync range hash")
 			if err := p.handleSyncRangeHash(peerID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync range hash error: %w", err)
 			}
 
 		case pb.PeerSyncMessage_RANGE_IDS:
+			log.Debugln("read sync range ids")
 			if err := p.handleSyncRangeIDs(peerID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync range ids error: %w", err)
 			}
 
 		case pb.PeerSyncMessage_PUSH_MSG:
+			log.Debugln("read sync push msg")
 			if err := p.handleSyncPushMsg(peerID, &syncmsg); err != nil {
-				return err
+				return fmt.Errorf("handle sync push msg error: %w", err)
 			}
 
 		case pb.PeerSyncMessage_PULL_MSG:
+			log.Debugln("read sync pull msg")
 			if err := p.handleSyncPullMsg(peerID, &syncmsg, wt); err != nil {
-				return err
+				return fmt.Errorf("handle sync pull msg error: %w", err)
 			}
 
 		case pb.PeerSyncMessage_DONE:
@@ -123,88 +133,85 @@ func (p *PeerMessageProto) loopSync(peerID peer.ID, stream network.Stream, rd pb
 
 func (p *PeerMessageProto) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 
-	var summary pb.DataSummary
-	if err := proto.Unmarshal(syncmsg.Payload, &summary); err != nil {
-		return err
+	var remoteSummary pb.DataSummary
+	if err := proto.Unmarshal(syncmsg.Payload, &remoteSummary); err != nil {
+		return fmt.Errorf("proto unmarshal error: %w", err)
 	}
 
-	err := p.data.MergeLamportTime(context.Background(), peerID, summary.Lamptime)
+	err := p.data.MergeLamportTime(context.Background(), peerID, remoteSummary.Lamptime)
 	if err != nil {
-		return err
+		return fmt.Errorf("merge lamptime error: %w", err)
 	}
 
-	summary2, err := p.getMessageSummary(peerID)
+	localSummary, err := p.getMessageSummary(peerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get message summary error: %w", err)
 	}
 
-	if !summary.IsEnd {
+	if !remoteSummary.IsEnd {
 		// 结束标记，避免无限循环
-		summary2.IsEnd = true
-		payload, err := proto.Marshal(summary2)
+		localSummary.IsEnd = true
+		payload, err := proto.Marshal(localSummary)
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal summary error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.PeerSyncMessage{
 			Type:    pb.PeerSyncMessage_SUMMARY,
 			Payload: payload,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write sync summary error: %w", err)
 		}
 	}
 
-	if summary2.TailId > summary.TailId {
+	if localSummary.TailId > remoteSummary.TailId {
 		// 如果有最新的数据则发送给对方
-		msgs, err := p.getRangeMessages(peerID, summary.TailId, summary2.TailId)
+		msgs, err := p.getRangeMessages(peerID, remoteSummary.TailId, localSummary.TailId)
 		if err != nil {
-			return err
+			return fmt.Errorf("get range messages error: %w", err)
 		}
 
 		for _, msg := range msgs {
 			bs, err := proto.Marshal(msg)
 			if err != nil {
-				return err
+				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
 
 			if err = wt.WriteMsg(&pb.PeerSyncMessage{
 				Type:    pb.PeerSyncMessage_PUSH_MSG,
 				Payload: bs,
 			}); err != nil {
-				return err
+				return fmt.Errorf("pbio write push msg error: %w", err)
 			}
 		}
 	}
 
-	if summary2.HeadId > summary.HeadId {
-		// 当前数据要少些，则作为同步主动方
-		startID := summary2.HeadId
-		endID := summary.TailId
+	// 当前数据要少些，则作为同步主动方
+	startID := localSummary.HeadId
+	if remoteSummary.HeadId < localSummary.HeadId {
+		startID = remoteSummary.HeadId
+	}
 
-		if summary2.TailId < summary.TailId {
-			endID = summary2.TailId
-		}
+	endID := remoteSummary.TailId // 本地多的已经发送了，这里同步剩余的
+	hash, err := p.rangeHash(peerID, startID, endID)
+	if err != nil {
+		return fmt.Errorf("range hash error: %w", err)
+	}
 
-		hash, err := p.rangeHash(peerID, startID, endID)
-		if err != nil {
-			return err
-		}
+	bs, err := proto.Marshal(&pb.DataRangeHash{
+		StartId: startID,
+		EndId:   endID,
+		Hash:    hash,
+	})
+	if err != nil {
+		return fmt.Errorf("proto marshal range hash error: %w", err)
+	}
 
-		bs, err := proto.Marshal(&pb.DataRangeHash{
-			StartId: startID,
-			EndId:   endID,
-			Hash:    hash,
-		})
-		if err != nil {
-			return err
-		}
-
-		if err = wt.WriteMsg(&pb.PeerSyncMessage{
-			Type:    pb.PeerSyncMessage_RANGE_HASH,
-			Payload: bs,
-		}); err != nil {
-			return err
-		}
+	if err = wt.WriteMsg(&pb.PeerSyncMessage{
+		Type:    pb.PeerSyncMessage_RANGE_HASH,
+		Payload: bs,
+	}); err != nil {
+		return fmt.Errorf("pbio write range hash error: %w", err)
 	}
 
 	return nil
@@ -213,64 +220,61 @@ func (p *PeerMessageProto) handleSyncSummary(peerID peer.ID, syncmsg *pb.PeerSyn
 func (p *PeerMessageProto) handleSyncRangeHash(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 	var hashmsg pb.DataRangeHash
 	if err := proto.Unmarshal(syncmsg.Payload, &hashmsg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal error: %w", err)
 	}
 
 	// 我也计算hash
 	hashBytes, err := p.rangeHash(peerID, hashmsg.StartId, hashmsg.EndId)
 	if err != nil {
-		log.Errorf("range hash error: %v", err)
+		return fmt.Errorf("range hash error: %w", err)
 	}
 
-	if bytes.Equal(hashmsg.Hash, hashBytes) {
-		// hash相同，不需要再同步了
-		return wt.WriteMsg(&pb.PeerSyncMessage{Type: pb.PeerSyncMessage_DONE})
-	}
+	if !bytes.Equal(hashmsg.Hash, hashBytes) {
+		// hash 不同，则消息不一致，则同步消息ID
+		hashids, err := p.getRangeIDs(peerID, hashmsg.StartId, hashmsg.EndId)
+		if err != nil {
+			return fmt.Errorf("get range ids error: %w", err)
+		}
 
-	// hash 不同，则消息不一致，则同步消息ID
-	hashids, err := p.getRangeIDs(peerID, hashmsg.StartId, hashmsg.EndId)
-	if err != nil {
-		return err
-	}
+		bs, err := proto.Marshal(hashids)
+		if err != nil {
+			return fmt.Errorf("proto marshal hash ids error: %w", err)
+		}
 
-	bs, err := proto.Marshal(hashids)
-	if err != nil {
-		return err
-	}
-
-	if err = wt.WriteMsg(&pb.PeerSyncMessage{
-		Type:    pb.PeerSyncMessage_RANGE_IDS,
-		Payload: bs,
-	}); err != nil {
-		return err
+		if err = wt.WriteMsg(&pb.PeerSyncMessage{
+			Type:    pb.PeerSyncMessage_RANGE_IDS,
+			Payload: bs,
+		}); err != nil {
+			return fmt.Errorf("pbio write range ids error: %w", err)
+		}
 	}
 
 	return nil
 }
 
 func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
-	var idmsg pb.DataRangeIDs
-	if err := proto.Unmarshal(syncmsg.Payload, &idmsg); err != nil {
-		return err
+	var remoteRangeIDs pb.DataRangeIDs
+	if err := proto.Unmarshal(syncmsg.Payload, &remoteRangeIDs); err != nil {
+		return fmt.Errorf("proto unmarshal sync msg payload error: %w", err)
 	}
 
-	idmsg2, err := p.getRangeIDs(peerID, idmsg.StartId, idmsg.EndId)
+	localRangeIDs, err := p.getRangeIDs(peerID, remoteRangeIDs.StartId, remoteRangeIDs.EndId)
 	if err != nil {
-		return err
+		return fmt.Errorf("get range ids error: %w", err)
 	}
 
 	// 比较不同点
-	mapIds := make(map[string]struct{}, len(idmsg.Ids))
-	mapIds2 := make(map[string]struct{}, len(idmsg.Ids))
+	remoteIDsMap := make(map[string]struct{}, len(remoteRangeIDs.Ids))
+	localIDsMap := make(map[string]struct{}, len(localRangeIDs.Ids))
 
-	for _, id := range idmsg.Ids {
-		mapIds[id] = struct{}{}
+	for _, id := range remoteRangeIDs.Ids {
+		remoteIDsMap[id] = struct{}{}
 	}
 
 	var moreIDs []string
-	for _, id := range idmsg2.Ids {
-		mapIds2[id] = struct{}{}
-		if _, exists := mapIds[id]; !exists {
+	for _, id := range localRangeIDs.Ids {
+		localIDsMap[id] = struct{}{}
+		if _, exists := remoteIDsMap[id]; !exists {
 			moreIDs = append(moreIDs, id)
 		}
 	}
@@ -278,27 +282,27 @@ func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSy
 	if len(moreIDs) > 0 {
 		msgs, err := p.getMessagesByIDs(peerID, moreIDs)
 		if err != nil {
-			return err
+			return fmt.Errorf("get message by ids error: %w", err)
 		}
 
 		for _, msg := range msgs {
 			bs, err := proto.Marshal(msg)
 			if err != nil {
-				return err
+				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
 
 			if err = wt.WriteMsg(&pb.PeerSyncMessage{
 				Type:    pb.PeerSyncMessage_PUSH_MSG,
 				Payload: bs,
 			}); err != nil {
-				return err
+				return fmt.Errorf("pbio write push msg error: %w", err)
 			}
 		}
 	}
 
 	var lessIDs []string
-	for _, id := range idmsg.Ids {
-		if _, exists := mapIds2[id]; !exists {
+	for _, id := range remoteRangeIDs.Ids {
+		if _, exists := localIDsMap[id]; !exists {
 			lessIDs = append(lessIDs, id)
 		}
 	}
@@ -308,14 +312,14 @@ func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSy
 			Ids: lessIDs,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal pull msg error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.PeerSyncMessage{
 			Type:    pb.PeerSyncMessage_PULL_MSG,
 			Payload: bs,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write pull msg error: %w", err)
 		}
 	}
 
@@ -325,11 +329,11 @@ func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.PeerSy
 func (p *PeerMessageProto) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage) error {
 	var msg pb.Message
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
 	if err := p.data.SaveMessage(context.Background(), peerID, &msg); err != nil {
-		return err
+		return fmt.Errorf("data save msg error: %w", err)
 	}
 	return nil
 }
@@ -337,25 +341,25 @@ func (p *PeerMessageProto) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.PeerSyn
 func (p *PeerMessageProto) handleSyncPullMsg(peerID peer.ID, syncmsg *pb.PeerSyncMessage, wt pbio.WriteCloser) error {
 	var pullmsg pb.DataPullMsg
 	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
-		return err
+		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
 	msgs, err := p.data.GetMessagesByIDs(peerID, pullmsg.Ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("data get message by ids error: %w", err)
 	}
 
 	for _, msg := range msgs {
 		bs, err := proto.Marshal(msg)
 		if err != nil {
-			return err
+			return fmt.Errorf("proto marshal msg error: %w", err)
 		}
 
 		if err = wt.WriteMsg(&pb.PeerSyncMessage{
 			Type:    pb.PeerSyncMessage_PUSH_MSG,
 			Payload: bs,
 		}); err != nil {
-			return err
+			return fmt.Errorf("pbio write push msg error: %w", err)
 		}
 	}
 
@@ -369,25 +373,25 @@ func (p *PeerMessageProto) getMessageSummary(peerID peer.ID) (*pb.DataSummary, e
 	// headID
 	headID, err := p.data.GetMessageHead(ctx, peerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get msg head error: %w", err)
 	}
 
 	// tailID
 	tailID, err := p.data.GetMessageTail(ctx, peerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get msg tail error: %w", err)
 	}
 
 	// len
 	length, err := p.data.GetMessageLength(ctx, peerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get msg length error: %w", err)
 	}
 
 	// lamport time
 	lamptime, err := p.data.GetLamportTime(ctx, peerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data lamptime error: %w", err)
 	}
 
 	return &pb.DataSummary{
@@ -401,7 +405,7 @@ func (p *PeerMessageProto) getMessageSummary(peerID peer.ID) (*pb.DataSummary, e
 func (p *PeerMessageProto) getRangeIDs(peerID peer.ID, startID string, endID string) (*pb.DataRangeIDs, error) {
 	ids, err := p.data.GetRangeIDs(peerID, startID, endID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("data get range ids error: %w", err)
 	}
 
 	return &pb.DataRangeIDs{
@@ -427,7 +431,7 @@ func (p *PeerMessageProto) rangeHash(peerID peer.ID, startID string, endID strin
 	hash := sha1.New()
 	for _, id := range ids {
 		if _, err = hash.Write([]byte(id)); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("sha1 hash write error: %w", err)
 		}
 	}
 

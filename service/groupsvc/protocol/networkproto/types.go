@@ -30,7 +30,9 @@ type GroupPeer struct {
 	AcptPeerIDs map[peer.ID]struct{} // 包含正式成员及准成员，（群主邀请，但可能还未接受）
 }
 
-type RoutingTable = map[GroupID]map[ConnKey]ConnectPair
+type RoutingTable = map[GroupID]GroupRoutingTable
+
+type GroupRoutingTable = map[ConnKey]ConnectPair
 
 type GroupPeers = map[GroupID]GroupPeer
 
