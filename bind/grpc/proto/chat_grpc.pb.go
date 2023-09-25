@@ -816,23 +816,24 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	GroupSvc_CreateGroup_FullMethodName       = "/chat.GroupSvc/CreateGroup"
-	GroupSvc_GetGroup_FullMethodName          = "/chat.GroupSvc/GetGroup"
-	GroupSvc_GetGroupDetail_FullMethodName    = "/chat.GroupSvc/GetGroupDetail"
-	GroupSvc_GetGroups_FullMethodName         = "/chat.GroupSvc/GetGroups"
-	GroupSvc_SetGroupName_FullMethodName      = "/chat.GroupSvc/SetGroupName"
-	GroupSvc_SetGroupAvatar_FullMethodName    = "/chat.GroupSvc/SetGroupAvatar"
-	GroupSvc_SetGroupNotice_FullMethodName    = "/chat.GroupSvc/SetGroupNotice"
-	GroupSvc_SetGroupAutoJoin_FullMethodName  = "/chat.GroupSvc/SetGroupAutoJoin"
-	GroupSvc_ExitGroup_FullMethodName         = "/chat.GroupSvc/ExitGroup"
-	GroupSvc_DeleteGroup_FullMethodName       = "/chat.GroupSvc/DeleteGroup"
-	GroupSvc_DisbandGroup_FullMethodName      = "/chat.GroupSvc/DisbandGroup"
-	GroupSvc_GetGroupMembers_FullMethodName   = "/chat.GroupSvc/GetGroupMembers"
-	GroupSvc_RemoveGroupMember_FullMethodName = "/chat.GroupSvc/RemoveGroupMember"
-	GroupSvc_SendGroupMessage_FullMethodName  = "/chat.GroupSvc/SendGroupMessage"
-	GroupSvc_GetGroupMessage_FullMethodName   = "/chat.GroupSvc/GetGroupMessage"
-	GroupSvc_GetGroupMessages_FullMethodName  = "/chat.GroupSvc/GetGroupMessages"
-	GroupSvc_ClearGroupMessage_FullMethodName = "/chat.GroupSvc/ClearGroupMessage"
+	GroupSvc_CreateGroup_FullMethodName           = "/chat.GroupSvc/CreateGroup"
+	GroupSvc_GetGroup_FullMethodName              = "/chat.GroupSvc/GetGroup"
+	GroupSvc_GetGroupDetail_FullMethodName        = "/chat.GroupSvc/GetGroupDetail"
+	GroupSvc_GetGroups_FullMethodName             = "/chat.GroupSvc/GetGroups"
+	GroupSvc_SetGroupName_FullMethodName          = "/chat.GroupSvc/SetGroupName"
+	GroupSvc_SetGroupAvatar_FullMethodName        = "/chat.GroupSvc/SetGroupAvatar"
+	GroupSvc_SetGroupNotice_FullMethodName        = "/chat.GroupSvc/SetGroupNotice"
+	GroupSvc_SetGroupAutoJoin_FullMethodName      = "/chat.GroupSvc/SetGroupAutoJoin"
+	GroupSvc_SetGroupDepositPeerId_FullMethodName = "/chat.GroupSvc/SetGroupDepositPeerId"
+	GroupSvc_ExitGroup_FullMethodName             = "/chat.GroupSvc/ExitGroup"
+	GroupSvc_DeleteGroup_FullMethodName           = "/chat.GroupSvc/DeleteGroup"
+	GroupSvc_DisbandGroup_FullMethodName          = "/chat.GroupSvc/DisbandGroup"
+	GroupSvc_GetGroupMembers_FullMethodName       = "/chat.GroupSvc/GetGroupMembers"
+	GroupSvc_RemoveGroupMember_FullMethodName     = "/chat.GroupSvc/RemoveGroupMember"
+	GroupSvc_SendGroupMessage_FullMethodName      = "/chat.GroupSvc/SendGroupMessage"
+	GroupSvc_GetGroupMessage_FullMethodName       = "/chat.GroupSvc/GetGroupMessage"
+	GroupSvc_GetGroupMessages_FullMethodName      = "/chat.GroupSvc/GetGroupMessages"
+	GroupSvc_ClearGroupMessage_FullMethodName     = "/chat.GroupSvc/ClearGroupMessage"
 )
 
 // GroupSvcClient is the client API for GroupSvc service.
@@ -855,6 +856,8 @@ type GroupSvcClient interface {
 	SetGroupNotice(ctx context.Context, in *SetGroupNoticeRequest, opts ...grpc.CallOption) (*SetGroupNoticeReply, error)
 	// 设置入群是否审核
 	SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJoinRequest, opts ...grpc.CallOption) (*SetGroupAutoJoinReply, error)
+	// 设置入群消息寄存地址
+	SetGroupDepositPeerId(ctx context.Context, in *SetGroupDepositPeerIdRequest, opts ...grpc.CallOption) (*SetGroupDepositPeerIdReply, error)
 	// 退出此群
 	ExitGroup(ctx context.Context, in *ExitGroupRequest, opts ...grpc.CallOption) (*ExitGroupReply, error)
 	// 退出并删除此群
@@ -949,6 +952,15 @@ func (c *groupSvcClient) SetGroupNotice(ctx context.Context, in *SetGroupNoticeR
 func (c *groupSvcClient) SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJoinRequest, opts ...grpc.CallOption) (*SetGroupAutoJoinReply, error) {
 	out := new(SetGroupAutoJoinReply)
 	err := c.cc.Invoke(ctx, GroupSvc_SetGroupAutoJoin_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SetGroupDepositPeerId(ctx context.Context, in *SetGroupDepositPeerIdRequest, opts ...grpc.CallOption) (*SetGroupDepositPeerIdReply, error) {
+	out := new(SetGroupDepositPeerIdReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SetGroupDepositPeerId_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1056,6 +1068,8 @@ type GroupSvcServer interface {
 	SetGroupNotice(context.Context, *SetGroupNoticeRequest) (*SetGroupNoticeReply, error)
 	// 设置入群是否审核
 	SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error)
+	// 设置入群消息寄存地址
+	SetGroupDepositPeerId(context.Context, *SetGroupDepositPeerIdRequest) (*SetGroupDepositPeerIdReply, error)
 	// 退出此群
 	ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error)
 	// 退出并删除此群
@@ -1104,6 +1118,9 @@ func (UnimplementedGroupSvcServer) SetGroupNotice(context.Context, *SetGroupNoti
 }
 func (UnimplementedGroupSvcServer) SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupAutoJoin not implemented")
+}
+func (UnimplementedGroupSvcServer) SetGroupDepositPeerId(context.Context, *SetGroupDepositPeerIdRequest) (*SetGroupDepositPeerIdReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetGroupDepositPeerId not implemented")
 }
 func (UnimplementedGroupSvcServer) ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExitGroup not implemented")
@@ -1285,6 +1302,24 @@ func _GroupSvc_SetGroupAutoJoin_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GroupSvcServer).SetGroupAutoJoin(ctx, req.(*SetGroupAutoJoinRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SetGroupDepositPeerId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGroupDepositPeerIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SetGroupDepositPeerId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SetGroupDepositPeerId_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SetGroupDepositPeerId(ctx, req.(*SetGroupDepositPeerIdRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1489,6 +1524,10 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetGroupAutoJoin",
 			Handler:    _GroupSvc_SetGroupAutoJoin_Handler,
+		},
+		{
+			MethodName: "SetGroupDepositPeerId",
+			Handler:    _GroupSvc_SetGroupDepositPeerId_Handler,
 		},
 		{
 			MethodName: "ExitGroup",

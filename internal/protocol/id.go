@@ -1,13 +1,15 @@
 package protocol
 
 const (
-	AccountID_v100       = "/dchat/peer/account/1.0.0"
-	AccountAvatarID_v100 = "/dchat/peer/account/sync/avatar/1.0.0"
+	AccountID_v100       = "/dchat/account/1.0.0"
+	AccountAvatarID_v100 = "/dchat/account/avatar/1.0.0"
+	AccountOnlineID_v100 = "/dchat/account/online/1.0.0"
 )
 
 const (
-	ContactMessageID_v100     = "/dchat/peer/msg/1.0.0"
-	ContactMessageSyncID_v100 = "/dchat/peer/msg/sync/1.0.0"
+	ContactID_v100            = "/dchat/contact/1.0.0"
+	ContactMessageID_v100     = "/dchat/contact/msg/1.0.0"
+	ContactMessageSyncID_v100 = "/dchat/contact/msg/sync/1.0.0"
 )
 
 const (
@@ -26,6 +28,13 @@ const (
 )
 
 const (
-	DepositPushID_v100 = "/dchat/deposit/peer/push/1.0.0"
-	DepositPullID_v100 = "/dchat/deposit/peer/pull/1.0.0"
+	DepositContactSaveID_v100 = "/dchat/deposit/contact/save/1.0.0"
+	DepositContactGetID_v100  = "/dchat/deposit/contact/get/1.0.0"
+	DepositGroupSaveID_v100   = "/dchat/deposit/group/save/1.0.0"
+	DepositGroupGetID_v100    = "/dchat/deposit/group/get/1.0.0"
+)
+
+const (
+	FileQueryID_v100    = "/dchat/file/query/1.0.0"
+	FileDownloadID_v100 = "/dchat/file/download/1.0.0"
 )

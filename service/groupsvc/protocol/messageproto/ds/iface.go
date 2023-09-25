@@ -15,6 +15,8 @@ type MessageIface interface {
 	TickLamportTime(context.Context, GroupID) (uint64, error)
 
 	GetMessage(ctx context.Context, groupID GroupID, msgID string) (*pb.Message, error)
+	GetMessageData(ctx context.Context, groupID GroupID, msgID string) ([]byte, error)
+	DeleteMessage(ctx context.Context, groupID GroupID, msgID string) error
 	SaveMessage(context.Context, GroupID, *pb.Message) error
 	GetMessages(ctx context.Context, groupID GroupID, offset int, limit int) ([]*pb.Message, error)
 	ClearMessage(ctx context.Context, groupID GroupID) error

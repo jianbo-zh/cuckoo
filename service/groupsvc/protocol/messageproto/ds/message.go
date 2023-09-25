@@ -41,6 +41,24 @@ func (m *MessageDs) GetMessage(ctx context.Context, groupID GroupID, msgID strin
 	return &msg, nil
 }
 
+func (m *MessageDs) GetMessageData(ctx context.Context, groupID GroupID, msgID string) ([]byte, error) {
+	bs, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("ds get key error: %w", err)
+	}
+
+	return bs, nil
+}
+
+func (m *MessageDs) DeleteMessage(ctx context.Context, groupID GroupID, msgID string) error {
+	err := m.Delete(ctx, adminDsKey.MsgLogKey(groupID, msgID))
+	if err != nil {
+		return fmt.Errorf("ds delete key error: %w", err)
+	}
+
+	return nil
+}
+
 func (m *MessageDs) SaveMessage(ctx context.Context, groupID GroupID, msg *msgpb.Message) error {
 
 	batch, err := m.Batch(ctx)

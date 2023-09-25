@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package contact.pb;
+
+message Peer {
+  bytes id = 1;
+  string name = 2;
+  string avatar = 3;
+  bytes depositPeerId = 4;
+}
+
+message Contact {
+  bytes id = 1;
+  string name = 2;
+  string avatar = 3;
+  bytes depositPeerId = 4;
+  int64 createTime = 5;
+  int64 accessTime = 6;
+}

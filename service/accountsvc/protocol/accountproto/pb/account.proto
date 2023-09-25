@@ -3,15 +3,26 @@ syntax = "proto3";
 package account.pb;
 
 message Account {
-  bytes peer_id = 1;
+  bytes id = 1;
   string name = 2;
   string avatar = 3;
-	bool auto_add_contact = 4;
-	bool auto_join_group = 5;
+	bool autoAddContact = 4;
+	bool autoJoinGroup = 5;
+
+  // 自动发送寄存消息
+  bool autoSendDeposit = 6;
+  // 设置消息寄存地址
+  bytes depositPeerId = 7;
+  // 启动寄存服务
+  bool enableDepositService = 8;
 }
 
 message Peer {
-  bytes peer_id = 1;
+  bytes id = 1;
   string name = 2;
   string avatar = 3;
+}
+
+message Online {
+  bool isOnline = 1;
 }

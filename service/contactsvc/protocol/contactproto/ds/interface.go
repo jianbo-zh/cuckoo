@@ -11,11 +11,11 @@ import (
 type PeerIface interface {
 	ipfsds.Batching
 
-	AddContact(context.Context, *pb.ContactMsg) error
-	GetContact(context.Context, peer.ID) (*pb.ContactMsg, error)
-	GetContacts(context.Context) ([]*pb.ContactMsg, error)
-	GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.ContactMsg, error)
-	UpdateContact(context.Context, *pb.ContactMsg) error
+	AddContact(context.Context, *pb.Contact) error
+	GetContact(context.Context, peer.ID) (*pb.Contact, error)
+	GetContacts(context.Context) ([]*pb.Contact, error)
+	GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.Contact, error)
+	UpdateContact(context.Context, *pb.Contact) error
 	DeleteContact(context.Context, peer.ID) error
 
 	GetState(ctx context.Context, peerID peer.ID) (string, error)

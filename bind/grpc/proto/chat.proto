@@ -68,6 +68,8 @@ service GroupSvc {
   rpc SetGroupNotice(SetGroupNoticeRequest) returns (SetGroupNoticeReply) {}
   // 设置入群是否审核
   rpc SetGroupAutoJoin(SetGroupAutoJoinRequest) returns (SetGroupAutoJoinReply) {}
+  // 设置入群消息寄存地址
+  rpc SetGroupDepositPeerId(SetGroupDepositPeerIdRequest) returns (SetGroupDepositPeerIdReply) {}
   // 退出此群
   rpc ExitGroup(ExitGroupRequest) returns (ExitGroupReply) {}
   // 退出并删除此群
@@ -388,6 +390,16 @@ message SetGroupAutoJoinReply {
   bool isAuto = 2;
 }
 
+message SetGroupDepositPeerIdRequest {
+  string groupId = 1;
+  string depositPeerId = 2;
+}
+message SetGroupDepositPeerIdReply {
+  Result result = 1;
+  string depositPeerId = 2;
+}
+
+
 message ClearGroupMessageRequest {
   string groupId = 1;
 }
@@ -489,6 +501,12 @@ message Account {
   bool autoAddContact = 4;
   // 入群是否需要审核
   bool autoJoinGroup = 5;
+  // 发送离线消息
+  bool autoSendDeposit = 6;
+  // 离线消息寄存地址
+  string depositPeerID = 7;
+  // 启动寄存服务
+  bool enableDepositService = 8;
 }
 
 // Peer（陌生人）
@@ -509,6 +527,8 @@ message Contact {
   string name = 2;
   // 头像SHA1
   string avatar = 3;
+  // 是否在线
+  bool isOnline = 4;
 }
 
 // 联系人消息
@@ -539,6 +559,8 @@ message Group {
   string name = 2;
   // Avatar
   string avatar = 3;
+  // 寄存PeerID
+  string depositPeerId = 4;
 }
 
 // 群会话
@@ -567,10 +589,12 @@ message GroupDetail {
   string notice = 4;
   // 是否需要审核入群
   bool autoJoinGroup = 5;
+  // 寄存PeerID
+  string depositPeerId = 6;
   // 创建时间
-  int64 createTime = 6;
+  int64 createTime = 7;
   // 更新时间
-  int64 updateTime = 7;
+  int64 updateTime = 8;
 }
 
 // 群消息
@@ -578,9 +602,11 @@ message  GroupMember {
   // PeerId
   string id = 1;
   // 用户名称
-  string name = 3;
+  string name = 2;
   // 头像SHA1
-  string avatar = 4;
+  string avatar = 3;
+  // 是否在线
+  bool isOnline = 4;
 }
 
 // 群消息
@@ -619,12 +645,14 @@ message Session {
   string name = 3;
   // 头像 SHA1
   string avatar = 4;
+  // 在线状态
+  bool isOnline = 5;
   // 最新消息
-  string lastMessage = 5;
+  string lastMessage = 6;
   // 最新消息时间
-  int64 lastMessageTime = 6;
+  int64 lastMessageTime = 7;
   // 有未读消息
-  bool haveUnreadMessage = 7;
+  bool haveUnreadMessage = 8;
 }
 
 // 系统消息

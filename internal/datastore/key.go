@@ -127,6 +127,10 @@ func (g *GroupDsKey) AutoJoinGroupKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/autojoingroup")
 }
 
+func (g *GroupDsKey) DepositPeerIDKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/depositpeerid")
+}
+
 func (g *GroupDsKey) AliasKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/alias")
 }
@@ -186,10 +190,37 @@ func (d *DepositDsKey) PeerMsgLogPrefix(peerID peer.ID) string {
 	return depositPeerPrefix + peerID.String() + "/message/logs/"
 }
 
+func (d *DepositDsKey) GroupMsgLogPrefix(groupID string) string {
+	return depositGroupPrefix + groupID + "/message/logs/"
+}
+
 func (d *DepositDsKey) PeerMsgLogKey(peerID peer.ID, msgID string) ipfsds.Key {
 	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/message/logs/" + msgID)
 }
 
-func (d *DepositDsKey) PeerLastAckIDKey(peerID peer.ID) ipfsds.Key {
-	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/ackid")
+func (d *DepositDsKey) PeerLastIDKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/lastid")
+}
+
+func (d *DepositDsKey) GroupMsgLogKey(groupID string, msgID string) ipfsds.Key {
+	return ipfsds.NewKey(depositGroupPrefix + groupID + "/message/logs/" + msgID)
+}
+
+func (d *DepositDsKey) GroupLastIDKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(depositGroupPrefix + groupID + "/lastid")
+}
+
+/**
+ * file 文件服务
+ */
+const FilePrefix = "/dchat/file/"
+
+type FileDsKey struct{}
+
+func (d *FileDsKey) TablePrefix() string {
+	return FilePrefix + "/table/"
+}
+
+func (d *FileDsKey) FileKey(hashAlgo, hashValue string) ipfsds.Key {
+	return ipfsds.NewKey(FilePrefix + "/table/" + hashAlgo + "_" + hashValue)
 }

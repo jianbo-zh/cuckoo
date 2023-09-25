@@ -5,10 +5,10 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
-	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/peer"
+	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
-	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var depositsvc *DepositService
@@ -16,22 +16,22 @@ var depositsvc *DepositService
 type DepositService struct {
 	isEnableService bool
 
-	service *peer.PeerDepositService
-	client  *peer.PeerDepositClient
+	service *deposit.DepositServiceProto
+	client  *deposit.DepositClientProto
 }
 
-func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, rdiscvry *drouting.RoutingDiscovery) (*DepositService, error) {
+func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus) (*DepositService, error) {
 
 	depositsvc = &DepositService{}
 
-	dcli, err := peer.NewPeerDepositClient(lhost, rdiscvry, ids, ebus)
+	dcli, err := deposit.NewDepositClientProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, err
 	}
 	depositsvc.client = dcli
 
 	if conf.EnableService {
-		dsvc, err := peer.NewPeerDepositService(lhost, rdiscvry, ids)
+		dsvc, err := deposit.NewDepositServiceProto(lhost, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -39,6 +39,14 @@ func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lh
 	}
 
 	return depositsvc, nil
+}
+
+func (d *DepositService) PushContactMessage(depositPeerID peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
+	return d.client.PushContactMessage(depositPeerID, toPeerID, msgID, msgData)
+}
+
+func (d *DepositService) PushGroupMessage(depositPeerID peer.ID, groupID string, msgID string, msgData []byte) error {
+	return d.client.PushGroupMessage(depositPeerID, groupID, msgID, msgData)
 }
 
 func (d *DepositService) Close() {}

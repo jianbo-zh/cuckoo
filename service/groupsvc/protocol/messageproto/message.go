@@ -8,6 +8,7 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto/ds"
@@ -230,6 +231,14 @@ func (m *MessageProto) GetMessage(ctx context.Context, groupID string, msgID str
 	return msgs, nil
 }
 
+func (m *MessageProto) GetMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error) {
+	return m.data.GetMessageData(ctx, groupID, msgID)
+}
+
+func (m *MessageProto) DeleteMessage(ctx context.Context, groupID string, msgID string) error {
+	return m.data.DeleteMessage(ctx, groupID, msgID)
+}
+
 func (m *MessageProto) GetMessageList(ctx context.Context, groupID string, offset int, limit int) ([]*pb.Message, error) {
 	msgs, err := m.data.GetMessages(ctx, groupID, offset, limit)
 	if err != nil {
@@ -239,11 +248,11 @@ func (m *MessageProto) GetMessageList(ctx context.Context, groupID string, offse
 	return msgs, nil
 }
 
-func (m *MessageProto) SendGroupMessage(ctx context.Context, account *types.Account, groupID string, msgType string, mimeType string, payload []byte) (*pb.Message, error) {
+func (m *MessageProto) SendGroupMessage(ctx context.Context, account *types.Account, groupID string, msgType string, mimeType string, payload []byte) (string, error) {
 
 	lamportime, err := m.data.TickLamportTime(context.Background(), groupID)
 	if err != nil {
-		return nil, fmt.Errorf("ds tick lamptime error: %w", err)
+		return "", fmt.Errorf("ds tick lamptime error: %w", err)
 	}
 
 	msg := &pb.Message{
@@ -264,15 +273,15 @@ func (m *MessageProto) SendGroupMessage(ctx context.Context, account *types.Acco
 	// 保存消息
 	err = m.data.SaveMessage(context.Background(), groupID, msg)
 	if err != nil {
-		return nil, fmt.Errorf("save group message error: %v", err)
+		return "", fmt.Errorf("save group message error: %v", err)
 	}
 
 	err = m.broadcastMessage(ctx, groupID, msg)
 	if err != nil {
-		return nil, fmt.Errorf("m.broadcast message error: %w", err)
+		return msg.Id, fmt.Errorf("broadcast message error: %w", err)
 	}
 
-	return msg, nil
+	return msg.Id, nil
 }
 
 func (m *MessageProto) ClearGroupMessage(ctx context.Context, groupID string) error {
@@ -282,10 +291,13 @@ func (m *MessageProto) ClearGroupMessage(ctx context.Context, groupID string) er
 // 发送消息
 func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg *pb.Message, excludePeerIDs ...peer.ID) error {
 
-	connectPeerIDs := m.getConnectPeers(groupID)
-	fmt.Printf("get connect peers: %v\n", connectPeerIDs)
+	peerIDs := m.getConnectPeers(groupID)
+	if len(peerIDs) == 0 {
+		return fmt.Errorf("no connect peers: %w", myerror.ErrSendGroupMessageFailed)
+	}
 
-	for _, peerID := range connectPeerIDs {
+	isSended := false
+	for _, peerID := range peerIDs {
 		if len(excludePeerIDs) > 0 {
 			isExcluded := false
 			for _, excludePeerID := range excludePeerIDs {
@@ -298,7 +310,13 @@ func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg
 			}
 		}
 
-		m.sendPeerMessage(ctx, groupID, peerID, msg)
+		if err := m.sendPeerMessage(ctx, groupID, peerID, msg); err == nil {
+			isSended = true
+		}
+	}
+
+	if !isSended {
+		return myerror.ErrSendGroupMessageFailed
 	}
 
 	return nil

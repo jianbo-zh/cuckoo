@@ -19,19 +19,22 @@ type GroupServiceIface interface {
 	GetGroup(ctx context.Context, groupID string) (*types.Group, error)             // 获取群组
 	GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) // 获取群组
 
-	SetGroupName(ctx context.Context, groupID string, name string) error         // 设置群名称
-	SetGroupAvatar(ctx context.Context, groupID string, avatar string) error     // 设置群头像
-	SetGroupNotice(ctx context.Context, groupID string, notice string) error     // 设置群公告
-	SetGroupAutoJoin(ctx context.Context, groupID string, isAutoJoin bool) error // 设置入群免确认
+	SetGroupName(ctx context.Context, groupID string, name string) error                    // 设置群名称
+	SetGroupAvatar(ctx context.Context, groupID string, avatar string) error                // 设置群头像
+	SetGroupNotice(ctx context.Context, groupID string, notice string) error                // 设置群公告
+	SetGroupAutoJoin(ctx context.Context, groupID string, isAutoJoin bool) error            // 设置入群免确认
+	SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error // 设置群消息寄存地址
 
 	ApplyJoinGroup(ctx context.Context, groupID string) error                                                                 // 申请进群
 	ReviewJoinGroup(ctx context.Context, groupID string, member *types.Peer, isAgree bool) error                              // 进群审核
 	RemoveGroupMember(ctx context.Context, groupID string, memberID peer.ID) error                                            // 移除成员
 	GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]types.GroupMember, error) // 成员列表
 
-	SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (*types.GroupMessage, error) // 发送消息
-	GetGroupMessage(ctx context.Context, groupID string, msgID string) (*types.GroupMessage, error)                                     // 获取消息
-	GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]types.GroupMessage, error)                          // 消息列表
+	SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (msgID string, err error) // 发送消息
+	GetGroupMessage(ctx context.Context, groupID string, msgID string) (*types.GroupMessage, error)                                  // 获取消息
+	GetGroupMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error)                                           // 获取消息
+	DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error                                                      // 删除消息
+	GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]types.GroupMessage, error)                       // 消息列表
 	ClearGroupMessage(ctx context.Context, groupID string) error
 
 	Close()

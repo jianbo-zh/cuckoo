@@ -27,23 +27,23 @@ func Wrap(b ipfsds.Batching) *PeerDS {
 	return &PeerDS{Batching: b}
 }
 
-func (p *PeerDS) AddContact(ctx context.Context, info *pb.ContactMsg) error {
+func (p *PeerDS) AddContact(ctx context.Context, info *pb.Contact) error {
 	value, err := proto.Marshal(info)
 	if err != nil {
 		return err
 	}
 
-	return p.Put(ctx, contactDsKey.DetailKey(peer.ID(info.PeerId)), value)
+	return p.Put(ctx, contactDsKey.DetailKey(peer.ID(info.Id)), value)
 }
 
-func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.ContactMsg, error) {
+func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.Contact, error) {
 
 	value, err := p.Get(ctx, contactDsKey.DetailKey(peer.ID(peerID)))
 	if err != nil {
 		return nil, err
 	}
 
-	var contact pb.ContactMsg
+	var contact pb.Contact
 	if err := proto.Unmarshal(value, &contact); err != nil {
 		return nil, err
 	}
@@ -51,15 +51,15 @@ func (p *PeerDS) GetContact(ctx context.Context, peerID peer.ID) (*pb.ContactMsg
 	return &contact, nil
 }
 
-func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.ContactMsg, error) {
-	var contacts []*pb.ContactMsg
+func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb.Contact, error) {
+	var contacts []*pb.Contact
 	for _, peerID := range peerIDs {
 		value, err := p.Get(ctx, contactDsKey.DetailKey(peerID))
 		if err != nil {
 			return nil, fmt.Errorf("get contact detail error: %w", err)
 		}
 
-		var contact pb.ContactMsg
+		var contact pb.Contact
 		if err := proto.Unmarshal(value, &contact); err != nil {
 			return nil, fmt.Errorf("proto unmarshal error: %w", err)
 		}
@@ -69,7 +69,7 @@ func (p *PeerDS) GetContactsByIDs(ctx context.Context, peerIDs []peer.ID) ([]*pb
 	return contacts, nil
 }
 
-func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
+func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.Contact, error) {
 	results, err := p.Query(ctx, query.Query{
 		Prefix:   contactDsKey.SessionPrefix(),
 		KeysOnly: true,
@@ -78,7 +78,7 @@ func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 		return nil, err
 	}
 
-	var contacts []*pb.ContactMsg
+	var contacts []*pb.Contact
 	for result := range results.Next() {
 		if result.Error != nil {
 			return nil, result.Error
@@ -94,7 +94,7 @@ func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 			return nil, fmt.Errorf("get contact detail error: %w", err)
 		}
 
-		var contact pb.ContactMsg
+		var contact pb.Contact
 		if err = proto.Unmarshal(value, &contact); err != nil {
 			return nil, fmt.Errorf("proto unmarshal error: %w", err)
 		}
@@ -105,13 +105,13 @@ func (p *PeerDS) GetContacts(ctx context.Context) ([]*pb.ContactMsg, error) {
 	return contacts, nil
 }
 
-func (p *PeerDS) UpdateContact(ctx context.Context, info *pb.ContactMsg) error {
+func (p *PeerDS) UpdateContact(ctx context.Context, info *pb.Contact) error {
 	value, err := proto.Marshal(info)
 	if err != nil {
 		return err
 	}
 
-	return p.Put(ctx, contactDsKey.DetailKey(peer.ID(info.PeerId)), value)
+	return p.Put(ctx, contactDsKey.DetailKey(peer.ID(info.Id)), value)
 }
 
 // DeleteContact 删除联系人

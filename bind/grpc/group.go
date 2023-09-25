@@ -2,10 +2,16 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/myerror"
+	"github.com/jianbo-zh/dchat/service/accountsvc"
+	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -23,6 +29,20 @@ func NewGroupSvc(getter cuckoo.CuckooGetter) *GroupSvc {
 	}
 }
 
+func (g *GroupSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
+	cuckoo, err := g.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	accountSvc, err := cuckoo.GetAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return accountSvc, nil
+}
+
 func (g *GroupSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
 	cuckoo, err := g.getter.GetCuckoo()
 	if err != nil {
@@ -35,6 +55,20 @@ func (g *GroupSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
 	}
 
 	return groupSvc, nil
+}
+
+func (g *GroupSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
+	cuckoo, err := g.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	depositSvc, err := cuckoo.GetDepositSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return depositSvc, nil
 }
 
 func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRequest) (reply *proto.CreateGroupReply, err error) {
@@ -198,9 +232,10 @@ func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest)
 	}
 
 	group := &proto.Group{
-		Id:     grp.ID,
-		Avatar: grp.Avatar,
-		Name:   grp.Name,
+		Id:            grp.ID,
+		Avatar:        grp.Avatar,
+		Name:          grp.Name,
+		DepositPeerId: grp.DepositPeerID.String(),
 	}
 
 	reply = &proto.GetGroupReply{
@@ -242,6 +277,7 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 		Name:          grp.Name,
 		Notice:        grp.Notice,
 		AutoJoinGroup: grp.AutoJoinGroup,
+		DepositPeerId: grp.DepositPeerID.String(),
 		CreateTime:    grp.CreateTime,
 		UpdateTime:    grp.UpdateTime,
 	}
@@ -430,6 +466,47 @@ func (g *GroupSvc) SetGroupAutoJoin(ctx context.Context, request *proto.SetGroup
 	return reply, nil
 }
 
+func (g *GroupSvc) SetGroupDepositPeerId(ctx context.Context, request *proto.SetGroupDepositPeerIdRequest) (reply *proto.SetGroupDepositPeerIdReply, err error) {
+
+	log.Infoln("SetGroupDepositPeerId request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetGroupDepositPeerId panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetGroupDepositPeerId error: ", err.Error())
+		} else {
+			log.Infoln("SetGroupDepositPeerId reply: ", reply.String())
+		}
+	}()
+
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get group svc error: %w", err)
+	}
+
+	var depositPeerID peer.ID
+	if strings.TrimSpace(request.DepositPeerId) != "" {
+		depositPeerID, err = peer.Decode(strings.TrimSpace(request.DepositPeerId))
+		if err != nil || depositPeerID.Validate() != nil {
+			return nil, fmt.Errorf("peer decode error")
+		}
+	}
+
+	err = groupSvc.SetGroupDepositPeerID(ctx, request.GroupId, depositPeerID)
+	if err != nil {
+		return nil, fmt.Errorf("svc set group deposit peer id error: %w", err)
+	}
+
+	reply = &proto.SetGroupDepositPeerIdReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		DepositPeerId: depositPeerID.String(),
+	}
+	return reply, nil
+}
+
 func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupMembersRequest) (reply *proto.GetGroupMembersReply, err error) {
 
 	log.Infoln("GetGroupMembers request: ", request.String())
@@ -451,11 +528,30 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 	members, err := groupSvc.GetGroupMembers(ctx, request.GroupId, request.Keywords, int(request.Offset), int(request.Limit))
 
 	memberList := make([]*proto.GroupMember, len(members))
-	for i, member := range members {
-		memberList[i] = &proto.GroupMember{
-			Id:     member.ID.String(),
-			Name:   member.Name,
-			Avatar: member.Avatar,
+
+	if len(members) > 0 {
+		accountSvc, err := g.getAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		var peerIDs []peer.ID
+		for _, member := range members {
+			peerIDs = append(peerIDs, member.ID)
+		}
+
+		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("get online state error: %w", err)
+		}
+
+		for i, member := range members {
+			memberList[i] = &proto.GroupMember{
+				Id:       member.ID.String(),
+				Name:     member.Name,
+				Avatar:   member.Avatar,
+				IsOnline: onlineStateMap[member.ID],
+			}
 		}
 	}
 
@@ -525,23 +621,74 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 		return nil, fmt.Errorf("get group svc error: %w", err)
 	}
 
-	msg, err := groupSvc.SendGroupMessage(ctx, request.GroupId, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
+	accountSvc, err := g.getAccountSvc()
 	if err != nil {
-		return nil, fmt.Errorf("send group message error: %w", err)
+		return nil, fmt.Errorf("get account service error: %w", err)
+	}
+
+	depositSvc, err := g.getDepositSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get deposit service error: %w", err)
+	}
+
+	account, err := accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	var sendErr error
+	groupID := request.GroupId
+	msgID, err := groupSvc.SendGroupMessage(ctx, groupID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
+	if err != nil {
+		if msgID != "" && errors.Is(err, myerror.ErrSendGroupMessageFailed) && account.AutoSendDeposit {
+			group, err2 := groupSvc.GetGroup(ctx, groupID)
+			if err2 != nil {
+				sendErr = fmt.Errorf("svc get group error: %w", err2)
+
+			} else if group.DepositPeerID.Validate() != nil { // 没有设置寄存节点
+				sendErr = err
+
+			} else {
+				msgData, err := groupSvc.GetGroupMessageData(ctx, groupID, msgID)
+				if err != nil {
+					sendErr = fmt.Errorf("svc get group msg data error: %w", err)
+
+				} else {
+					err = depositSvc.PushGroupMessage(group.DepositPeerID, groupID, msgID, msgData)
+					if err != nil {
+						sendErr = fmt.Errorf("deposit group msg error: %w", err)
+					}
+				}
+			}
+
+		} else {
+			sendErr = err
+		}
+	}
+
+	if sendErr != nil {
+		if msgID != "" {
+			// delete msg
+			if err = groupSvc.DeleteGroupMessage(ctx, groupID, msgID); err != nil {
+				return nil, fmt.Errorf("svc delete group msg error: %w", err)
+			}
+		}
+
+		return nil, sendErr
 	}
 
 	message := &proto.GroupMessage{
-		Id:      msg.ID,
-		GroupId: msg.GroupID,
+		Id:      msgID,
+		GroupId: groupID,
 		Sender: &proto.Peer{
-			Id:     msg.FromPeer.ID.String(),
-			Name:   msg.FromPeer.Name,
-			Avatar: msg.FromPeer.Avatar,
+			Id:     account.ID.String(),
+			Name:   account.Name,
+			Avatar: account.Avatar,
 		},
-		MsgType:    encodeMsgType(msg.MsgType),
-		MimeType:   msg.MimeType,
-		Payload:    msg.Payload,
-		CreateTime: msg.CreateTime,
+		MsgType:    request.MsgType,
+		MimeType:   request.MimeType,
+		Payload:    request.Payload,
+		CreateTime: time.Now().Unix(),
 	}
 
 	reply = &proto.SendGroupMessageReply{

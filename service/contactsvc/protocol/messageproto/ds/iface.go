@@ -13,6 +13,8 @@ type PeerMessageIface interface {
 
 	SaveMessage(ctx context.Context, peerID peer.ID, msg *pb.Message) error
 	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.Message, error)
+	DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error
+	GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error)
 	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.Message, error)
 	HasMessage(ctx context.Context, peerID peer.ID, msgID string) (bool, error)
 	ClearMessage(ctx context.Context, peerID peer.ID) error

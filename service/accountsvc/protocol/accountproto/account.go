@@ -8,10 +8,13 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/protocol"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/ds"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -24,23 +27,31 @@ import (
 
 var log = logging.Logger("account-protocol")
 
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/account.proto=./pb pb/account.proto
-
 var StreamTimeout = 1 * time.Minute
 
+var OnlineTimeMap = make(map[peer.ID]int64)
+
 const (
-	ID         = protocol.AccountID_v100
-	AVATAR_ID  = protocol.AccountAvatarID_v100
-	maxMsgSize = 4 * 1024 // 4K
+	ID            = protocol.AccountID_v100
+	ONLINE_ID     = protocol.AccountOnlineID_v100
+	AVATAR_ID     = protocol.AccountAvatarID_v100
+	maxMsgSize    = 4 * 1024 // 4K
+	OfflineSecond = 60       // 60s
 )
 
 type AccountProto struct {
 	host      host.Host
 	data      ds.AccountIface
 	avatarDir string
+
+	emitter struct {
+		evtAccountPeerChange           event.Emitter
+		evtAccountDepositServiceChange event.Emitter
+	}
 }
 
 func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, avatarDir string) (*AccountProto, error) {
+	var err error
 	accountProto := AccountProto{
 		host:      lhost,
 		data:      ds.Wrap(ids),
@@ -48,9 +59,121 @@ func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, a
 	}
 
 	lhost.SetStreamHandler(ID, accountProto.GetPeerHandler)
+	lhost.SetStreamHandler(ONLINE_ID, accountProto.onlineHandler)
 	lhost.SetStreamHandler(AVATAR_ID, accountProto.DownloadPeerAvatarHandler)
 
+	if accountProto.emitter.evtAccountPeerChange, err = eventBus.Emitter(&gevent.EvtAccountPeerChange{}); err != nil {
+		return nil, fmt.Errorf("set account peer change emitter error: %w", err)
+	}
+
+	if accountProto.emitter.evtAccountDepositServiceChange, err = eventBus.Emitter(&gevent.EvtAccountDepositServiceChange{}); err != nil {
+		return nil, fmt.Errorf("set account deposit service change emitter error: %w", err)
+	}
+
 	return &accountProto, nil
+}
+
+func (a *AccountProto) GetOnlineState(ctx context.Context, peerIDs []peer.ID) (map[peer.ID]bool, error) {
+
+	nowtime := time.Now().Unix()
+	result := make(map[peer.ID]bool)
+
+	if len(peerIDs) == 0 {
+		return result, nil
+	}
+
+	// 检查缓存
+	var maybeOfflinePeers []peer.ID
+	for _, peerID := range peerIDs {
+		if nowtime-OnlineTimeMap[peerID] < OfflineSecond {
+			result[peerID] = true
+		} else {
+			maybeOfflinePeers = append(maybeOfflinePeers, peerID)
+		}
+	}
+	if len(maybeOfflinePeers) == 0 { // 都在线
+		return result, nil
+	}
+
+	onlineCh := make(chan types.PeerState, len(maybeOfflinePeers))
+
+	st := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(len(maybeOfflinePeers))
+	for _, peerID := range maybeOfflinePeers {
+		go a.goCheckOnline(ctx, &wg, peerID, onlineCh)
+	}
+	wg.Wait()
+	close(onlineCh)
+
+	log.Debugf("check online use time: %d", time.Since(st).Milliseconds())
+
+	for res := range onlineCh {
+		if res.IsOnline {
+			result[res.PeerID] = true
+			OnlineTimeMap[res.PeerID] = time.Now().Unix()
+
+		} else {
+			result[res.PeerID] = false
+		}
+	}
+
+	return result, nil
+}
+
+func (a *AccountProto) goCheckOnline(ctx context.Context, wg *sync.WaitGroup, peerID peer.ID, onlineCh chan<- types.PeerState) {
+	defer wg.Done()
+
+	peerState := types.PeerState{
+		PeerID:   peerID,
+		IsOnline: false,
+	}
+
+	stream, err := a.host.NewStream(ctx, peerID, ONLINE_ID)
+	if err != nil {
+		onlineCh <- peerState
+		log.Debugln("host new stream error: %v", err)
+		return
+	}
+	defer stream.Close()
+
+	wt := pbio.NewDelimitedWriter(stream)
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+
+	stream.SetDeadline(time.Now().Add(2 * time.Second))
+	if err = wt.WriteMsg(&pb.Online{IsOnline: true}); err != nil {
+		onlineCh <- peerState
+		log.Errorf("pbio write msg error: %v", err)
+		return
+	}
+
+	var pbOnline pb.Online
+	if err = rd.ReadMsg(&pbOnline); err != nil {
+		onlineCh <- peerState
+		log.Errorf("pbio read msg error: %v", err)
+		return
+	}
+
+	peerState.IsOnline = true
+	onlineCh <- peerState
+}
+
+func (a *AccountProto) onlineHandler(stream network.Stream) {
+	defer stream.Close()
+
+	wt := pbio.NewDelimitedWriter(stream)
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+
+	var pbOnline pb.Online
+	if err := rd.ReadMsg(&pbOnline); err != nil {
+		log.Errorf("pbio read msg error: %v", err)
+		return
+	}
+
+	if err := wt.WriteMsg(&pb.Online{IsOnline: true}); err != nil {
+		log.Errorf("pbio wt msg error: %v", err)
+		return
+	}
 }
 
 func (a *AccountProto) CreateAccount(ctx context.Context, account *pb.Account) (*pb.Account, error) {
@@ -62,7 +185,7 @@ func (a *AccountProto) CreateAccount(ctx context.Context, account *pb.Account) (
 		return nil, fmt.Errorf("get account error: %w", err)
 	}
 
-	account.PeerId = []byte(a.host.ID())
+	account.Id = []byte(a.host.ID())
 	err = a.data.CreateAccount(ctx, account)
 	if err != nil {
 		return nil, fmt.Errorf("ds create account error: %w", err)
@@ -80,10 +203,128 @@ func (a *AccountProto) GetAccount(ctx context.Context) (*pb.Account, error) {
 	return account, nil
 }
 
-func (a *AccountProto) UpdateAccount(ctx context.Context, account *pb.Account) error {
-	if err := a.data.UpdateAccount(ctx, account); err != nil {
-		return fmt.Errorf("ds update account error: %w", err)
+func (a *AccountProto) UpdateAccountName(ctx context.Context, name string) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
 	}
+	if account.Name != name {
+		account.Name = name
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+
+		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+			AccountPeer: DecodeAccountPeer(account),
+		})
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountAvatar(ctx context.Context, avatar string) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+	if account.Avatar != avatar {
+		account.Avatar = avatar
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+
+		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+			AccountPeer: DecodeAccountPeer(account),
+		})
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountAutoAddContact(ctx context.Context, autoAddContact bool) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+	if account.AutoAddContact != autoAddContact {
+		account.AutoAddContact = autoAddContact
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountAutoJoinGroup(ctx context.Context, autoJoinGroup bool) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+
+	if account.AutoJoinGroup != autoJoinGroup {
+		account.AutoJoinGroup = autoJoinGroup
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountAutoSendDeposit(ctx context.Context, autoSendDeposit bool) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+
+	if account.AutoSendDeposit != autoSendDeposit {
+		account.AutoSendDeposit = autoSendDeposit
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositPeerID peer.ID) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+
+	if peer.ID(account.DepositPeerId) != depositPeerID {
+		account.DepositPeerId = []byte(depositPeerID)
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+
+		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+			AccountPeer: DecodeAccountPeer(account),
+		})
+	}
+
+	return nil
+}
+
+func (a *AccountProto) UpdateAccountEnableDepositService(ctx context.Context, enableDepositService bool) error {
+	account, err := a.data.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("data get account error: %w", err)
+	}
+
+	if account.EnableDepositService != enableDepositService {
+		account.EnableDepositService = enableDepositService
+		if err = a.data.UpdateAccount(ctx, account); err != nil {
+			return fmt.Errorf("data update account error: %w", err)
+		}
+
+		a.emitter.evtAccountDepositServiceChange.Emit(gevent.EvtAccountDepositServiceChange{
+			Enable: enableDepositService,
+		})
+	}
+
 	return nil
 }
 
@@ -165,7 +406,7 @@ func (a *AccountProto) GetPeerHandler(stream network.Stream) {
 	}
 
 	if err := wt.WriteMsg(&pb.Peer{
-		PeerId: account.PeerId,
+		Id:     account.Id,
 		Name:   account.Name,
 		Avatar: account.Avatar,
 	}); err != nil {

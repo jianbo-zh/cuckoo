@@ -678,10 +678,16 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group
 		return nil, fmt.Errorf("data get avatar error: %w", err)
 	}
 
+	depositPeerID, err := a.data.GetDepositPeerID(ctx, groupID)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get deposit peer error: %w", err)
+	}
+
 	return &types.Group{
-		ID:     groupID,
-		Name:   name,
-		Avatar: avatar,
+		ID:            groupID,
+		Name:          name,
+		Avatar:        avatar,
+		DepositPeerID: depositPeerID,
 	}, nil
 }
 
@@ -706,6 +712,11 @@ func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types
 		return nil, fmt.Errorf("data get auto join group error: %w", err)
 	}
 
+	depositPeerID, err := a.data.GetDepositPeerID(ctx, groupID)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get deposit peer error: %w", err)
+	}
+
 	createTime, err := a.data.GetCreateTime(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get create time error: %w", err)
@@ -717,6 +728,7 @@ func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types
 		Avatar:        avatar,
 		Notice:        notice,
 		AutoJoinGroup: autoJoinGroup,
+		DepositPeerID: depositPeerID,
 		CreateTime:    createTime,
 	}, nil
 }
@@ -818,6 +830,39 @@ func (a *AdminProto) SetGroupAutoJoin(ctx context.Context, groupID string, isAut
 		Member:        nil,
 		MemberOperate: pb.Log_NONE,
 		Payload:       []byte(autoJoin),
+		CreateTime:    time.Now().Unix(),
+		Lamportime:    lamptime,
+		Signature:     []byte(""),
+	}
+
+	if err := a.data.SaveLog(ctx, &pbmsg); err != nil {
+		return fmt.Errorf("data save log error: %w", err)
+	}
+
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
+	}
+
+	return nil
+}
+
+func (a *AdminProto) SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error {
+
+	hostID := a.host.ID()
+
+	lamptime, err := a.data.TickLamptime(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	pbmsg := pb.Log{
+		Id:            logIdDepositPeer(lamptime, hostID),
+		GroupId:       groupID,
+		PeerId:        []byte(hostID),
+		LogType:       pb.Log_DEPOSIT_PEER_ID,
+		Member:        nil,
+		MemberOperate: pb.Log_NONE,
+		Payload:       []byte(depositPeerID),
 		CreateTime:    time.Now().Unix(),
 		Lamportime:    lamptime,
 		Signature:     []byte(""),

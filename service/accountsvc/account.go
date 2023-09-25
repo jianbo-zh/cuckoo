@@ -47,7 +47,7 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, account types.Account) (
 	}
 
 	return &types.Account{
-		ID:             peer.ID(pbAccount.PeerId),
+		ID:             peer.ID(pbAccount.Id),
 		Name:           pbAccount.Name,
 		Avatar:         pbAccount.Avatar,
 		AutoAddContact: pbAccount.AutoAddContact,
@@ -63,7 +63,7 @@ func (a *AccountSvc) GetAccount(ctx context.Context) (*types.Account, error) {
 	}
 
 	return &types.Account{
-		ID:             peer.ID(pbAccount.PeerId),
+		ID:             peer.ID(pbAccount.Id),
 		Name:           pbAccount.Name,
 		Avatar:         pbAccount.Avatar,
 		AutoAddContact: pbAccount.AutoAddContact,
@@ -72,39 +72,31 @@ func (a *AccountSvc) GetAccount(ctx context.Context) (*types.Account, error) {
 }
 
 func (a *AccountSvc) SetAccountName(ctx context.Context, name string) error {
-	pbAccount, err := a.accountProto.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("proto get account error: %w", err)
-	}
-	pbAccount.Name = name
-	return a.accountProto.UpdateAccount(ctx, pbAccount)
+	return a.accountProto.UpdateAccountName(ctx, name)
 }
 
 func (a *AccountSvc) SetAccountAvatar(ctx context.Context, avatar string) error {
-	pbAccount, err := a.accountProto.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("proto get account error: %w", err)
-	}
-	pbAccount.Avatar = avatar
-	return a.accountProto.UpdateAccount(ctx, pbAccount)
+	return a.accountProto.UpdateAccountAvatar(ctx, avatar)
 }
 
 func (a *AccountSvc) SetAccountAutoAddContact(ctx context.Context, autoAddContact bool) error {
-	pbAccount, err := a.accountProto.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("proto get account error: %w", err)
-	}
-	pbAccount.AutoAddContact = autoAddContact
-	return a.accountProto.UpdateAccount(ctx, pbAccount)
+	return a.accountProto.UpdateAccountAutoAddContact(ctx, autoAddContact)
 }
 
 func (a *AccountSvc) SetAccountAutoJoinGroup(ctx context.Context, autoJoinGroup bool) error {
-	pbAccount, err := a.accountProto.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("proto get account error: %w", err)
-	}
-	pbAccount.AutoJoinGroup = autoJoinGroup
-	return a.accountProto.UpdateAccount(ctx, pbAccount)
+	return a.accountProto.UpdateAccountAutoJoinGroup(ctx, autoJoinGroup)
+}
+
+func (a *AccountSvc) SetAccountAutoSendDeposit(ctx context.Context, autoSendDeposit bool) error {
+	return a.accountProto.UpdateAccountAutoSendDeposit(ctx, autoSendDeposit)
+}
+
+func (a *AccountSvc) SetAccountDepositAddress(ctx context.Context, depositPeerID peer.ID) error {
+	return a.accountProto.UpdateAccountDepositAddress(ctx, depositPeerID)
+}
+
+func (a *AccountSvc) SetAccountEnableDepositService(ctx context.Context, enableDepositService bool) error {
+	return a.accountProto.UpdateAccountEnableDepositService(ctx, enableDepositService)
 }
 
 func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*types.Peer, error) {
@@ -114,7 +106,7 @@ func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*types.Peer, 
 	}
 
 	return &types.Peer{
-		ID:     peer.ID(pbPeer.PeerId),
+		ID:     peer.ID(pbPeer.Id),
 		Name:   pbPeer.Name,
 		Avatar: pbPeer.Avatar,
 	}, nil
@@ -122,6 +114,10 @@ func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*types.Peer, 
 
 func (a *AccountSvc) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
 	return a.accountProto.DownloadPeerAvatar(ctx, peerID, avatar)
+}
+
+func (a *AccountSvc) GetOnlineState(ctx context.Context, peerIDs []peer.ID) (res map[peer.ID]bool, err error) {
+	return a.accountProto.GetOnlineState(ctx, peerIDs)
 }
 
 func (a *AccountSvc) Close() {}

@@ -39,6 +39,7 @@ type Config struct {
 	ContactService ContactServiceConfig
 	GroupService   GroupServiceConfig
 	DepositService DepositServiceConfig
+	FileService    FileServiceConfig
 }
 
 // Clone copies the config. Use when updating.

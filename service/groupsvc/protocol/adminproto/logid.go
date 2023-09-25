@@ -27,6 +27,10 @@ func logIdAutojoin(lamptime uint64, creator peer.ID) string {
 	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwAutoJoin, creator.String())
 }
 
+func logIdDepositPeer(lamptime uint64, depositPeer peer.ID) string {
+	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwDepositPeer, depositPeer.String())
+}
+
 func logIdMember(lamptime uint64, creator peer.ID) string {
 	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwMember, creator.String())
 }

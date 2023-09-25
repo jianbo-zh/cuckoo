@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
+	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -52,6 +55,20 @@ func (c *ContactSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	}
 
 	return accountSvc, nil
+}
+
+func (c *ContactSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	depositSvc, err := cuckoo.GetDepositSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return depositSvc, nil
 }
 
 func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRequest) (reply *proto.GetContactReply, err error) {
@@ -120,12 +137,31 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 	}
 
 	var contactList []*proto.Contact
-	for _, contact := range contacts {
-		contactList = append(contactList, &proto.Contact{
-			Id:     contact.ID.String(),
-			Name:   contact.Name,
-			Avatar: contact.Avatar,
-		})
+
+	if len(contacts) > 0 {
+		accountSvc, err := c.getAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		var peerIDs []peer.ID
+		for _, contact := range contacts {
+			peerIDs = append(peerIDs, contact.ID)
+		}
+
+		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("get online state error: %w", err)
+		}
+
+		for _, contact := range contacts {
+			contactList = append(contactList, &proto.Contact{
+				Id:       contact.ID.String(),
+				Name:     contact.Name,
+				Avatar:   contact.Avatar,
+				IsOnline: onlineStateMap[contact.ID],
+			})
+		}
 	}
 
 	reply = &proto.GetContactsReply{
@@ -171,13 +207,33 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 	}
 
 	contactList := make([]*proto.Contact, 0)
-	for _, contact := range contacts {
-		contactList = append(contactList, &proto.Contact{
-			Id:     contact.ID.String(),
-			Name:   contact.Name,
-			Avatar: contact.Avatar,
-		})
+
+	if len(contacts) > 0 {
+		accountSvc, err := c.getAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		var peerIDs []peer.ID
+		for _, contact := range contacts {
+			peerIDs = append(peerIDs, contact.ID)
+		}
+
+		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("get online state error: %w", err)
+		}
+
+		for _, contact := range contacts {
+			contactList = append(contactList, &proto.Contact{
+				Id:       contact.ID.String(),
+				Name:     contact.Name,
+				Avatar:   contact.Avatar,
+				IsOnline: onlineStateMap[contact.ID],
+			})
+		}
 	}
+
 	reply = &proto.GetSpecifiedContactsReply{
 		Result: &proto.Result{
 			Code:    0,
@@ -496,9 +552,39 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		return nil, fmt.Errorf("get account error: %w", err)
 	}
 
-	err = contactSvc.SendMessage(ctx, peerID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
+	var sendErr error
+	msgID, err := contactSvc.SendMessage(ctx, peerID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("svc send message error: %w", err)
+		if msgID != "" && errors.Is(err, network.ErrNoConn) && account.AutoSendDeposit && contact.DepositPeerID.Validate() == nil {
+			// 尝试寄存消息
+			depositSvc, err := c.getDepositSvc()
+			if err != nil {
+				sendErr = fmt.Errorf("get deposit svc error: %w", err)
+
+			} else {
+				msgData, err := contactSvc.GetMessageData(ctx, peerID, msgID)
+				if err != nil {
+					sendErr = fmt.Errorf("svc get msg data error: %w", err)
+
+				} else {
+					err = depositSvc.PushContactMessage(contact.DepositPeerID, peerID, msgID, msgData)
+					if err != nil {
+						sendErr = fmt.Errorf("deposit contact msg error: %w", err)
+					}
+				}
+			}
+		} else {
+			sendErr = err
+		}
+	}
+
+	if sendErr != nil {
+		if msgID != "" {
+			if err = contactSvc.DeleteMessage(ctx, peerID, msgID); err != nil {
+				return nil, fmt.Errorf("svc delete msg error: %w", err)
+			}
+		}
+		return nil, sendErr
 	}
 
 	reply = &proto.SendContactMessageReply{
@@ -507,7 +593,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 			Message: "ok",
 		},
 		Message: &proto.ContactMessage{
-			Id: "id",
+			Id: msgID,
 			FromContact: &proto.Contact{
 				Id:     account.ID.String(),
 				Name:   account.Name,

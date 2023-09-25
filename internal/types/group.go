@@ -12,9 +12,10 @@ const (
 )
 
 type Group struct {
-	ID     string
-	Name   string
-	Avatar string
+	ID            string
+	Name          string
+	Avatar        string
+	DepositPeerID peer.ID
 }
 
 type GroupDetail struct {
@@ -23,6 +24,7 @@ type GroupDetail struct {
 	Avatar        string
 	Notice        string
 	AutoJoinGroup bool
+	DepositPeerID peer.ID
 	CreateTime    int64
 	UpdateTime    int64
 }

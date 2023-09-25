@@ -11,8 +11,9 @@ message Log {
     AVATAR = 2; // 设置群头像
     NOTICE = 3; // 设置群公告
     AUTO_JOIN_GROUP = 4; // 设置入群免审核
-    MEMBER = 5; // 群成员操作
-    DISBAND = 6; // 解散群
+    DEPOSIT_PEER_ID = 5; // 离线消息寄存节点
+    MEMBER = 6; // 群成员操作
+    DISBAND = 7; // 解散群
   }
 
   // 群成员具体操作

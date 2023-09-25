@@ -1,11 +1,16 @@
 package types
 
-import "github.com/libp2p/go-libp2p/core/peer"
+import (
+	"context"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+)
 
 type Contact struct {
-	ID     peer.ID
-	Name   string
-	Avatar string
+	ID            peer.ID
+	Name          string
+	Avatar        string
+	DepositPeerID peer.ID
 }
 
 type ContactSession struct {
@@ -23,4 +28,8 @@ type ContactMessage struct {
 	Payload    []byte
 	Timestamp  int64
 	Lamportime uint64
+}
+
+type ContactGetter interface {
+	GetContact(ctx context.Context, peerID peer.ID) (*Contact, error)
 }

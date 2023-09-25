@@ -26,6 +26,19 @@ func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID strin
 	}, nil
 }
 
+func (c *ContactSvc) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
+	return c.msgProto.DeleteMessage(ctx, peerID, msgID)
+}
+
+func (c *ContactSvc) GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
+	bs, err := c.msgProto.GetMessageData(ctx, peerID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("proto get msg data error: %w", err)
+	}
+
+	return bs, nil
+}
+
 func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]types.ContactMessage, error) {
 	var peerMsgs []types.ContactMessage
 
@@ -50,7 +63,7 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	return peerMsgs, nil
 }
 
-func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) error {
+func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (string, error) {
 	return c.msgProto.SendMessage(ctx, peerID, msgType, mimeType, payload)
 }
 

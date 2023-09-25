@@ -84,6 +84,20 @@ func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string
 	return &msg, nil
 }
 
+func (m *MessageDS) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
+	return m.Delete(ctx, contactDsKey.MsgLogKey(peerID, msgID))
+}
+
+func (m *MessageDS) GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
+
+	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("ds get error: %w", err)
+	}
+
+	return val, nil
+}
+
 // GetMessages 获取消息列表
 func (m *MessageDS) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*msgpb.Message, error) {
 	results, err := m.Query(ctx, query.Query{

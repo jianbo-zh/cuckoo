@@ -18,8 +18,10 @@ type ContactServiceIface interface {
 	SetContactName(ctx context.Context, peerID peer.ID, name string) error
 
 	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*types.ContactMessage, error)
+	DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error
+	GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error)
 	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]types.ContactMessage, error)
-	SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) error
+	SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (msgID string, err error)
 	ClearMessage(ctx context.Context, peerID peer.ID) error
 
 	Close()

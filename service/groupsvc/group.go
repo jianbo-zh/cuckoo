@@ -272,6 +272,11 @@ func (g *GroupService) SetGroupAutoJoin(ctx context.Context, groupID string, isA
 }
 
 // 申请进群
+func (g *GroupService) SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error {
+	return g.adminProto.SetGroupDepositPeerID(ctx, groupID, depositPeerID)
+}
+
+// 申请进群
 func (g *GroupService) ApplyJoinGroup(ctx context.Context, groupID string) error {
 	// 1. 找到群节点（3个）
 
@@ -297,33 +302,14 @@ func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keyw
 }
 
 // 发送消息
-func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (*types.GroupMessage, error) {
+func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (string, error) {
 
 	account, err := g.accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
+		return "", fmt.Errorf("accountSvc.GetAccount error: %w", err)
 	}
 
-	msg, err := g.messageProto.SendGroupMessage(ctx, account, groupID, msgType, mimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("group.messageSvc.SendTextMessage error: %w", err)
-	}
-
-	message := &types.GroupMessage{
-		ID:      msg.Id,
-		GroupID: msg.GroupId,
-		FromPeer: types.GroupMember{
-			ID:     peer.ID(msg.Member.Id),
-			Name:   msg.Member.Name,
-			Avatar: msg.Member.Avatar,
-		},
-		MsgType:    msg.MsgType,
-		MimeType:   msg.MimeType,
-		Payload:    msg.Payload,
-		CreateTime: msg.CreateTime,
-	}
-
-	return message, nil
+	return g.messageProto.SendGroupMessage(ctx, account, groupID, msgType, mimeType, payload)
 }
 
 // 获取消息消息
@@ -348,6 +334,14 @@ func (g *GroupService) GetGroupMessage(ctx context.Context, groupID string, msgI
 	}
 
 	return message, nil
+}
+
+func (g *GroupService) GetGroupMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error) {
+	return g.messageProto.GetMessageData(ctx, groupID, msgID)
+}
+
+func (g *GroupService) DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error {
+	return g.messageProto.DeleteMessage(ctx, groupID, msgID)
 }
 
 // 消息列表

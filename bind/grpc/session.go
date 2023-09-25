@@ -8,8 +8,10 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ proto.SessionSvcServer = (*SessionSvc)(nil)
@@ -23,6 +25,20 @@ func NewSessionSvc(getter cuckoo.CuckooGetter) *SessionSvc {
 	return &SessionSvc{
 		getter: getter,
 	}
+}
+
+func (c *SessionSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	accountSvc, err := cuckoo.GetAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return accountSvc, nil
 }
 
 func (c *SessionSvc) getContactSvc() (contactsvc.ContactServiceIface, error) {
@@ -96,20 +112,38 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		return nil, fmt.Errorf("contactSvc.GetContact error: %w", err)
 	}
 
-	for i, contact := range contacts {
-		if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
-			continue
+	if len(contacts) > 0 {
+		accountSvc, err := s.getAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
 		}
 
-		sessions = append(sessions, &proto.Session{
-			Type:              proto.Session_ContactSession,
-			SessionId:         contact.ID.String(),
-			Name:              contact.Name,
-			Avatar:            contact.Avatar,
-			LastMessage:       "",
-			LastMessageTime:   time.Now().Unix(),
-			HaveUnreadMessage: i%2 == 1,
-		})
+		var peerIDs []peer.ID
+		for _, contact := range contacts {
+			peerIDs = append(peerIDs, contact.ID)
+		}
+
+		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("get peer online state error: %w", err)
+		}
+
+		for i, contact := range contacts {
+			if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
+				continue
+			}
+
+			sessions = append(sessions, &proto.Session{
+				Type:              proto.Session_ContactSession,
+				SessionId:         contact.ID.String(),
+				Name:              contact.Name,
+				Avatar:            contact.Avatar,
+				IsOnline:          onlineStateMap[contact.ID],
+				LastMessage:       "",
+				LastMessageTime:   time.Now().Unix(),
+				HaveUnreadMessage: i%2 == 1,
+			})
+		}
 	}
 
 	var sessionList []*proto.Session

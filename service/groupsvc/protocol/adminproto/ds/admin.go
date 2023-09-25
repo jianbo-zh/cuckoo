@@ -262,6 +262,21 @@ func (a *AdminDs) GetAutoJoinGroup(ctx context.Context, groupID string) (bool, e
 	return string(value) == "true", nil
 }
 
+// GetDepositPeerID 获取群组的寄存节点
+func (a *AdminDs) GetDepositPeerID(ctx context.Context, groupID string) (peer.ID, error) {
+
+	if err := a.checkInitCache(ctx, groupID); err != nil {
+		return peer.ID(""), fmt.Errorf("check init cache error: %w", err)
+	}
+
+	value, err := a.Get(ctx, adminDsKey.DepositPeerIDKey(groupID))
+	if err != nil {
+		return peer.ID(""), fmt.Errorf("ds get notice error: %w", err)
+	}
+
+	return peer.ID(value), nil
+}
+
 // GetName 获取组创建时间
 func (a *AdminDs) GetCreateTime(ctx context.Context, groupID string) (int64, error) {
 
@@ -443,7 +458,7 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 	var logCreator []byte
 	var logCreateTime []byte
 	var logName, logAvatar, logNotice []byte
-	var logAutoJoinGroup []byte
+	var logAutoJoinGroup, depositPeerID []byte
 
 	formalMap := make(map[peer.ID]bool)
 	operateMap := make(map[peer.ID]pb.Log_MemberOperate)
@@ -480,6 +495,8 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 			logNotice = pblog.Payload
 		case pb.Log_AUTO_JOIN_GROUP:
 			logAutoJoinGroup = pblog.Payload // "true" or "false"
+		case pb.Log_DEPOSIT_PEER_ID:
+			depositPeerID = pblog.Payload
 		case pb.Log_MEMBER:
 			if _, exists := allMemberMap[peer.ID(pblog.Member.Id)]; !exists {
 				allMemberMap[peer.ID(pblog.Member.Id)] = pblog.Member
@@ -557,6 +574,11 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 	if len(logAutoJoinGroup) > 0 {
 		if err = a.Put(ctx, adminDsKey.AutoJoinGroupKey(groupID), logAutoJoinGroup); err != nil {
 			return fmt.Errorf("ds put auto join group key error: %w", err)
+		}
+	}
+	if len(depositPeerID) > 0 {
+		if err = a.Put(ctx, adminDsKey.DepositPeerIDKey(groupID), depositPeerID); err != nil {
+			return fmt.Errorf("ds put deposit peer id key error: %w", err)
 		}
 	}
 
@@ -737,6 +759,37 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 
 		if err = a.Put(ctx, adminDsKey.AutoJoinGroupKey(groupID), autoJoinGroup); err != nil {
 			return fmt.Errorf("ds save group notice error: %w", err)
+		}
+
+	case pb.Log_DEPOSIT_PEER_ID:
+		result, err := a.Query(ctx, query.Query{
+			Prefix: adminDsKey.AdminLogPrefix(groupID),
+			Orders: []query.Order{query.OrderByKeyDescending{}}, // desc, limit 1
+			Filters: []query.Filter{GroupContainFilter{
+				Keywords: KwDepositPeer,
+			}},
+			Limit: 1,
+		})
+		if err != nil {
+			return fmt.Errorf("ds query error: %w", err)
+		}
+
+		var depositPeerID []byte
+		for entry := range result.Next() {
+			if entry.Error != nil {
+				return fmt.Errorf("ds result next error: %w", entry.Error)
+			}
+
+			var pblog pb.Log
+			if err := proto.Unmarshal(entry.Value, &pblog); err != nil {
+				return fmt.Errorf("proto unmarshal error: %w", err)
+			}
+
+			depositPeerID = pblog.Payload
+		}
+
+		if err = a.Put(ctx, adminDsKey.DepositPeerIDKey(groupID), depositPeerID); err != nil {
+			return fmt.Errorf("ds save group deposit peer id error: %w", err)
 		}
 
 	case pb.Log_MEMBER:

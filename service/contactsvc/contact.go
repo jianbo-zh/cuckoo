@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 var _ ContactServiceIface = (*ContactSvc)(nil)
@@ -22,21 +21,20 @@ type ContactSvc struct {
 	contactProto *contactproto.ContactProto
 }
 
-func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
-	rdiscvry *drouting.RoutingDiscovery) (*ContactSvc, error) {
+func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*ContactSvc, error) {
 
 	var err error
 
 	contactsvc := &ContactSvc{}
 
+	contactsvc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus, accountGetter)
+	if err != nil {
+		return nil, fmt.Errorf("contactproto.NewPeerSvc error: %s", err.Error())
+	}
+
 	contactsvc.msgProto, err = message.NewMessageSvc(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("message.NewMessageSvc error: %s", err.Error())
-	}
-
-	contactsvc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus)
-	if err != nil {
-		return nil, fmt.Errorf("contactproto.NewPeerSvc error: %s", err.Error())
 	}
 
 	return contactsvc, nil
@@ -54,7 +52,7 @@ func (c *ContactSvc) GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID
 
 	for _, pi := range result {
 		contacts = append(contacts, types.Contact{
-			ID:     peer.ID(pi.PeerId),
+			ID:     peer.ID(pi.Id),
 			Name:   pi.Name,
 			Avatar: pi.Avatar,
 		})
@@ -73,7 +71,7 @@ func (c *ContactSvc) GetContacts(ctx context.Context) ([]types.Contact, error) {
 
 	for _, pi := range result {
 		contacts = append(contacts, types.Contact{
-			ID:     pi.PeerID,
+			ID:     pi.ID,
 			Name:   pi.Name,
 			Avatar: pi.Avatar,
 		})
@@ -92,7 +90,7 @@ func (c *ContactSvc) GetContactSessions(ctx context.Context) ([]types.ContactSes
 
 	for _, pi := range result {
 		contacts = append(contacts, types.ContactSession{
-			ID:     pi.PeerID,
+			ID:     pi.ID,
 			Name:   pi.Name,
 			Avatar: pi.Avatar,
 		})
@@ -109,7 +107,7 @@ func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*types.Con
 	}
 
 	return &types.Contact{
-		ID:     contact.PeerID,
+		ID:     contact.ID,
 		Name:   contact.Name,
 		Avatar: contact.Avatar,
 	}, nil

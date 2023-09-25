@@ -12,6 +12,7 @@ import (
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/jianbo-zh/dchat/service/filesvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -36,6 +37,7 @@ type Cuckoo struct {
 	groupSvc   groupsvc.GroupServiceIface
 	depositSvc depositsvc.DepositServiceIface
 	systemSvc  systemsvc.SystemServiceIface
+	fileSvc    filesvc.FileServiceIface
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -79,7 +81,7 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 		return nil, fmt.Errorf("accountsvc.NewAccountService error: %s", err.Error())
 	}
 
-	cuckoo.contactSvc, err = contactsvc.NewContactService(ctx, conf.ContactService, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.contactSvc, err = contactsvc.NewContactService(ctx, conf.ContactService, cuckoo.host, ds, ebus, cuckoo.accountSvc)
 	if err != nil {
 		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
 	}
@@ -98,6 +100,11 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
 	}
+
+	// cuckoo.fileSvc, err = filesvc.NewFileService(ctx, conf.FileService, cuckoo.host, ds, ebus)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
+	// }
 
 	return cuckoo, nil
 }
