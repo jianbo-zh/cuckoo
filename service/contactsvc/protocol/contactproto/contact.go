@@ -87,10 +87,10 @@ func (c *ContactProto) handler(stream network.Stream) {
 	// 更新本地
 	ctx := context.Background()
 	if err := c.data.UpdateContact(ctx, &pb.Contact{
-		Id:            msg.Id,
-		Name:          msg.Name,
-		Avatar:        msg.Avatar,
-		DepositPeerId: msg.DepositPeerId,
+		Id:             msg.Id,
+		Name:           msg.Name,
+		Avatar:         msg.Avatar,
+		DepositAddress: msg.DepositAddress,
 	}); err != nil {
 		log.Errorf("data update contact error: %v", err)
 		stream.Reset()
@@ -107,10 +107,10 @@ func (c *ContactProto) handler(stream network.Stream) {
 
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&pb.Contact{
-		Id:            []byte(account.ID),
-		Name:          account.Name,
-		Avatar:        account.Avatar,
-		DepositPeerId: []byte(account.DepositPeerID),
+		Id:             []byte(account.ID),
+		Name:           account.Name,
+		Avatar:         account.Avatar,
+		DepositAddress: []byte(account.DepositAddress),
 	}); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
 		stream.Reset()
@@ -119,6 +119,8 @@ func (c *ContactProto) handler(stream network.Stream) {
 }
 
 func (c *ContactProto) goSync(contactID peer.ID, accountPeer types.AccountPeer, isBootSync bool) {
+
+	log.Debugln("sync contact: ", contactID.String(), accountPeer, isBootSync)
 
 	ctx := context.Background()
 	stream, err := c.host.NewStream(ctx, contactID, ID)
@@ -132,20 +134,23 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer types.AccountPeer, 
 	wt := pbio.NewDelimitedWriter(stream)
 
 	// 发送数据给对方
-	if err = wt.WriteMsg(&pb.Peer{
-		Id:            []byte(accountPeer.ID),
-		Name:          accountPeer.Name,
-		Avatar:        accountPeer.Avatar,
-		DepositPeerId: []byte(accountPeer.DepositPeerID),
-	}); err != nil {
+	sendmsg := pb.Peer{
+		Id:             []byte(accountPeer.ID),
+		Name:           accountPeer.Name,
+		Avatar:         accountPeer.Avatar,
+		DepositAddress: []byte(accountPeer.DepositAddress),
+	}
+	if err = wt.WriteMsg(&sendmsg); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
 		stream.Reset()
 		return
 	}
 
+	log.Debugln("sync contact send peer: ", sendmsg.String())
+
 	// 读取对方数据
-	var msg pb.Peer
-	if err = rd.ReadMsg(&msg); err != nil {
+	var recvmsg pb.Peer
+	if err = rd.ReadMsg(&recvmsg); err != nil {
 		log.Errorf("pbio read msg error: %w", err)
 		stream.Reset()
 		return
@@ -153,15 +158,17 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer types.AccountPeer, 
 
 	// 更新本地数据
 	if err = c.data.UpdateContact(ctx, &pb.Contact{
-		Id:            msg.Id,
-		Name:          msg.Name,
-		Avatar:        msg.Avatar,
-		DepositPeerId: msg.DepositPeerId,
+		Id:             recvmsg.Id,
+		Name:           recvmsg.Name,
+		Avatar:         recvmsg.Avatar,
+		DepositAddress: recvmsg.DepositAddress,
 	}); err != nil {
 		log.Errorf("data update contact error: %v", err)
 		stream.Reset()
 		return
 	}
+
+	log.Debugln("sync contact recv peer: ", recvmsg.String())
 
 	if isBootSync {
 		// 启动时同步，还要触发同步消息事件
@@ -192,17 +199,17 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 					continue
 
 				} else if len(contactIDs) > 0 {
-					account, err := c.accountGetter.GetAccount(context.Background())
+					account, err := c.accountGetter.GetAccount(ctx)
 					if err != nil {
 						log.Errorf("get account error: %w", err)
 						continue
 					}
 					for _, contactID := range contactIDs {
 						go c.goSync(contactID, types.AccountPeer{
-							ID:            account.ID,
-							Name:          account.Name,
-							Avatar:        account.Avatar,
-							DepositPeerID: account.DepositPeerID,
+							ID:             account.ID,
+							Name:           account.Name,
+							Avatar:         account.Avatar,
+							DepositAddress: account.DepositAddress,
 						}, true)
 					}
 				}
@@ -293,10 +300,10 @@ func (c *ContactProto) AgreeAddContact(ctx context.Context, peer0 *types.Peer) e
 	}
 
 	go c.goSync(peer0.ID, types.AccountPeer{
-		ID:            account.ID,
-		Name:          account.Name,
-		Avatar:        account.Avatar,
-		DepositPeerID: account.DepositPeerID,
+		ID:             account.ID,
+		Name:           account.Name,
+		Avatar:         account.Avatar,
+		DepositAddress: account.DepositAddress,
 	}, false)
 
 	return nil
@@ -309,9 +316,10 @@ func (c *ContactProto) GetContact(ctx context.Context, peerID peer.ID) (*types.C
 	}
 
 	return &types.Contact{
-		ID:     peer.ID(contact.Id),
-		Name:   contact.Name,
-		Avatar: contact.Avatar,
+		ID:             peer.ID(contact.Id),
+		Name:           contact.Name,
+		Avatar:         contact.Avatar,
+		DepositAddress: peer.ID(contact.DepositAddress),
 	}, nil
 }
 

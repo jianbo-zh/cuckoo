@@ -8,11 +8,11 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -84,6 +84,11 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 		}
 	}()
 
+	accountSvc, err := c.getAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
 	contactSvc, err := c.getContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
@@ -99,15 +104,22 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 		return nil, fmt.Errorf("svc get contact error: %w", err)
 	}
 
+	onlineStateMap, err := accountSvc.GetOnlineState(ctx, []peer.ID{peerID})
+	if err != nil {
+		return nil, fmt.Errorf("get online state error: %w", err)
+	}
+
 	reply = &proto.GetContactReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
 		Contact: &proto.Contact{
-			Id:     contact.ID.String(),
-			Name:   contact.Name,
-			Avatar: contact.Avatar,
+			Id:             contact.ID.String(),
+			Name:           contact.Name,
+			Avatar:         contact.Avatar,
+			DepositAddress: contact.DepositAddress.String(),
+			IsOnline:       onlineStateMap[contact.ID],
 		},
 	}
 	return reply, nil
@@ -156,10 +168,11 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
-				Id:       contact.ID.String(),
-				Name:     contact.Name,
-				Avatar:   contact.Avatar,
-				IsOnline: onlineStateMap[contact.ID],
+				Id:             contact.ID.String(),
+				Name:           contact.Name,
+				Avatar:         contact.Avatar,
+				DepositAddress: contact.DepositAddress.String(),
+				IsOnline:       onlineStateMap[contact.ID],
 			})
 		}
 	}
@@ -226,10 +239,11 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
-				Id:       contact.ID.String(),
-				Name:     contact.Name,
-				Avatar:   contact.Avatar,
-				IsOnline: onlineStateMap[contact.ID],
+				Id:             contact.ID.String(),
+				Name:           contact.Name,
+				Avatar:         contact.Avatar,
+				DepositAddress: contact.DepositAddress.String(),
+				IsOnline:       onlineStateMap[contact.ID],
 			})
 		}
 	}
@@ -555,7 +569,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 	var sendErr error
 	msgID, err := contactSvc.SendMessage(ctx, peerID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
 	if err != nil {
-		if msgID != "" && errors.Is(err, network.ErrNoConn) && account.AutoSendDeposit && contact.DepositPeerID.Validate() == nil {
+		if msgID != "" && errors.As(err, &myerror.StreamErr{}) && account.AutoDepositMessage && contact.DepositAddress.Validate() == nil {
 			// 尝试寄存消息
 			depositSvc, err := c.getDepositSvc()
 			if err != nil {
@@ -567,7 +581,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 					sendErr = fmt.Errorf("svc get msg data error: %w", err)
 
 				} else {
-					err = depositSvc.PushContactMessage(contact.DepositPeerID, peerID, msgID, msgData)
+					err = depositSvc.PushContactMessage(contact.DepositAddress, peerID, msgID, msgData)
 					if err != nil {
 						sendErr = fmt.Errorf("deposit contact msg error: %w", err)
 					}

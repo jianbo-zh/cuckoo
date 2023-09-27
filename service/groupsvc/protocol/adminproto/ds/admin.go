@@ -262,14 +262,14 @@ func (a *AdminDs) GetAutoJoinGroup(ctx context.Context, groupID string) (bool, e
 	return string(value) == "true", nil
 }
 
-// GetDepositPeerID 获取群组的寄存节点
-func (a *AdminDs) GetDepositPeerID(ctx context.Context, groupID string) (peer.ID, error) {
+// GetDepositAddress 获取群组的寄存节点
+func (a *AdminDs) GetDepositAddress(ctx context.Context, groupID string) (peer.ID, error) {
 
 	if err := a.checkInitCache(ctx, groupID); err != nil {
 		return peer.ID(""), fmt.Errorf("check init cache error: %w", err)
 	}
 
-	value, err := a.Get(ctx, adminDsKey.DepositPeerIDKey(groupID))
+	value, err := a.Get(ctx, adminDsKey.DepositAddressKey(groupID))
 	if err != nil {
 		return peer.ID(""), fmt.Errorf("ds get notice error: %w", err)
 	}
@@ -577,7 +577,7 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 		}
 	}
 	if len(depositPeerID) > 0 {
-		if err = a.Put(ctx, adminDsKey.DepositPeerIDKey(groupID), depositPeerID); err != nil {
+		if err = a.Put(ctx, adminDsKey.DepositAddressKey(groupID), depositPeerID); err != nil {
 			return fmt.Errorf("ds put deposit peer id key error: %w", err)
 		}
 	}
@@ -788,7 +788,7 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 			depositPeerID = pblog.Payload
 		}
 
-		if err = a.Put(ctx, adminDsKey.DepositPeerIDKey(groupID), depositPeerID); err != nil {
+		if err = a.Put(ctx, adminDsKey.DepositAddressKey(groupID), depositPeerID); err != nil {
 			return fmt.Errorf("ds save group deposit peer id error: %w", err)
 		}
 

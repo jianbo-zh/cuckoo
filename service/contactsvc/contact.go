@@ -100,17 +100,7 @@ func (c *ContactSvc) GetContactSessions(ctx context.Context) ([]types.ContactSes
 }
 
 func (c *ContactSvc) GetContact(ctx context.Context, peerID peer.ID) (*types.Contact, error) {
-
-	contact, err := c.contactProto.GetContact(ctx, peerID)
-	if err != nil {
-		return nil, fmt.Errorf("c.contactProto.GetContact error: %w", err)
-	}
-
-	return &types.Contact{
-		ID:     contact.ID,
-		Name:   contact.Name,
-		Avatar: contact.Avatar,
-	}, nil
+	return c.contactProto.GetContact(ctx, peerID)
 }
 
 func (c *ContactSvc) SetContactName(ctx context.Context, peerID peer.ID, name string) error {

@@ -10,9 +10,9 @@ message Account {
 	bool autoJoinGroup = 5;
 
   // 自动发送寄存消息
-  bool autoSendDeposit = 6;
-  // 设置消息寄存地址
-  bytes depositPeerId = 7;
+  bool autoDepositMessage = 6;
+  // 设置消息寄存地址(peerID)
+  bytes depositAddress = 7;
   // 启动寄存服务
   bool enableDepositService = 8;
 }

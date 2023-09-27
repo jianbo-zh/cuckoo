@@ -15,7 +15,7 @@ type AccountServiceIface interface {
 	SetAccountAutoAddContact(ctx context.Context, autoAddContact bool) error
 	SetAccountAutoJoinGroup(ctx context.Context, autoJoinGroup bool) error
 
-	SetAccountAutoSendDeposit(ctx context.Context, autoSendDeposit bool) error
+	SetAutoDepositMessage(ctx context.Context, autoDepositMessage bool) error
 	SetAccountDepositAddress(ctx context.Context, depositPeerID peer.ID) error
 	SetAccountEnableDepositService(ctx context.Context, enableDepositService bool) error
 

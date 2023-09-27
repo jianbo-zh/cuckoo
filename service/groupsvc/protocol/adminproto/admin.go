@@ -678,16 +678,16 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group
 		return nil, fmt.Errorf("data get avatar error: %w", err)
 	}
 
-	depositPeerID, err := a.data.GetDepositPeerID(ctx, groupID)
+	depositPeerID, err := a.data.GetDepositAddress(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get deposit peer error: %w", err)
 	}
 
 	return &types.Group{
-		ID:            groupID,
-		Name:          name,
-		Avatar:        avatar,
-		DepositPeerID: depositPeerID,
+		ID:             groupID,
+		Name:           name,
+		Avatar:         avatar,
+		DepositAddress: depositPeerID,
 	}, nil
 }
 
@@ -712,7 +712,7 @@ func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types
 		return nil, fmt.Errorf("data get auto join group error: %w", err)
 	}
 
-	depositPeerID, err := a.data.GetDepositPeerID(ctx, groupID)
+	depositPeerID, err := a.data.GetDepositAddress(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get deposit peer error: %w", err)
 	}
@@ -723,13 +723,13 @@ func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types
 	}
 
 	return &types.GroupDetail{
-		ID:            groupID,
-		Name:          name,
-		Avatar:        avatar,
-		Notice:        notice,
-		AutoJoinGroup: autoJoinGroup,
-		DepositPeerID: depositPeerID,
-		CreateTime:    createTime,
+		ID:             groupID,
+		Name:           name,
+		Avatar:         avatar,
+		Notice:         notice,
+		AutoJoinGroup:  autoJoinGroup,
+		DepositAddress: depositPeerID,
+		CreateTime:     createTime,
 	}, nil
 }
 
@@ -846,7 +846,7 @@ func (a *AdminProto) SetGroupAutoJoin(ctx context.Context, groupID string, isAut
 	return nil
 }
 
-func (a *AdminProto) SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error {
+func (a *AdminProto) SetGroupDepositAddress(ctx context.Context, groupID string, depositPeerID peer.ID) error {
 
 	hostID := a.host.ID()
 

@@ -2,14 +2,15 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
 
-	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
+	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ proto.AccountSvcServer = (*AccountSvc)(nil)
@@ -37,6 +38,20 @@ func (a *AccountSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	}
 
 	return accountSvc, nil
+}
+
+func (a *AccountSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
+	cuckoo, err := a.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("get cuckoo error: %s", err.Error())
+	}
+
+	depositSvc, err := cuckoo.GetDepositSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo get deposit svc error: %s", err.Error())
+	}
+
+	return depositSvc, nil
 }
 
 func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (reply *proto.CreateAccountReply, err error) {
@@ -105,17 +120,25 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 
 	var protoAccount proto.Account
 	account, err := accountSvc.GetAccount(ctx)
-	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
-		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
 
-	} else if account != nil {
-		protoAccount = proto.Account{
-			PeerId:         account.ID.String(),
-			Name:           account.Name,
-			Avatar:         account.Avatar,
-			AutoAddContact: account.AutoAddContact,
-			AutoJoinGroup:  account.AutoJoinGroup,
-		}
+	depositServiceAddress := ""
+	if account.EnableDepositService {
+		depositServiceAddress = account.ID.String()
+	}
+
+	protoAccount = proto.Account{
+		PeerId:                account.ID.String(),
+		Name:                  account.Name,
+		Avatar:                account.Avatar,
+		AutoAddContact:        account.AutoAddContact,
+		AutoJoinGroup:         account.AutoJoinGroup,
+		AutoDepositMessage:    account.AutoDepositMessage,
+		DepositAddress:        account.DepositAddress.String(),
+		EnableDepositService:  account.EnableDepositService,
+		DepositServiceAddress: depositServiceAddress,
 	}
 
 	reply = &proto.GetAccountReply{
@@ -147,9 +170,16 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountAvatar(ctx, request.GetAvatar())
+	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("accountSvc.SetAvatar error: %w", err)
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if request.GetAvatar() != account.Avatar {
+		err = accountSvc.SetAccountAvatar(ctx, request.GetAvatar())
+		if err != nil {
+			return nil, fmt.Errorf("accountSvc.SetAvatar error: %w", err)
+		}
 	}
 
 	reply = &proto.SetAccountAvatarReply{
@@ -180,9 +210,16 @@ func (a *AccountSvc) SetAccountName(ctx context.Context, request *proto.SetAccou
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountName(ctx, request.GetName())
+	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("accountSvc.SetName error: %w", err)
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if strings.TrimSpace(request.GetName()) != account.Name {
+		err = accountSvc.SetAccountName(ctx, strings.TrimSpace(request.GetName()))
+		if err != nil {
+			return nil, fmt.Errorf("svc set name error: %w", err)
+		}
 	}
 
 	reply = &proto.SetAccountNameReply{
@@ -213,9 +250,16 @@ func (a *AccountSvc) SetAutoAddContact(ctx context.Context, request *proto.SetAu
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountAutoAddContact(ctx, request.GetIsAuto())
+	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("accountSvc.SetAutoAddContact error: %w", err)
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if request.GetIsAuto() != account.AutoAddContact {
+		err = accountSvc.SetAccountAutoAddContact(ctx, request.GetIsAuto())
+		if err != nil {
+			return nil, fmt.Errorf("svc set auto add contact error: %w", err)
+		}
 	}
 
 	reply = &proto.SetAutoAddContactReply{
@@ -246,9 +290,16 @@ func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAut
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	err = accountSvc.SetAccountAutoJoinGroup(ctx, request.GetIsAuto())
+	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("accountSvc.SetAutoJoinGroup error: %w", err)
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if request.GetIsAuto() != account.AutoJoinGroup {
+		err = accountSvc.SetAccountAutoJoinGroup(ctx, request.GetIsAuto())
+		if err != nil {
+			return nil, fmt.Errorf("accountSvc.SetAutoJoinGroup error: %w", err)
+		}
 	}
 
 	reply = &proto.SetAutoJoinGroupReply{
@@ -257,6 +308,144 @@ func (a *AccountSvc) SetAutoJoinGroup(ctx context.Context, request *proto.SetAut
 			Message: "ok",
 		},
 		IsAuto: request.GetIsAuto(),
+	}
+	return reply, nil
+}
+
+func (a *AccountSvc) SetAutoDepositMessage(ctx context.Context, request *proto.SetAutoDepositMessageRequest) (reply *proto.SetAutoDepositMessageReply, err error) {
+
+	log.Infoln("SetAutoDepositMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAutoDepositMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAutoDepositMessage error: ", err.Error())
+		} else {
+			log.Infoln("SetAutoDepositMessage reply: ", reply.String())
+		}
+	}()
+
+	accountSvc, err := a.getAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
+	}
+
+	account, err := accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if request.GetIsAuto() != account.AutoDepositMessage {
+		err = accountSvc.SetAutoDepositMessage(ctx, request.GetIsAuto())
+		if err != nil {
+			return nil, fmt.Errorf("svc set auto send deposit error: %w", err)
+		}
+	}
+
+	reply = &proto.SetAutoDepositMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		IsAuto: request.GetIsAuto(),
+	}
+	return reply, nil
+}
+
+func (a *AccountSvc) SetAccountDepositAddress(ctx context.Context, request *proto.SetAccountDepositAddressRequest) (reply *proto.SetAccountDepositAddressReply, err error) {
+
+	log.Infoln("SetAccountDepositAddress request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAccountDepositAddress panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAccountDepositAddress error: ", err.Error())
+		} else {
+			log.Infoln("SetAccountDepositAddress reply: ", reply.String())
+		}
+	}()
+
+	accountSvc, err := a.getAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
+	}
+
+	account, err := accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	var peerID peer.ID
+	if strings.TrimSpace(request.DepositAddress) != "" {
+		peerID, err = peer.Decode(strings.TrimSpace(request.DepositAddress))
+		if err != nil || peerID.Validate() != nil {
+			return nil, fmt.Errorf("peer decode error")
+		}
+	}
+
+	if peerID != account.DepositAddress {
+		err = accountSvc.SetAccountDepositAddress(ctx, peerID)
+		if err != nil {
+			return nil, fmt.Errorf("svc set deposit address error: %w", err)
+		}
+	}
+
+	reply = &proto.SetAccountDepositAddressReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		DepositAddress: peerID.String(),
+	}
+	return reply, nil
+}
+
+func (a *AccountSvc) SetAccountEnableDepositService(ctx context.Context, request *proto.SetAccountEnableDepositServiceRequest) (reply *proto.SetAccountEnableDepositServiceReply, err error) {
+
+	log.Infoln("SetAccountEnableDepositService request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetAccountEnableDepositService panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetAccountEnableDepositService error: ", err.Error())
+		} else {
+			log.Infoln("SetAccountEnableDepositService reply: ", reply.String())
+		}
+	}()
+
+	accountSvc, err := a.getAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
+	}
+
+	account, err := accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get account error: %w", err)
+	}
+
+	if request.GetEnable() != account.EnableDepositService {
+
+		err = accountSvc.SetAccountEnableDepositService(ctx, request.GetEnable())
+		if err != nil {
+			return nil, fmt.Errorf("svc enable deposit svc error: %w", err)
+		}
+
+		depositSvc, err := a.getDepositSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get deposit svc error: %w", err)
+		}
+
+		if err = depositSvc.MaintainDepositService(); err != nil {
+			return nil, fmt.Errorf("svc maintain deposit service error: %w", err)
+		}
+	}
+
+	reply = &proto.SetAccountEnableDepositServiceReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Enable: request.GetEnable(),
 	}
 	return reply, nil
 }

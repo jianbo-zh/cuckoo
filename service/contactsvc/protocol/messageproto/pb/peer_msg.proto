@@ -22,3 +22,7 @@ message Message {
 
   bytes signature = 10;
 }
+
+message MessageAck { 
+  string id = 1;
+}

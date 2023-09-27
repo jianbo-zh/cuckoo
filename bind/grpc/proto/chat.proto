@@ -22,6 +22,12 @@ service AccountSvc {
   rpc SetAutoAddContact(SetAutoAddContactRequest) returns (SetAutoAddContactReply) {}
   // 设置入群是否审核
   rpc SetAutoJoinGroup(SetAutoJoinGroupRequest) returns (SetAutoJoinGroupReply) {}
+  // 设置他人不在线时，能给对方发送寄存信息
+  rpc SetAutoDepositMessage(SetAutoDepositMessageRequest) returns (SetAutoDepositMessageReply) {}
+  // 设置我不在线时，消息寄存地址
+  rpc SetAccountDepositAddress(SetAccountDepositAddressRequest) returns (SetAccountDepositAddressReply) {}
+  // 启动寄存服务
+  rpc SetAccountEnableDepositService(SetAccountEnableDepositServiceRequest) returns (SetAccountEnableDepositServiceReply) {}
 }
 
 // 联系人服务
@@ -69,7 +75,7 @@ service GroupSvc {
   // 设置入群是否审核
   rpc SetGroupAutoJoin(SetGroupAutoJoinRequest) returns (SetGroupAutoJoinReply) {}
   // 设置入群消息寄存地址
-  rpc SetGroupDepositPeerId(SetGroupDepositPeerIdRequest) returns (SetGroupDepositPeerIdReply) {}
+  rpc SetGroupDepositAddress(SetGroupDepositAddressRequest) returns (SetGroupDepositAddressReply) {}
   // 退出此群
   rpc ExitGroup(ExitGroupRequest) returns (ExitGroupReply) {}
   // 退出并删除此群
@@ -168,10 +174,33 @@ message SetAutoAddContactReply {
 message SetAutoJoinGroupRequest {
   bool isAuto = 1;
 }
-
 message SetAutoJoinGroupReply {
   Result result = 1;
   bool isAuto = 2;
+}
+
+message SetAutoDepositMessageRequest {
+  bool isAuto = 1;
+}
+message SetAutoDepositMessageReply {
+  Result result = 1;
+  bool isAuto = 2;
+}
+
+message SetAccountDepositAddressRequest {
+  string depositAddress = 1;
+}
+message SetAccountDepositAddressReply {
+  Result result = 1;
+  string depositAddress = 2;
+}
+
+message SetAccountEnableDepositServiceRequest {
+  bool enable = 1;
+}
+message SetAccountEnableDepositServiceReply {
+  Result result = 1;
+  bool enable = 2;
 }
 
 // -------------------- 分隔符 --------------------
@@ -390,13 +419,13 @@ message SetGroupAutoJoinReply {
   bool isAuto = 2;
 }
 
-message SetGroupDepositPeerIdRequest {
+message SetGroupDepositAddressRequest {
   string groupId = 1;
-  string depositPeerId = 2;
+  string depositAddress = 2;
 }
-message SetGroupDepositPeerIdReply {
+message SetGroupDepositAddressReply {
   Result result = 1;
-  string depositPeerId = 2;
+  string depositAddress = 2;
 }
 
 
@@ -502,11 +531,13 @@ message Account {
   // 入群是否需要审核
   bool autoJoinGroup = 5;
   // 发送离线消息
-  bool autoSendDeposit = 6;
+  bool autoDepositMessage = 6;
   // 离线消息寄存地址
-  string depositPeerID = 7;
+  string depositAddress = 7;
   // 启动寄存服务
   bool enableDepositService = 8;
+  // 寄存服务地址
+  string depositServiceAddress = 9;
 }
 
 // Peer（陌生人）
@@ -527,8 +558,10 @@ message Contact {
   string name = 2;
   // 头像SHA1
   string avatar = 3;
+  // 消息寄存地址
+  string depositAddress = 4;
   // 是否在线
-  bool isOnline = 4;
+  bool isOnline = 5;
 }
 
 // 联系人消息
@@ -560,7 +593,7 @@ message Group {
   // Avatar
   string avatar = 3;
   // 寄存PeerID
-  string depositPeerId = 4;
+  string depositAddress = 4;
 }
 
 // 群会话
@@ -590,7 +623,7 @@ message GroupDetail {
   // 是否需要审核入群
   bool autoJoinGroup = 5;
   // 寄存PeerID
-  string depositPeerId = 6;
+  string depositAddress = 6;
   // 创建时间
   int64 createTime = 7;
   // 更新时间

@@ -12,16 +12,16 @@ type Account struct {
 	Avatar               string
 	AutoAddContact       bool
 	AutoJoinGroup        bool
-	AutoSendDeposit      bool
-	DepositPeerID        peer.ID
+	AutoDepositMessage   bool
+	DepositAddress       peer.ID
 	EnableDepositService bool
 }
 
 type AccountPeer struct {
-	ID            peer.ID
-	Name          string
-	Avatar        string
-	DepositPeerID peer.ID
+	ID             peer.ID
+	Name           string
+	Avatar         string
+	DepositAddress peer.ID
 }
 
 type PeerState struct {

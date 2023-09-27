@@ -1,6 +1,7 @@
 package deposit
 
 import (
+	"context"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
@@ -12,8 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-msgio/pbio"
 )
-
-//go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/offline_msg.proto=./pb pb/offline_msg.proto
 
 var log = logging.Logger("deposit")
 
@@ -37,7 +36,7 @@ type DepositServiceProto struct {
 	datastore ds.DepositMessageIface
 }
 
-func NewDepositServiceProto(h host.Host, ids ipfsds.Batching) (*DepositServiceProto, error) {
+func NewDepositServiceProto(ctx context.Context, h host.Host, ids ipfsds.Batching) (*DepositServiceProto, error) {
 	gsvc := &DepositServiceProto{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),
@@ -52,8 +51,15 @@ func NewDepositServiceProto(h host.Host, ids ipfsds.Batching) (*DepositServicePr
 	return gsvc, nil
 }
 
+func (d *DepositServiceProto) Close() {
+	d.host.RemoveStreamHandler(CONTACT_SAVE_ID)
+	d.host.RemoveStreamHandler(CONTACT_GET_ID)
+	d.host.RemoveStreamHandler(GROUP_SAVE_ID)
+	d.host.RemoveStreamHandler(GROUP_GET_ID)
+}
+
 func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
-	log.Debugf("handle deposit message start")
+	log.Debugln("save contact message start")
 
 	err := stream.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
@@ -61,30 +67,35 @@ func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
 		log.Errorf("set read deadline error: %v", err)
 		return
 	}
-
-	log.Debugf("handle deposit message start")
+	defer stream.Close()
 
 	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
-	defer rb.Close()
+	wt := pbio.NewDelimitedWriter(stream)
 
-	var dmsg pb.ContactMessage
-	if err = rb.ReadMsg(&dmsg); err != nil {
+	var msg pb.ContactMessage
+	if err = rb.ReadMsg(&msg); err != nil {
 		stream.Reset()
 		log.Errorf("read deposit peer message error: %v", err)
 		return
 	}
 
-	if err = d.datastore.SaveContactMessage(&dmsg); err != nil {
+	if err = d.datastore.SaveContactMessage(&msg); err != nil {
 		stream.Reset()
 		log.Errorf("save deposit message error: %v", err)
 		return
 	}
 
-	log.Debugf("save deposit message success")
+	if err = wt.WriteMsg(&pb.MessageAck{MsgId: msg.MsgId}); err != nil {
+		stream.Reset()
+		log.Errorf("pbio write ack msg error: %w", err)
+		return
+	}
+
+	log.Debugln("save contact message success")
 }
 
 func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
-	log.Debugf("handle deposit message start")
+	log.Debugf("save group message start")
 
 	err := stream.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
@@ -92,29 +103,36 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 		log.Errorf("set read deadline error: %v", err)
 		return
 	}
-
-	log.Debugf("handle deposit message start")
+	defer stream.Close()
 
 	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
-	defer rb.Close()
+	wt := pbio.NewDelimitedWriter(stream)
 
-	var dmsg pb.GroupMessage
-	if err = rb.ReadMsg(&dmsg); err != nil {
+	var msg pb.GroupMessage
+	if err = rb.ReadMsg(&msg); err != nil {
 		stream.Reset()
 		log.Errorf("read deposit peer message error: %v", err)
 		return
 	}
 
-	if err = d.datastore.SaveGroupMessage(&dmsg); err != nil {
+	if err = d.datastore.SaveGroupMessage(&msg); err != nil {
 		stream.Reset()
 		log.Errorf("save deposit message error: %v", err)
 		return
 	}
 
-	log.Debugf("save deposit message success")
+	if err = wt.WriteMsg(&pb.MessageAck{MsgId: msg.MsgId}); err != nil {
+		stream.Reset()
+		log.Errorf("pbio write ack msg error: %w", err)
+		return
+	}
+
+	log.Debugf("save group message success")
 }
 
 func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
+
+	log.Debugln("get contact message start")
 
 	defer stream.Close()
 
@@ -151,9 +169,13 @@ func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 				return
 			}
 
+			log.Debugln("send msg: ", msg.String())
+
 			startID = msg.Id
 		}
 	}
+
+	log.Debugln("get contact message success")
 }
 
 func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {

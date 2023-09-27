@@ -7,10 +7,10 @@ import (
 )
 
 type Contact struct {
-	ID            peer.ID
-	Name          string
-	Avatar        string
-	DepositPeerID peer.ID
+	ID             peer.ID
+	Name           string
+	Avatar         string
+	DepositAddress peer.ID
 }
 
 type ContactSession struct {

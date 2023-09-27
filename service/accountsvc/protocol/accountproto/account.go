@@ -129,7 +129,7 @@ func (a *AccountProto) goCheckOnline(ctx context.Context, wg *sync.WaitGroup, pe
 		IsOnline: false,
 	}
 
-	stream, err := a.host.NewStream(ctx, peerID, ONLINE_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ONLINE_ID)
 	if err != nil {
 		onlineCh <- peerState
 		log.Debugln("host new stream error: %v", err)
@@ -176,19 +176,26 @@ func (a *AccountProto) onlineHandler(stream network.Stream) {
 	}
 }
 
-func (a *AccountProto) CreateAccount(ctx context.Context, account *pb.Account) (*pb.Account, error) {
+func (a *AccountProto) InitAccount(ctx context.Context) error {
 	_, err := a.data.GetAccount(ctx)
-	if err == nil {
-		return nil, fmt.Errorf("account is exists")
-
-	} else if !errors.Is(err, ipfsds.ErrNotFound) {
-		return nil, fmt.Errorf("get account error: %w", err)
-	}
-
-	account.Id = []byte(a.host.ID())
-	err = a.data.CreateAccount(ctx, account)
 	if err != nil {
-		return nil, fmt.Errorf("ds create account error: %w", err)
+		if errors.Is(err, ipfsds.ErrNotFound) {
+			if err = a.data.CreateAccount(ctx, &pb.Account{
+				Id: []byte(a.host.ID()),
+			}); err != nil {
+				return fmt.Errorf("data create account error: %w", err)
+			}
+		} else {
+			return fmt.Errorf("data get account error: %w", err)
+		}
+	}
+	return nil
+}
+
+func (a *AccountProto) CreateAccount(ctx context.Context, account *pb.Account) (*pb.Account, error) {
+	account.Id = []byte(a.host.ID())
+	if err := a.data.UpdateAccount(ctx, account); err != nil {
+		return nil, fmt.Errorf("ds update account error: %w", err)
 	}
 
 	return account, nil
@@ -272,14 +279,14 @@ func (a *AccountProto) UpdateAccountAutoJoinGroup(ctx context.Context, autoJoinG
 	return nil
 }
 
-func (a *AccountProto) UpdateAccountAutoSendDeposit(ctx context.Context, autoSendDeposit bool) error {
+func (a *AccountProto) UpdateAccountAutoDepositMessage(ctx context.Context, autoDepositMessage bool) error {
 	account, err := a.data.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("data get account error: %w", err)
 	}
 
-	if account.AutoSendDeposit != autoSendDeposit {
-		account.AutoSendDeposit = autoSendDeposit
+	if account.AutoDepositMessage != autoDepositMessage {
+		account.AutoDepositMessage = autoDepositMessage
 		if err = a.data.UpdateAccount(ctx, account); err != nil {
 			return fmt.Errorf("data update account error: %w", err)
 		}
@@ -294,8 +301,8 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 		return fmt.Errorf("data get account error: %w", err)
 	}
 
-	if peer.ID(account.DepositPeerId) != depositPeerID {
-		account.DepositPeerId = []byte(depositPeerID)
+	if peer.ID(account.DepositAddress) != depositPeerID {
+		account.DepositAddress = []byte(depositPeerID)
 		if err = a.data.UpdateAccount(ctx, account); err != nil {
 			return fmt.Errorf("data update account error: %w", err)
 		}

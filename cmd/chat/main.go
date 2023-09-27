@@ -6,6 +6,10 @@ import (
 )
 
 func main() {
-	logging.SetLogLevel("*", "debug")
+	logging.SetupLogging(logging.Config{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatPlaintextOutput,
+		Stdout: true,
+	})
 	command.Execute()
 }

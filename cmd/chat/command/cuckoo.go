@@ -3,8 +3,8 @@ package command
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/jianbo-zh/dchat/cmd/chat/httpapi"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/urfave/cli/v2"
 )
@@ -18,15 +18,33 @@ func init() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "storage",
-				Value: "./.dchat3",
+				Value: "./.datadir/storage",
 				Usage: "set storage dir",
+			},
+			&cli.StringFlag{
+				Name:  "avatar",
+				Value: "./.datadir/avatar",
+				Usage: "set avatar dir",
+			},
+			&cli.StringFlag{
+				Name:    "host",
+				Value:   "",
+				Usage:   "set listen host",
+				Aliases: []string{"H"},
+			},
+			&cli.UintFlag{
+				Name:    "port",
+				Value:   9000,
+				Usage:   "set listen port",
+				Aliases: []string{"P"},
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
 
 			var storageDir = cCtx.String("storage")
+			var avatarDir = cCtx.String("avatar")
 
-			conf, err := cuckoo.LoadConfig(storageDir)
+			conf, err := cuckoo.LoadConfig(storageDir, avatarDir)
 			if err != nil {
 				return fmt.Errorf("cuckoo.LoadConfig error: %w", err)
 			}
@@ -36,24 +54,18 @@ func init() {
 				panic(err)
 			}
 
-			localhost, _ := cuckooInstance.GetHost()
+			// 启动HTTP服务
+			go func() {
+				httpapi.Daemon(cuckooInstance, httpapi.Config{
+					Host: cCtx.String("host"),
+					Port: cCtx.Uint("port"),
+				})
+			}()
 
+			localhost, _ := cuckooInstance.GetHost()
 			fmt.Println("PeerID: ", localhost.ID())
 
-			ticker := time.NewTicker(5 * time.Second)
-			defer ticker.Stop()
-
-			for t := range ticker.C {
-				fmt.Println()
-				fmt.Printf("PeerInfo: %s", t)
-				for _, addr := range localhost.Addrs() {
-					fmt.Println(addr)
-				}
-			}
-
 			select {}
-
-			return nil
 		},
 	}
 }

@@ -5,15 +5,16 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jianbo-zh/dchat/cmd/chat/httpapi/cuckobj"
 	"github.com/jianbo-zh/dchat/cmd/chat/httpapi/handler"
+	"github.com/jianbo-zh/dchat/cuckoo"
 )
 
-func Daemon(config Config) {
+func Daemon(cuckoo *cuckoo.Cuckoo, config Config) {
+	cuckobj.SetCuckoo(cuckoo)
+
 	app := fiber.New()
 	app.Get("/api/test/*", handler.TestHandler())
-	app.Get("/api/sendmsg/:peerid/:msgtxt", handler.SendMsgHandler())
-	app.Get("/api/getmsgs/:peerid", handler.GetMsgsHandler())
-	app.Get("/api/addpeer/:peerid/:nickname", handler.GetAddPeerHandler())
-	app.Get("/api/getpeers", handler.GetGetPeersHandler())
+	app.Get("/api/account/create", handler.CreateAccountHandler())
 	log.Fatal(app.Listen(fmt.Sprintf("%s:%d", config.Host, config.Port)))
 }

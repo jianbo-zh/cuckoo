@@ -12,7 +12,7 @@ func Execute() {
 	app := cli.App{
 		Name: "dchat",
 		Commands: []*cli.Command{
-			&DaemonCmd,
+			// &DaemonCmd,
 			&InitCmd,
 			&CuckooCmd,
 		},

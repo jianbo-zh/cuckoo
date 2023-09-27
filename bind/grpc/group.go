@@ -232,10 +232,10 @@ func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest)
 	}
 
 	group := &proto.Group{
-		Id:            grp.ID,
-		Avatar:        grp.Avatar,
-		Name:          grp.Name,
-		DepositPeerId: grp.DepositPeerID.String(),
+		Id:             grp.ID,
+		Avatar:         grp.Avatar,
+		Name:           grp.Name,
+		DepositAddress: grp.DepositAddress.String(),
 	}
 
 	reply = &proto.GetGroupReply{
@@ -272,14 +272,14 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 	}
 
 	group := &proto.GroupDetail{
-		GroupId:       grp.ID,
-		Avatar:        grp.Avatar,
-		Name:          grp.Name,
-		Notice:        grp.Notice,
-		AutoJoinGroup: grp.AutoJoinGroup,
-		DepositPeerId: grp.DepositPeerID.String(),
-		CreateTime:    grp.CreateTime,
-		UpdateTime:    grp.UpdateTime,
+		GroupId:        grp.ID,
+		Avatar:         grp.Avatar,
+		Name:           grp.Name,
+		Notice:         grp.Notice,
+		AutoJoinGroup:  grp.AutoJoinGroup,
+		DepositAddress: grp.DepositAddress.String(),
+		CreateTime:     grp.CreateTime,
+		UpdateTime:     grp.UpdateTime,
 	}
 
 	reply = &proto.GetGroupDetailReply{
@@ -466,16 +466,16 @@ func (g *GroupSvc) SetGroupAutoJoin(ctx context.Context, request *proto.SetGroup
 	return reply, nil
 }
 
-func (g *GroupSvc) SetGroupDepositPeerId(ctx context.Context, request *proto.SetGroupDepositPeerIdRequest) (reply *proto.SetGroupDepositPeerIdReply, err error) {
+func (g *GroupSvc) SetGroupDepositAddress(ctx context.Context, request *proto.SetGroupDepositAddressRequest) (reply *proto.SetGroupDepositAddressReply, err error) {
 
-	log.Infoln("SetGroupDepositPeerId request: ", request.String())
+	log.Infoln("SetGroupDepositAddress request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("SetGroupDepositPeerId panic: ", e)
+			log.Panicln("SetGroupDepositAddress panic: ", e)
 		} else if err != nil {
-			log.Errorln("SetGroupDepositPeerId error: ", err.Error())
+			log.Errorln("SetGroupDepositAddress error: ", err.Error())
 		} else {
-			log.Infoln("SetGroupDepositPeerId reply: ", reply.String())
+			log.Infoln("SetGroupDepositAddress reply: ", reply.String())
 		}
 	}()
 
@@ -485,24 +485,24 @@ func (g *GroupSvc) SetGroupDepositPeerId(ctx context.Context, request *proto.Set
 	}
 
 	var depositPeerID peer.ID
-	if strings.TrimSpace(request.DepositPeerId) != "" {
-		depositPeerID, err = peer.Decode(strings.TrimSpace(request.DepositPeerId))
+	if strings.TrimSpace(request.DepositAddress) != "" {
+		depositPeerID, err = peer.Decode(strings.TrimSpace(request.DepositAddress))
 		if err != nil || depositPeerID.Validate() != nil {
 			return nil, fmt.Errorf("peer decode error")
 		}
 	}
 
-	err = groupSvc.SetGroupDepositPeerID(ctx, request.GroupId, depositPeerID)
+	err = groupSvc.SetGroupDepositAddress(ctx, request.GroupId, depositPeerID)
 	if err != nil {
 		return nil, fmt.Errorf("svc set group deposit peer id error: %w", err)
 	}
 
-	reply = &proto.SetGroupDepositPeerIdReply{
+	reply = &proto.SetGroupDepositAddressReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		DepositPeerId: depositPeerID.String(),
+		DepositAddress: depositPeerID.String(),
 	}
 	return reply, nil
 }
@@ -640,12 +640,12 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 	groupID := request.GroupId
 	msgID, err := groupSvc.SendGroupMessage(ctx, groupID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
 	if err != nil {
-		if msgID != "" && errors.Is(err, myerror.ErrSendGroupMessageFailed) && account.AutoSendDeposit {
+		if msgID != "" && errors.Is(err, myerror.ErrSendGroupMessageFailed) && account.AutoDepositMessage {
 			group, err2 := groupSvc.GetGroup(ctx, groupID)
 			if err2 != nil {
 				sendErr = fmt.Errorf("svc get group error: %w", err2)
 
-			} else if group.DepositPeerID.Validate() != nil { // 没有设置寄存节点
+			} else if group.DepositAddress.Validate() != nil { // 没有设置寄存节点
 				sendErr = err
 
 			} else {
@@ -654,7 +654,7 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 					sendErr = fmt.Errorf("svc get group msg data error: %w", err)
 
 				} else {
-					err = depositSvc.PushGroupMessage(group.DepositPeerID, groupID, msgID, msgData)
+					err = depositSvc.PushGroupMessage(group.DepositAddress, groupID, msgID, msgData)
 					if err != nil {
 						sendErr = fmt.Errorf("deposit group msg error: %w", err)
 					}

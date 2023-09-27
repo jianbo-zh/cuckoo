@@ -7,6 +7,7 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/ds"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/pb"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -23,7 +24,7 @@ type DepositClientProto struct {
 	datastore ds.DepositMessageIface
 }
 
-func NewDepositClientProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*DepositClientProto, error) {
+func NewDepositClientProto(ctx context.Context, h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*DepositClientProto, error) {
 	gcli := &DepositClientProto{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),
@@ -37,13 +38,13 @@ func NewDepositClientProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus)
 		return nil, err
 
 	} else {
-		go gcli.handleSubscribe(context.Background(), sub)
+		go gcli.subscribeHandler(ctx, sub)
 	}
 
 	return gcli, nil
 }
 
-func (d *DepositClientProto) handleSubscribe(ctx context.Context, sub event.Subscription) {
+func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Subscription) {
 
 	defer func() {
 		log.Error("peer client subscrib exit")
@@ -81,7 +82,7 @@ func (d *DepositClientProto) handleSubscribe(ctx context.Context, sub event.Subs
 
 func (d *DepositClientProto) handlePushContactEvent(ev gevent.PushDepositContactMessageEvt) {
 	log.Debugf("handle push contact msg event: %s", ev.MsgID)
-	err := d.PushContactMessage(ev.DepositPeerID, ev.ToPeerID, ev.MsgID, ev.MsgData)
+	err := d.PushContactMessage(ev.DepositAddress, ev.ToPeerID, ev.MsgID, ev.MsgData)
 	if err != nil {
 		log.Errorf("push contact message error: %w", err)
 
@@ -98,7 +99,7 @@ func (d *DepositClientProto) handlePushContactEvent(ev gevent.PushDepositContact
 
 func (d *DepositClientProto) handlePushGroupEvent(ev gevent.PushDepositGroupMessageEvt) {
 	log.Debugf("handle push group msg event: %s", ev.MsgID)
-	err := d.PushGroupMessage(ev.DepositPeerID, ev.ToGroupID, ev.MsgID, ev.MsgData)
+	err := d.PushGroupMessage(ev.DepositAddress, ev.ToGroupID, ev.MsgID, ev.MsgData)
 	if err != nil {
 		log.Errorf("push group message error: %w", err)
 
@@ -124,7 +125,7 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt gevent.PullDeposi
 		return
 	}
 
-	depositPeerID := evt.DepositPeerID
+	depositPeerID := evt.DepositAddress
 	stream, err := d.host.NewStream(network.WithUseTransient(context.Background(), ""), depositPeerID, CONTACT_GET_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
@@ -170,7 +171,7 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt gevent.PullDepositG
 	log.Debugf("receive pull offline event")
 
 	groupID := evt.GroupID
-	depositPeerID := evt.DepositPeerID
+	depositPeerID := evt.DepositAddress
 
 	lastDepositID, err := d.datastore.GetGroupLastID(evt.GroupID)
 	if err != nil {
@@ -226,24 +227,34 @@ func (d *DepositClientProto) PushContactMessage(depositPeerID peer.ID, toPeerID 
 
 	log.Debugf("get deposit service peer: %s", depositPeerID.String())
 
-	stream, err := d.host.NewStream(network.WithUseTransient(context.Background(), ""), depositPeerID, CONTACT_SAVE_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(context.Background(), time.Second), ""), depositPeerID, CONTACT_SAVE_ID)
 	if err != nil {
-		return fmt.Errorf("new stream to deposit peer error: %v", err)
+		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
+	defer stream.Close()
 
-	pw := pbio.NewDelimitedWriter(stream)
-	defer pw.Close()
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	wt := pbio.NewDelimitedWriter(stream)
 
-	dmsg := pb.ContactMessage{
+	if err = wt.WriteMsg(&pb.ContactMessage{
 		FromPeerId:  []byte(hostID),
 		ToPeerId:    []byte(toPeerID),
 		MsgId:       msgID,
 		MsgData:     msgData,
 		DepositTime: time.Now().Unix(),
+	}); err != nil {
+		stream.Reset()
+		return myerror.WrapStreamError("write msg error", err)
 	}
 
-	if err = pw.WriteMsg(&dmsg); err != nil {
-		return fmt.Errorf("write msg error: %v", err)
+	var msgAck pb.MessageAck
+	if err = rd.ReadMsg(&msgAck); err != nil {
+		stream.Reset()
+		return myerror.WrapStreamError("read ack msg error", err)
+
+	} else if msgAck.MsgId != msgID {
+		stream.Reset()
+		return myerror.WrapStreamError("msg ack id error", nil)
 	}
 
 	return nil
@@ -254,13 +265,14 @@ func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID str
 
 	log.Debugf("get deposit service peer: %s", depositPeerID.String())
 
-	stream, err := d.host.NewStream(network.WithUseTransient(context.Background(), ""), depositPeerID, GROUP_SAVE_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(context.Background(), time.Second), ""), depositPeerID, GROUP_SAVE_ID)
 	if err != nil {
-		return fmt.Errorf("new stream to deposit peer error: %v", err)
+		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
+	defer stream.Close()
 
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	pw := pbio.NewDelimitedWriter(stream)
-	defer pw.Close()
 
 	dmsg := pb.GroupMessage{
 		FromPeerId:  []byte(hostID),
@@ -271,7 +283,18 @@ func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID str
 	}
 
 	if err = pw.WriteMsg(&dmsg); err != nil {
-		return fmt.Errorf("write msg error: %v", err)
+		stream.Reset()
+		return myerror.WrapStreamError("write msg error", err)
+	}
+
+	var msgAck pb.MessageAck
+	if err = rd.ReadMsg(&msgAck); err != nil {
+		stream.Reset()
+		return myerror.WrapStreamError("pbio read ack msg error: %w", err)
+
+	} else if msgAck.MsgId != msgID {
+		stream.Reset()
+		return myerror.WrapStreamError("msg ack id error", nil)
 	}
 
 	return nil

@@ -19,11 +19,11 @@ type GroupServiceIface interface {
 	GetGroup(ctx context.Context, groupID string) (*types.Group, error)             // 获取群组
 	GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) // 获取群组
 
-	SetGroupName(ctx context.Context, groupID string, name string) error                    // 设置群名称
-	SetGroupAvatar(ctx context.Context, groupID string, avatar string) error                // 设置群头像
-	SetGroupNotice(ctx context.Context, groupID string, notice string) error                // 设置群公告
-	SetGroupAutoJoin(ctx context.Context, groupID string, isAutoJoin bool) error            // 设置入群免确认
-	SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error // 设置群消息寄存地址
+	SetGroupName(ctx context.Context, groupID string, name string) error                     // 设置群名称
+	SetGroupAvatar(ctx context.Context, groupID string, avatar string) error                 // 设置群头像
+	SetGroupNotice(ctx context.Context, groupID string, notice string) error                 // 设置群公告
+	SetGroupAutoJoin(ctx context.Context, groupID string, isAutoJoin bool) error             // 设置入群免确认
+	SetGroupDepositAddress(ctx context.Context, groupID string, depositPeerID peer.ID) error // 设置群消息寄存地址
 
 	ApplyJoinGroup(ctx context.Context, groupID string) error                                                                 // 申请进群
 	ReviewJoinGroup(ctx context.Context, groupID string, member *types.Peer, isAgree bool) error                              // 进群审核

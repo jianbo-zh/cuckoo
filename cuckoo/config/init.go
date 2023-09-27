@@ -54,9 +54,7 @@ func DefaultConfig() (*Config, error) {
 		AccountService: AccountServiceConfig{},
 		ContactService: ContactServiceConfig{},
 		GroupService:   GroupServiceConfig{},
-		DepositService: DepositServiceConfig{
-			EnableService: false,
-		},
+		DepositService: DepositServiceConfig{},
 	}
 
 	return conf, nil

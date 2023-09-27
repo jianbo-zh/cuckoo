@@ -272,8 +272,8 @@ func (g *GroupService) SetGroupAutoJoin(ctx context.Context, groupID string, isA
 }
 
 // 申请进群
-func (g *GroupService) SetGroupDepositPeerID(ctx context.Context, groupID string, depositPeerID peer.ID) error {
-	return g.adminProto.SetGroupDepositPeerID(ctx, groupID, depositPeerID)
+func (g *GroupService) SetGroupDepositAddress(ctx context.Context, groupID string, depositPeerID peer.ID) error {
+	return g.adminProto.SetGroupDepositAddress(ctx, groupID, depositPeerID)
 }
 
 // 申请进群

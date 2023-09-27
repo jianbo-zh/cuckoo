@@ -12,21 +12,21 @@ const (
 )
 
 type Group struct {
-	ID            string
-	Name          string
-	Avatar        string
-	DepositPeerID peer.ID
+	ID             string
+	Name           string
+	Avatar         string
+	DepositAddress peer.ID
 }
 
 type GroupDetail struct {
-	ID            string
-	Name          string
-	Avatar        string
-	Notice        string
-	AutoJoinGroup bool
-	DepositPeerID peer.ID
-	CreateTime    int64
-	UpdateTime    int64
+	ID             string
+	Name           string
+	Avatar         string
+	Notice         string
+	AutoJoinGroup  bool
+	DepositAddress peer.ID
+	CreateTime     int64
+	UpdateTime     int64
 }
 
 type GroupSession struct {

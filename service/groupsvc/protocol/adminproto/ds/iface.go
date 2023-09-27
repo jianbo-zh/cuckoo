@@ -24,7 +24,7 @@ type AdminIface interface {
 	GetAvatar(ctx context.Context, groupID string) (string, error)
 	GetNotice(ctx context.Context, groupID string) (string, error)
 	GetAutoJoinGroup(ctx context.Context, groupID string) (bool, error)
-	GetDepositPeerID(ctx context.Context, groupID string) (peer.ID, error)
+	GetDepositAddress(ctx context.Context, groupID string) (peer.ID, error)
 	GetCreator(ctx context.Context, groupID string) (peer.ID, error)
 	GetCreateTime(ctx context.Context, groupID string) (int64, error)
 	GetSessionIDs(ctx context.Context) ([]string, error)

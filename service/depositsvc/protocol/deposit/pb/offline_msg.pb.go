@@ -296,6 +296,53 @@ func (x *GroupMessage) GetDepositTime() int64 {
 	return 0
 }
 
+type MessageAck struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	MsgId string `protobuf:"bytes,1,opt,name=msgId,proto3" json:"msgId,omitempty"`
+}
+
+func (x *MessageAck) Reset() {
+	*x = MessageAck{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pb_offline_msg_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *MessageAck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MessageAck) ProtoMessage() {}
+
+func (x *MessageAck) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_offline_msg_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MessageAck.ProtoReflect.Descriptor instead.
+func (*MessageAck) Descriptor() ([]byte, []int) {
+	return file_pb_offline_msg_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MessageAck) GetMsgId() string {
+	if x != nil {
+		return x.MsgId
+	}
+	return ""
+}
+
 var File_pb_offline_msg_proto protoreflect.FileDescriptor
 
 var file_pb_offline_msg_proto_rawDesc = []byte{
@@ -330,8 +377,10 @@ var file_pb_offline_msg_proto_rawDesc = []byte{
 	0x18, 0x0a, 0x07, 0x6d, 0x73, 0x67, 0x44, 0x61, 0x74, 0x61, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c,
 	0x52, 0x07, 0x6d, 0x73, 0x67, 0x44, 0x61, 0x74, 0x61, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65, 0x70,
 	0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b,
-	0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x22, 0x22, 0x0a, 0x0a, 0x4d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x41, 0x63, 0x6b, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x73, 0x67,
+	0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x73, 0x67, 0x49, 0x64, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -346,12 +395,13 @@ func file_pb_offline_msg_proto_rawDescGZIP() []byte {
 	return file_pb_offline_msg_proto_rawDescData
 }
 
-var file_pb_offline_msg_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_pb_offline_msg_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_pb_offline_msg_proto_goTypes = []interface{}{
 	(*ContactMessagePull)(nil), // 0: depositmsg.pb.ContactMessagePull
 	(*ContactMessage)(nil),     // 1: depositmsg.pb.ContactMessage
 	(*GroupMessagePull)(nil),   // 2: depositmsg.pb.GroupMessagePull
 	(*GroupMessage)(nil),       // 3: depositmsg.pb.GroupMessage
+	(*MessageAck)(nil),         // 4: depositmsg.pb.MessageAck
 }
 var file_pb_offline_msg_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -415,6 +465,18 @@ func file_pb_offline_msg_proto_init() {
 				return nil
 			}
 		}
+		file_pb_offline_msg_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MessageAck); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -422,7 +484,7 @@ func file_pb_offline_msg_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pb_offline_msg_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/ds"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
@@ -113,7 +114,7 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 				for _, curr := range evt.Current {
 					if isPublicAddr(curr.Address) {
 						p.emitters.evtPullOfflineMessage.Emit(gevent.PullDepositContactMessageEvt{
-							DepositPeerID:  peer.ID(""),
+							DepositAddress: peer.ID(""),
 							MessageHandler: p.SaveMessage,
 						})
 						break
@@ -150,10 +151,16 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 	stream.SetReadDeadline(time.Time{})
 
 	remotePeerID := stream.Conn().RemotePeer()
-
 	err := p.data.SaveMessage(context.Background(), remotePeerID, &msg)
 	if err != nil {
 		log.Errorf("store message error %v", err)
+		stream.Reset()
+		return
+	}
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err = wt.WriteMsg(&pb.MessageAck{Id: msg.Id}); err != nil {
+		log.Errorf("ack msg error: %w", err)
 		stream.Reset()
 		return
 	}
@@ -219,7 +226,7 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgT
 
 	stream, err := p.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ID)
 	if err != nil {
-		return msg.Id, fmt.Errorf("host new stream error: %w", err)
+		return msg.Id, myerror.WrapStreamError("host new stream error", err)
 	}
 
 	pw := pbio.NewDelimitedWriter(stream)
@@ -227,7 +234,16 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgT
 
 	if err = pw.WriteMsg(&msg); err != nil {
 		stream.Reset()
-		return msg.Id, fmt.Errorf("pbio write msg error: %w", err)
+		return msg.Id, myerror.WrapStreamError("pbio write msg error", err)
+	}
+
+	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	var msgAck pb.MessageAck
+	if err = rd.ReadMsg(&msgAck); err != nil {
+		return msg.Id, myerror.WrapStreamError("pbio read ack msg error", err)
+
+	} else if msgAck.Id != msg.Id {
+		return msg.Id, myerror.WrapStreamError("msg ack id error", nil)
 	}
 
 	return msg.Id, nil

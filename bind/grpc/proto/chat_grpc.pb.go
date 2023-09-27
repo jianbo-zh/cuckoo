@@ -19,12 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccountSvc_CreateAccount_FullMethodName     = "/chat.AccountSvc/CreateAccount"
-	AccountSvc_GetAccount_FullMethodName        = "/chat.AccountSvc/GetAccount"
-	AccountSvc_SetAccountName_FullMethodName    = "/chat.AccountSvc/SetAccountName"
-	AccountSvc_SetAccountAvatar_FullMethodName  = "/chat.AccountSvc/SetAccountAvatar"
-	AccountSvc_SetAutoAddContact_FullMethodName = "/chat.AccountSvc/SetAutoAddContact"
-	AccountSvc_SetAutoJoinGroup_FullMethodName  = "/chat.AccountSvc/SetAutoJoinGroup"
+	AccountSvc_CreateAccount_FullMethodName                  = "/chat.AccountSvc/CreateAccount"
+	AccountSvc_GetAccount_FullMethodName                     = "/chat.AccountSvc/GetAccount"
+	AccountSvc_SetAccountName_FullMethodName                 = "/chat.AccountSvc/SetAccountName"
+	AccountSvc_SetAccountAvatar_FullMethodName               = "/chat.AccountSvc/SetAccountAvatar"
+	AccountSvc_SetAutoAddContact_FullMethodName              = "/chat.AccountSvc/SetAutoAddContact"
+	AccountSvc_SetAutoJoinGroup_FullMethodName               = "/chat.AccountSvc/SetAutoJoinGroup"
+	AccountSvc_SetAutoDepositMessage_FullMethodName          = "/chat.AccountSvc/SetAutoDepositMessage"
+	AccountSvc_SetAccountDepositAddress_FullMethodName       = "/chat.AccountSvc/SetAccountDepositAddress"
+	AccountSvc_SetAccountEnableDepositService_FullMethodName = "/chat.AccountSvc/SetAccountEnableDepositService"
 )
 
 // AccountSvcClient is the client API for AccountSvc service.
@@ -43,6 +46,12 @@ type AccountSvcClient interface {
 	SetAutoAddContact(ctx context.Context, in *SetAutoAddContactRequest, opts ...grpc.CallOption) (*SetAutoAddContactReply, error)
 	// 设置入群是否审核
 	SetAutoJoinGroup(ctx context.Context, in *SetAutoJoinGroupRequest, opts ...grpc.CallOption) (*SetAutoJoinGroupReply, error)
+	// 设置他人不在线时，能给对方发送寄存信息
+	SetAutoDepositMessage(ctx context.Context, in *SetAutoDepositMessageRequest, opts ...grpc.CallOption) (*SetAutoDepositMessageReply, error)
+	// 设置我不在线时，消息寄存地址
+	SetAccountDepositAddress(ctx context.Context, in *SetAccountDepositAddressRequest, opts ...grpc.CallOption) (*SetAccountDepositAddressReply, error)
+	// 启动寄存服务
+	SetAccountEnableDepositService(ctx context.Context, in *SetAccountEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetAccountEnableDepositServiceReply, error)
 }
 
 type accountSvcClient struct {
@@ -107,6 +116,33 @@ func (c *accountSvcClient) SetAutoJoinGroup(ctx context.Context, in *SetAutoJoin
 	return out, nil
 }
 
+func (c *accountSvcClient) SetAutoDepositMessage(ctx context.Context, in *SetAutoDepositMessageRequest, opts ...grpc.CallOption) (*SetAutoDepositMessageReply, error) {
+	out := new(SetAutoDepositMessageReply)
+	err := c.cc.Invoke(ctx, AccountSvc_SetAutoDepositMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountSvcClient) SetAccountDepositAddress(ctx context.Context, in *SetAccountDepositAddressRequest, opts ...grpc.CallOption) (*SetAccountDepositAddressReply, error) {
+	out := new(SetAccountDepositAddressReply)
+	err := c.cc.Invoke(ctx, AccountSvc_SetAccountDepositAddress_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountSvcClient) SetAccountEnableDepositService(ctx context.Context, in *SetAccountEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetAccountEnableDepositServiceReply, error) {
+	out := new(SetAccountEnableDepositServiceReply)
+	err := c.cc.Invoke(ctx, AccountSvc_SetAccountEnableDepositService_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountSvcServer is the server API for AccountSvc service.
 // All implementations must embed UnimplementedAccountSvcServer
 // for forward compatibility
@@ -123,6 +159,12 @@ type AccountSvcServer interface {
 	SetAutoAddContact(context.Context, *SetAutoAddContactRequest) (*SetAutoAddContactReply, error)
 	// 设置入群是否审核
 	SetAutoJoinGroup(context.Context, *SetAutoJoinGroupRequest) (*SetAutoJoinGroupReply, error)
+	// 设置他人不在线时，能给对方发送寄存信息
+	SetAutoDepositMessage(context.Context, *SetAutoDepositMessageRequest) (*SetAutoDepositMessageReply, error)
+	// 设置我不在线时，消息寄存地址
+	SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error)
+	// 启动寄存服务
+	SetAccountEnableDepositService(context.Context, *SetAccountEnableDepositServiceRequest) (*SetAccountEnableDepositServiceReply, error)
 	mustEmbedUnimplementedAccountSvcServer()
 }
 
@@ -147,6 +189,15 @@ func (UnimplementedAccountSvcServer) SetAutoAddContact(context.Context, *SetAuto
 }
 func (UnimplementedAccountSvcServer) SetAutoJoinGroup(context.Context, *SetAutoJoinGroupRequest) (*SetAutoJoinGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAutoJoinGroup not implemented")
+}
+func (UnimplementedAccountSvcServer) SetAutoDepositMessage(context.Context, *SetAutoDepositMessageRequest) (*SetAutoDepositMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetAutoDepositMessage not implemented")
+}
+func (UnimplementedAccountSvcServer) SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetAccountDepositAddress not implemented")
+}
+func (UnimplementedAccountSvcServer) SetAccountEnableDepositService(context.Context, *SetAccountEnableDepositServiceRequest) (*SetAccountEnableDepositServiceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetAccountEnableDepositService not implemented")
 }
 func (UnimplementedAccountSvcServer) mustEmbedUnimplementedAccountSvcServer() {}
 
@@ -269,6 +320,60 @@ func _AccountSvc_SetAutoJoinGroup_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountSvc_SetAutoDepositMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAutoDepositMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountSvcServer).SetAutoDepositMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountSvc_SetAutoDepositMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountSvcServer).SetAutoDepositMessage(ctx, req.(*SetAutoDepositMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountSvc_SetAccountDepositAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAccountDepositAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountSvcServer).SetAccountDepositAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountSvc_SetAccountDepositAddress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountSvcServer).SetAccountDepositAddress(ctx, req.(*SetAccountDepositAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountSvc_SetAccountEnableDepositService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAccountEnableDepositServiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountSvcServer).SetAccountEnableDepositService(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountSvc_SetAccountEnableDepositService_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountSvcServer).SetAccountEnableDepositService(ctx, req.(*SetAccountEnableDepositServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountSvc_ServiceDesc is the grpc.ServiceDesc for AccountSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -299,6 +404,18 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetAutoJoinGroup",
 			Handler:    _AccountSvc_SetAutoJoinGroup_Handler,
+		},
+		{
+			MethodName: "SetAutoDepositMessage",
+			Handler:    _AccountSvc_SetAutoDepositMessage_Handler,
+		},
+		{
+			MethodName: "SetAccountDepositAddress",
+			Handler:    _AccountSvc_SetAccountDepositAddress_Handler,
+		},
+		{
+			MethodName: "SetAccountEnableDepositService",
+			Handler:    _AccountSvc_SetAccountEnableDepositService_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -816,24 +933,24 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	GroupSvc_CreateGroup_FullMethodName           = "/chat.GroupSvc/CreateGroup"
-	GroupSvc_GetGroup_FullMethodName              = "/chat.GroupSvc/GetGroup"
-	GroupSvc_GetGroupDetail_FullMethodName        = "/chat.GroupSvc/GetGroupDetail"
-	GroupSvc_GetGroups_FullMethodName             = "/chat.GroupSvc/GetGroups"
-	GroupSvc_SetGroupName_FullMethodName          = "/chat.GroupSvc/SetGroupName"
-	GroupSvc_SetGroupAvatar_FullMethodName        = "/chat.GroupSvc/SetGroupAvatar"
-	GroupSvc_SetGroupNotice_FullMethodName        = "/chat.GroupSvc/SetGroupNotice"
-	GroupSvc_SetGroupAutoJoin_FullMethodName      = "/chat.GroupSvc/SetGroupAutoJoin"
-	GroupSvc_SetGroupDepositPeerId_FullMethodName = "/chat.GroupSvc/SetGroupDepositPeerId"
-	GroupSvc_ExitGroup_FullMethodName             = "/chat.GroupSvc/ExitGroup"
-	GroupSvc_DeleteGroup_FullMethodName           = "/chat.GroupSvc/DeleteGroup"
-	GroupSvc_DisbandGroup_FullMethodName          = "/chat.GroupSvc/DisbandGroup"
-	GroupSvc_GetGroupMembers_FullMethodName       = "/chat.GroupSvc/GetGroupMembers"
-	GroupSvc_RemoveGroupMember_FullMethodName     = "/chat.GroupSvc/RemoveGroupMember"
-	GroupSvc_SendGroupMessage_FullMethodName      = "/chat.GroupSvc/SendGroupMessage"
-	GroupSvc_GetGroupMessage_FullMethodName       = "/chat.GroupSvc/GetGroupMessage"
-	GroupSvc_GetGroupMessages_FullMethodName      = "/chat.GroupSvc/GetGroupMessages"
-	GroupSvc_ClearGroupMessage_FullMethodName     = "/chat.GroupSvc/ClearGroupMessage"
+	GroupSvc_CreateGroup_FullMethodName            = "/chat.GroupSvc/CreateGroup"
+	GroupSvc_GetGroup_FullMethodName               = "/chat.GroupSvc/GetGroup"
+	GroupSvc_GetGroupDetail_FullMethodName         = "/chat.GroupSvc/GetGroupDetail"
+	GroupSvc_GetGroups_FullMethodName              = "/chat.GroupSvc/GetGroups"
+	GroupSvc_SetGroupName_FullMethodName           = "/chat.GroupSvc/SetGroupName"
+	GroupSvc_SetGroupAvatar_FullMethodName         = "/chat.GroupSvc/SetGroupAvatar"
+	GroupSvc_SetGroupNotice_FullMethodName         = "/chat.GroupSvc/SetGroupNotice"
+	GroupSvc_SetGroupAutoJoin_FullMethodName       = "/chat.GroupSvc/SetGroupAutoJoin"
+	GroupSvc_SetGroupDepositAddress_FullMethodName = "/chat.GroupSvc/SetGroupDepositAddress"
+	GroupSvc_ExitGroup_FullMethodName              = "/chat.GroupSvc/ExitGroup"
+	GroupSvc_DeleteGroup_FullMethodName            = "/chat.GroupSvc/DeleteGroup"
+	GroupSvc_DisbandGroup_FullMethodName           = "/chat.GroupSvc/DisbandGroup"
+	GroupSvc_GetGroupMembers_FullMethodName        = "/chat.GroupSvc/GetGroupMembers"
+	GroupSvc_RemoveGroupMember_FullMethodName      = "/chat.GroupSvc/RemoveGroupMember"
+	GroupSvc_SendGroupMessage_FullMethodName       = "/chat.GroupSvc/SendGroupMessage"
+	GroupSvc_GetGroupMessage_FullMethodName        = "/chat.GroupSvc/GetGroupMessage"
+	GroupSvc_GetGroupMessages_FullMethodName       = "/chat.GroupSvc/GetGroupMessages"
+	GroupSvc_ClearGroupMessage_FullMethodName      = "/chat.GroupSvc/ClearGroupMessage"
 )
 
 // GroupSvcClient is the client API for GroupSvc service.
@@ -857,7 +974,7 @@ type GroupSvcClient interface {
 	// 设置入群是否审核
 	SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJoinRequest, opts ...grpc.CallOption) (*SetGroupAutoJoinReply, error)
 	// 设置入群消息寄存地址
-	SetGroupDepositPeerId(ctx context.Context, in *SetGroupDepositPeerIdRequest, opts ...grpc.CallOption) (*SetGroupDepositPeerIdReply, error)
+	SetGroupDepositAddress(ctx context.Context, in *SetGroupDepositAddressRequest, opts ...grpc.CallOption) (*SetGroupDepositAddressReply, error)
 	// 退出此群
 	ExitGroup(ctx context.Context, in *ExitGroupRequest, opts ...grpc.CallOption) (*ExitGroupReply, error)
 	// 退出并删除此群
@@ -958,9 +1075,9 @@ func (c *groupSvcClient) SetGroupAutoJoin(ctx context.Context, in *SetGroupAutoJ
 	return out, nil
 }
 
-func (c *groupSvcClient) SetGroupDepositPeerId(ctx context.Context, in *SetGroupDepositPeerIdRequest, opts ...grpc.CallOption) (*SetGroupDepositPeerIdReply, error) {
-	out := new(SetGroupDepositPeerIdReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SetGroupDepositPeerId_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) SetGroupDepositAddress(ctx context.Context, in *SetGroupDepositAddressRequest, opts ...grpc.CallOption) (*SetGroupDepositAddressReply, error) {
+	out := new(SetGroupDepositAddressReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SetGroupDepositAddress_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1069,7 +1186,7 @@ type GroupSvcServer interface {
 	// 设置入群是否审核
 	SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error)
 	// 设置入群消息寄存地址
-	SetGroupDepositPeerId(context.Context, *SetGroupDepositPeerIdRequest) (*SetGroupDepositPeerIdReply, error)
+	SetGroupDepositAddress(context.Context, *SetGroupDepositAddressRequest) (*SetGroupDepositAddressReply, error)
 	// 退出此群
 	ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error)
 	// 退出并删除此群
@@ -1119,8 +1236,8 @@ func (UnimplementedGroupSvcServer) SetGroupNotice(context.Context, *SetGroupNoti
 func (UnimplementedGroupSvcServer) SetGroupAutoJoin(context.Context, *SetGroupAutoJoinRequest) (*SetGroupAutoJoinReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupAutoJoin not implemented")
 }
-func (UnimplementedGroupSvcServer) SetGroupDepositPeerId(context.Context, *SetGroupDepositPeerIdRequest) (*SetGroupDepositPeerIdReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetGroupDepositPeerId not implemented")
+func (UnimplementedGroupSvcServer) SetGroupDepositAddress(context.Context, *SetGroupDepositAddressRequest) (*SetGroupDepositAddressReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetGroupDepositAddress not implemented")
 }
 func (UnimplementedGroupSvcServer) ExitGroup(context.Context, *ExitGroupRequest) (*ExitGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExitGroup not implemented")
@@ -1306,20 +1423,20 @@ func _GroupSvc_SetGroupAutoJoin_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_SetGroupDepositPeerId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetGroupDepositPeerIdRequest)
+func _GroupSvc_SetGroupDepositAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGroupDepositAddressRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GroupSvcServer).SetGroupDepositPeerId(ctx, in)
+		return srv.(GroupSvcServer).SetGroupDepositAddress(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GroupSvc_SetGroupDepositPeerId_FullMethodName,
+		FullMethod: GroupSvc_SetGroupDepositAddress_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SetGroupDepositPeerId(ctx, req.(*SetGroupDepositPeerIdRequest))
+		return srv.(GroupSvcServer).SetGroupDepositAddress(ctx, req.(*SetGroupDepositAddressRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1526,8 +1643,8 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_SetGroupAutoJoin_Handler,
 		},
 		{
-			MethodName: "SetGroupDepositPeerId",
-			Handler:    _GroupSvc_SetGroupDepositPeerId_Handler,
+			MethodName: "SetGroupDepositAddress",
+			Handler:    _GroupSvc_SetGroupDepositAddress_Handler,
 		},
 		{
 			MethodName: "ExitGroup",

@@ -29,3 +29,7 @@ message GroupMessage {
     bytes  msgData = 5;
     int64  depositTime = 6;
 }
+
+message MessageAck {
+    string msgId = 1;
+}

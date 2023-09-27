@@ -13,17 +13,17 @@ func DecodeAccount(account *pb.Account) types.Account {
 		Avatar:               account.Avatar,
 		AutoAddContact:       account.AutoAddContact,
 		AutoJoinGroup:        account.AutoJoinGroup,
-		AutoSendDeposit:      account.AutoSendDeposit,
-		DepositPeerID:        peer.ID(account.DepositPeerId),
+		AutoDepositMessage:   account.AutoDepositMessage,
+		DepositAddress:       peer.ID(account.DepositAddress),
 		EnableDepositService: account.EnableDepositService,
 	}
 }
 
 func DecodeAccountPeer(account *pb.Account) types.AccountPeer {
 	return types.AccountPeer{
-		ID:            peer.ID(account.Id),
-		Name:          account.Name,
-		Avatar:        account.Avatar,
-		DepositPeerID: peer.ID(account.DepositPeerId),
+		ID:             peer.ID(account.Id),
+		Name:           account.Name,
+		Avatar:         account.Avatar,
+		DepositAddress: peer.ID(account.DepositAddress),
 	}
 }

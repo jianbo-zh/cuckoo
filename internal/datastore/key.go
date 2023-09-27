@@ -127,7 +127,7 @@ func (g *GroupDsKey) AutoJoinGroupKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/autojoingroup")
 }
 
-func (g *GroupDsKey) DepositPeerIDKey(groupID string) ipfsds.Key {
+func (g *GroupDsKey) DepositAddressKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/depositpeerid")
 }
 

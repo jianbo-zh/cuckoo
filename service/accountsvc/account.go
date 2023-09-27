@@ -31,27 +31,38 @@ func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lh
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
 
+	// 确保账号ID存在
+	if err = accountsvc.accountProto.InitAccount(ctx); err != nil {
+		return nil, fmt.Errorf("proto init account error: %w", err)
+	}
+
 	return accountsvc, nil
 }
 
 func (a *AccountSvc) CreateAccount(ctx context.Context, account types.Account) (*types.Account, error) {
 
 	pbAccount, err := a.accountProto.CreateAccount(ctx, &pb.Account{
-		Name:           account.Name,
-		Avatar:         account.Avatar,
-		AutoAddContact: account.AutoAddContact,
-		AutoJoinGroup:  account.AutoJoinGroup,
+		Name:                 account.Name,
+		Avatar:               account.Avatar,
+		AutoAddContact:       account.AutoAddContact,
+		AutoJoinGroup:        account.AutoJoinGroup,
+		AutoDepositMessage:   account.AutoDepositMessage,
+		DepositAddress:       []byte(account.DepositAddress),
+		EnableDepositService: account.EnableDepositService,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("proto create account error: %w", err)
 	}
 
 	return &types.Account{
-		ID:             peer.ID(pbAccount.Id),
-		Name:           pbAccount.Name,
-		Avatar:         pbAccount.Avatar,
-		AutoAddContact: pbAccount.AutoAddContact,
-		AutoJoinGroup:  pbAccount.AutoJoinGroup,
+		ID:                   peer.ID(pbAccount.Id),
+		Name:                 pbAccount.Name,
+		Avatar:               pbAccount.Avatar,
+		AutoAddContact:       pbAccount.AutoAddContact,
+		AutoJoinGroup:        pbAccount.AutoJoinGroup,
+		AutoDepositMessage:   pbAccount.AutoDepositMessage,
+		DepositAddress:       peer.ID(pbAccount.DepositAddress),
+		EnableDepositService: pbAccount.EnableDepositService,
 	}, nil
 
 }
@@ -63,11 +74,14 @@ func (a *AccountSvc) GetAccount(ctx context.Context) (*types.Account, error) {
 	}
 
 	return &types.Account{
-		ID:             peer.ID(pbAccount.Id),
-		Name:           pbAccount.Name,
-		Avatar:         pbAccount.Avatar,
-		AutoAddContact: pbAccount.AutoAddContact,
-		AutoJoinGroup:  pbAccount.AutoJoinGroup,
+		ID:                   peer.ID(pbAccount.Id),
+		Name:                 pbAccount.Name,
+		Avatar:               pbAccount.Avatar,
+		AutoAddContact:       pbAccount.AutoAddContact,
+		AutoJoinGroup:        pbAccount.AutoJoinGroup,
+		AutoDepositMessage:   pbAccount.AutoDepositMessage,
+		DepositAddress:       peer.ID(pbAccount.DepositAddress),
+		EnableDepositService: pbAccount.EnableDepositService,
 	}, nil
 }
 
@@ -87,8 +101,8 @@ func (a *AccountSvc) SetAccountAutoJoinGroup(ctx context.Context, autoJoinGroup 
 	return a.accountProto.UpdateAccountAutoJoinGroup(ctx, autoJoinGroup)
 }
 
-func (a *AccountSvc) SetAccountAutoSendDeposit(ctx context.Context, autoSendDeposit bool) error {
-	return a.accountProto.UpdateAccountAutoSendDeposit(ctx, autoSendDeposit)
+func (a *AccountSvc) SetAutoDepositMessage(ctx context.Context, autoDeposit bool) error {
+	return a.accountProto.UpdateAccountAutoDepositMessage(ctx, autoDeposit)
 }
 
 func (a *AccountSvc) SetAccountDepositAddress(ctx context.Context, depositPeerID peer.ID) error {
