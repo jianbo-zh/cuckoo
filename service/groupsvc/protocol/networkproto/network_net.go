@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -13,7 +13,7 @@ import (
 )
 
 // initNetwork 初始化网络
-func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
+func (n *NetworkProto) initNetwork(groups []myevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
 	n.groupPeers = make(GroupPeers)
@@ -56,7 +56,7 @@ func (n *NetworkProto) initNetwork(groups []gevent.Groups) error {
 	return nil
 }
 
-func (n *NetworkProto) addNetwork(groups []gevent.Groups) error {
+func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
 
 	n.groupPeersMutex.Lock()
 	for _, group := range groups {

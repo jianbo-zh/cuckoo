@@ -84,12 +84,12 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 		}
 	}()
 
-	accountSvc, err := c.getAccountSvc()
+	cuckoo, err := c.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("get account svc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
 	}
 
-	contactSvc, err := c.getContactSvc()
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
 	}
@@ -104,10 +104,7 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 		return nil, fmt.Errorf("svc get contact error: %w", err)
 	}
 
-	onlineStateMap, err := accountSvc.GetOnlineState(ctx, []peer.ID{peerID})
-	if err != nil {
-		return nil, fmt.Errorf("get online state error: %w", err)
-	}
+	onlineStateMap := cuckoo.GetPeersOnlineStats([]peer.ID{peerID})
 
 	reply = &proto.GetContactReply{
 		Result: &proto.Result{
@@ -119,7 +116,7 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 			Name:           contact.Name,
 			Avatar:         contact.Avatar,
 			DepositAddress: contact.DepositAddress.String(),
-			IsOnline:       onlineStateMap[contact.ID],
+			OnlineState:    encodeOnlineState(onlineStateMap[contact.ID]),
 		},
 	}
 	return reply, nil
@@ -138,7 +135,12 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 		}
 	}()
 
-	contactSvc, err := c.getContactSvc()
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
 	}
@@ -151,20 +153,12 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 	var contactList []*proto.Contact
 
 	if len(contacts) > 0 {
-		accountSvc, err := c.getAccountSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
-		}
-
 		var peerIDs []peer.ID
 		for _, contact := range contacts {
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
-		if err != nil {
-			return nil, fmt.Errorf("get online state error: %w", err)
-		}
+		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
@@ -172,7 +166,7 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 				Name:           contact.Name,
 				Avatar:         contact.Avatar,
 				DepositAddress: contact.DepositAddress.String(),
-				IsOnline:       onlineStateMap[contact.ID],
+				OnlineState:    encodeOnlineState(onlineStateMap[contact.ID]),
 			})
 		}
 	}
@@ -200,7 +194,12 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 		}
 	}()
 
-	contactSvc, err := c.getContactSvc()
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get contact svc error: %w", err)
 	}
@@ -222,20 +221,13 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 	contactList := make([]*proto.Contact, 0)
 
 	if len(contacts) > 0 {
-		accountSvc, err := c.getAccountSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
-		}
 
 		var peerIDs []peer.ID
 		for _, contact := range contacts {
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
-		if err != nil {
-			return nil, fmt.Errorf("get online state error: %w", err)
-		}
+		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
@@ -243,7 +235,7 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 				Name:           contact.Name,
 				Avatar:         contact.Avatar,
 				DepositAddress: contact.DepositAddress.String(),
-				IsOnline:       onlineStateMap[contact.ID],
+				OnlineState:    encodeOnlineState(onlineStateMap[contact.ID]),
 			})
 		}
 	}

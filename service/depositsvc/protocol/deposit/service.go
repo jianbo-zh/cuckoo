@@ -5,11 +5,11 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/ds"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/pb"
 	logging "github.com/jianbo-zh/go-log"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-msgio/pbio"
 )
@@ -31,12 +31,12 @@ const (
 )
 
 type DepositServiceProto struct {
-	host host.Host
+	host myhost.Host
 
 	datastore ds.DepositMessageIface
 }
 
-func NewDepositServiceProto(ctx context.Context, h host.Host, ids ipfsds.Batching) (*DepositServiceProto, error) {
+func NewDepositServiceProto(ctx context.Context, h myhost.Host, ids ipfsds.Batching) (*DepositServiceProto, error) {
 	gsvc := &DepositServiceProto{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),

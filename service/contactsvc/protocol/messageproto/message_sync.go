@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -63,7 +63,7 @@ func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
 	defer stream.Close()
 
 	// 触发接收流
-	p.emitters.evtReceivePeerStream.Emit(gevent.EvtReceivePeerStream{
+	p.emitters.evtReceivePeerStream.Emit(myevent.EvtReceivePeerStream{
 		PeerID: peerID,
 	})
 

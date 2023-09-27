@@ -7,15 +7,15 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/myerror"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
@@ -36,7 +36,7 @@ const (
 )
 
 type MessageProto struct {
-	host host.Host
+	host myhost.Host
 
 	data ds.MessageIface
 
@@ -47,7 +47,7 @@ type MessageProto struct {
 	}
 }
 
-func NewMessageProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageProto, error) {
+func NewMessageProto(h myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*MessageProto, error) {
 	var err error
 	msgsvc := &MessageProto{
 		host:       h,
@@ -59,11 +59,11 @@ func NewMessageProto(h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*Mes
 	h.SetStreamHandler(SYNC_ID, msgsvc.syncHandler)
 
 	// 接收群消息
-	if msgsvc.emitters.evtReceiveGroupMessage, err = eventBus.Emitter(&gevent.EvtReceiveGroupMessage{}); err != nil {
+	if msgsvc.emitters.evtReceiveGroupMessage, err = eventBus.Emitter(&myevent.EvtReceiveGroupMessage{}); err != nil {
 		return nil, fmt.Errorf("set receive group msg emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
@@ -115,7 +115,7 @@ func (m *MessageProto) messageHandler(s network.Stream) {
 			}
 
 			// 触发接收消息
-			if err = m.emitters.evtReceiveGroupMessage.Emit(gevent.EvtReceiveGroupMessage{
+			if err = m.emitters.evtReceiveGroupMessage.Emit(myevent.EvtReceiveGroupMessage{
 				MsgID:      msg.Id,
 				GroupID:    msg.GroupId,
 				FromPeerID: peer.ID(msg.Member.Id),
@@ -194,7 +194,7 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 			}
 
 			switch evt := e.(type) {
-			case gevent.EvtGroupConnectChange:
+			case myevent.EvtGroupConnectChange:
 				if evt.IsConnected {
 					if _, exists := m.groupConns[evt.GroupID]; !exists {
 						m.groupConns[evt.GroupID] = make(map[peer.ID]struct{})

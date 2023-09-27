@@ -83,7 +83,12 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 	}()
 
 	var sessions []*proto.Session
-	groupSvc, err := s.getGroupSvc()
+	cuckoo, err := s.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getGroupSvc error: %w", err)
 	}
@@ -102,7 +107,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		})
 	}
 
-	contactSvc, err := s.getContactSvc()
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
 	}
@@ -113,20 +118,12 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 	}
 
 	if len(contacts) > 0 {
-		accountSvc, err := s.getAccountSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
-		}
-
 		var peerIDs []peer.ID
 		for _, contact := range contacts {
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
-		if err != nil {
-			return nil, fmt.Errorf("get peer online state error: %w", err)
-		}
+		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
 
 		for i, contact := range contacts {
 			if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
@@ -138,7 +135,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 				SessionId:         contact.ID.String(),
 				Name:              contact.Name,
 				Avatar:            contact.Avatar,
-				IsOnline:          onlineStateMap[contact.ID],
+				OnlineState:       encodeOnlineState(onlineStateMap[contact.ID]),
 				LastMessage:       "",
 				LastMessageTime:   time.Now().Unix(),
 				HaveUnreadMessage: i%2 == 1,

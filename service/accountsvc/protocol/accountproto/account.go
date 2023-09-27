@@ -12,14 +12,14 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/ds"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
@@ -40,7 +40,7 @@ const (
 )
 
 type AccountProto struct {
-	host      host.Host
+	host      myhost.Host
 	data      ds.AccountIface
 	avatarDir string
 
@@ -50,7 +50,7 @@ type AccountProto struct {
 	}
 }
 
-func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, avatarDir string) (*AccountProto, error) {
+func NewAccountProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus, avatarDir string) (*AccountProto, error) {
 	var err error
 	accountProto := AccountProto{
 		host:      lhost,
@@ -62,11 +62,11 @@ func NewAccountProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, a
 	lhost.SetStreamHandler(ONLINE_ID, accountProto.onlineHandler)
 	lhost.SetStreamHandler(AVATAR_ID, accountProto.DownloadPeerAvatarHandler)
 
-	if accountProto.emitter.evtAccountPeerChange, err = eventBus.Emitter(&gevent.EvtAccountPeerChange{}); err != nil {
+	if accountProto.emitter.evtAccountPeerChange, err = eventBus.Emitter(&myevent.EvtAccountPeerChange{}); err != nil {
 		return nil, fmt.Errorf("set account peer change emitter error: %w", err)
 	}
 
-	if accountProto.emitter.evtAccountDepositServiceChange, err = eventBus.Emitter(&gevent.EvtAccountDepositServiceChange{}); err != nil {
+	if accountProto.emitter.evtAccountDepositServiceChange, err = eventBus.Emitter(&myevent.EvtAccountDepositServiceChange{}); err != nil {
 		return nil, fmt.Errorf("set account deposit service change emitter error: %w", err)
 	}
 
@@ -221,7 +221,7 @@ func (a *AccountProto) UpdateAccountName(ctx context.Context, name string) error
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}
@@ -240,7 +240,7 @@ func (a *AccountProto) UpdateAccountAvatar(ctx context.Context, avatar string) e
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}
@@ -307,7 +307,7 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(gevent.EvtAccountPeerChange{
+		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}
@@ -327,7 +327,7 @@ func (a *AccountProto) UpdateAccountEnableDepositService(ctx context.Context, en
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountDepositServiceChange.Emit(gevent.EvtAccountDepositServiceChange{
+		a.emitter.evtAccountDepositServiceChange.Emit(myevent.EvtAccountDepositServiceChange{
 			Enable: enableDepositService,
 		})
 	}

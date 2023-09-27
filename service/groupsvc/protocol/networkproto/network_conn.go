@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto/pb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -85,7 +85,7 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	}()
 
 	// 触发连接改变事件
-	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
+	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
 		GroupID:     groupID,
 		PeerID:      peerID,
 		IsConnected: true,
@@ -207,7 +207,7 @@ func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peer
 	}
 	n.networkMutex.Unlock()
 
-	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
+	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
 		GroupID:     groupID,
 		PeerID:      peerID,
 		IsConnected: false,

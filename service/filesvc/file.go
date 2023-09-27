@@ -6,10 +6,10 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/filesvc/protocol/fileproto"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 )
 
 var _ FileServiceIface = (*FileService)(nil)
@@ -19,7 +19,7 @@ type FileService struct {
 	downloadProto *fileproto.DownloadProto
 }
 
-func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus) (*FileService, error) {
+func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*FileService, error) {
 
 	fileProto, err := fileproto.NewFileProto(ids)
 	if err != nil {

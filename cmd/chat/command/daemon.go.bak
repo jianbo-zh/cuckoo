@@ -10,7 +10,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/jianbo-zh/dchat/cmd/chat/config"
 	"github.com/jianbo-zh/dchat/cmd/chat/httpapi"
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/datastore"
 	"github.com/jianbo-zh/dchat/service"
 	"github.com/libp2p/go-libp2p"
@@ -78,7 +78,7 @@ func init() {
 
 			ebus := eventbus.NewBus()
 
-			bootEmitter, err := ebus.Emitter(&gevent.EvtHostBootComplete{})
+			bootEmitter, err := ebus.Emitter(&myevent.EvtHostBootComplete{})
 			if err != nil {
 				return err
 			}
@@ -214,7 +214,7 @@ func startLocalNode(ctx context.Context, conf config.Config, bootEmitter event.E
 
 		fmt.Println("boot complete")
 
-		bootEmitter.Emit(gevent.EvtHostBootComplete{IsSucc: isAnySucc})
+		bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc})
 	}()
 
 	routingDiscovery := drouting.NewRoutingDiscovery(dualDHT)

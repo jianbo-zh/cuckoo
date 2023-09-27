@@ -6,7 +6,8 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
@@ -15,7 +16,6 @@ import (
 	network "github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
@@ -35,7 +35,7 @@ type GroupService struct {
 	}
 }
 
-func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface) (*GroupService, error) {
 
 	var err error
@@ -61,13 +61,13 @@ func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost 
 	}
 
 	// 触发器
-	groupsvc.emitters.evtGroupsInit, err = ebus.Emitter(&gevent.EvtGroupsInit{})
+	groupsvc.emitters.evtGroupsInit, err = ebus.Emitter(&myevent.EvtGroupsInit{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
 	}
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(gevent.EvtHostBootComplete)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtHostBootComplete)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete error: %v", err)
 
@@ -99,14 +99,14 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 				return
 			}
 			switch evt := e.(type) {
-			case gevent.EvtHostBootComplete:
+			case myevent.EvtHostBootComplete:
 				if evt.IsSucc {
 					groupIDs, err := g.adminProto.GetSessionIDs(ctx)
 					if err != nil {
 						log.Errorf("get group ids error: %v", err)
 						return
 					}
-					var groups []gevent.Groups
+					var groups []myevent.Groups
 					for _, groupID := range groupIDs {
 						connMemberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
 						if err != nil {
@@ -117,14 +117,14 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 							log.Errorf("get accept member ids error: %v", err)
 							return
 						}
-						groups = append(groups, gevent.Groups{
+						groups = append(groups, myevent.Groups{
 							GroupID:     groupID,
 							PeerIDs:     connMemberIDs,
 							AcptPeerIDs: acptMemeberIDs,
 						})
 					}
 
-					err = groupsvc.emitters.evtGroupsInit.Emit(gevent.EvtGroupsInit{
+					err = groupsvc.emitters.evtGroupsInit.Emit(myevent.EvtGroupsInit{
 						Groups: groups,
 					})
 					if err != nil {

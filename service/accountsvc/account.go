@@ -6,11 +6,11 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
@@ -19,7 +19,7 @@ type AccountSvc struct {
 	accountProto *accountproto.AccountProto
 }
 
-func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery) (*AccountSvc, error) {
 
 	var err error

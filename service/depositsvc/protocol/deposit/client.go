@@ -6,12 +6,12 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/myerror"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/ds"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit/pb"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
@@ -19,12 +19,12 @@ import (
 )
 
 type DepositClientProto struct {
-	host host.Host
+	host myhost.Host
 
 	datastore ds.DepositMessageIface
 }
 
-func NewDepositClientProto(ctx context.Context, h host.Host, ids ipfsds.Batching, eventBus event.Bus) (*DepositClientProto, error) {
+func NewDepositClientProto(ctx context.Context, h myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*DepositClientProto, error) {
 	gcli := &DepositClientProto{
 		host:      h,
 		datastore: ds.DepositPeerWrap(ids),
@@ -32,8 +32,8 @@ func NewDepositClientProto(ctx context.Context, h host.Host, ids ipfsds.Batching
 
 	// 订阅push、pull
 	sub, err := eventBus.Subscribe([]any{
-		new(gevent.PushDepositContactMessageEvt), new(gevent.PushDepositGroupMessageEvt),
-		new(gevent.PullDepositContactMessageEvt), new(gevent.PullDepositGroupMessageEvt)}, eventbus.Name("deposit"))
+		new(myevent.EvtPushDepositContactMessage), new(myevent.EvtPushDepositGroupMessage),
+		new(myevent.EvtPullDepositContactMessage), new(myevent.EvtPullDepositGroupMessage)}, eventbus.Name("deposit"))
 	if err != nil {
 		return nil, err
 
@@ -59,16 +59,16 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 				return
 			}
 			switch evt := e.(type) {
-			case gevent.PushDepositContactMessageEvt:
+			case myevent.EvtPushDepositContactMessage:
 				go d.handlePushContactEvent(evt)
 
-			case gevent.PushDepositGroupMessageEvt:
+			case myevent.EvtPushDepositGroupMessage:
 				go d.handlePushGroupEvent(evt)
 
-			case gevent.PullDepositContactMessageEvt:
+			case myevent.EvtPullDepositContactMessage:
 				go d.handlePullContactMessageEvent(evt)
 
-			case gevent.PullDepositGroupMessageEvt:
+			case myevent.EvtPullDepositGroupMessage:
 				go d.handlePullGroupMessageEvent(evt)
 			default:
 				log.Warnf("undefined event type: %T", evt)
@@ -80,7 +80,7 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 	}
 }
 
-func (d *DepositClientProto) handlePushContactEvent(ev gevent.PushDepositContactMessageEvt) {
+func (d *DepositClientProto) handlePushContactEvent(ev myevent.EvtPushDepositContactMessage) {
 	log.Debugf("handle push contact msg event: %s", ev.MsgID)
 	err := d.PushContactMessage(ev.DepositAddress, ev.ToPeerID, ev.MsgID, ev.MsgData)
 	if err != nil {
@@ -97,7 +97,7 @@ func (d *DepositClientProto) handlePushContactEvent(ev gevent.PushDepositContact
 	}
 }
 
-func (d *DepositClientProto) handlePushGroupEvent(ev gevent.PushDepositGroupMessageEvt) {
+func (d *DepositClientProto) handlePushGroupEvent(ev myevent.EvtPushDepositGroupMessage) {
 	log.Debugf("handle push group msg event: %s", ev.MsgID)
 	err := d.PushGroupMessage(ev.DepositAddress, ev.ToGroupID, ev.MsgID, ev.MsgData)
 	if err != nil {
@@ -114,7 +114,7 @@ func (d *DepositClientProto) handlePushGroupEvent(ev gevent.PushDepositGroupMess
 	}
 }
 
-func (d *DepositClientProto) handlePullContactMessageEvent(evt gevent.PullDepositContactMessageEvt) {
+func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDepositContactMessage) {
 	log.Debugf("receive pull offline event")
 
 	hostID := d.host.ID()
@@ -167,7 +167,7 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt gevent.PullDeposi
 	}
 }
 
-func (d *DepositClientProto) handlePullGroupMessageEvent(evt gevent.PullDepositGroupMessageEvt) {
+func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepositGroupMessage) {
 	log.Debugf("receive pull offline event")
 
 	groupID := evt.GroupID

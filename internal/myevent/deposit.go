@@ -1,8 +1,8 @@
-package event
+package myevent
 
 import "github.com/libp2p/go-libp2p/core/peer"
 
-type PushDepositContactMessageEvt struct {
+type EvtPushDepositContactMessage struct {
 	DepositAddress peer.ID
 	ToPeerID       peer.ID
 	MsgID          string
@@ -11,7 +11,7 @@ type PushDepositContactMessageEvt struct {
 	ResultCallback func(toPeerID peer.ID, msgID string, err error)
 }
 
-type PushDepositGroupMessageEvt struct {
+type EvtPushDepositGroupMessage struct {
 	DepositAddress peer.ID
 	ToGroupID      string
 	MsgID          string
@@ -20,12 +20,12 @@ type PushDepositGroupMessageEvt struct {
 	ResultCallback func(toGroupID string, msgID string, err error)
 }
 
-type PullDepositContactMessageEvt struct {
+type EvtPullDepositContactMessage struct {
 	DepositAddress peer.ID
 	MessageHandler func(fromPeerID peer.ID, msgID string, msgData []byte) error
 }
 
-type PullDepositGroupMessageEvt struct {
+type EvtPullDepositGroupMessage struct {
 	DepositAddress peer.ID
 	GroupID        string
 	MessageHandler func(fromGroupID string, msgID string, msgData []byte) error

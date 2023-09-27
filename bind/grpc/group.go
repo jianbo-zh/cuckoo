@@ -520,7 +520,12 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 		}
 	}()
 
-	groupSvc, err := g.getGroupSvc()
+	cuckoo, err := g.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
 	if err != nil {
 		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
 	}
@@ -530,27 +535,20 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 	memberList := make([]*proto.GroupMember, len(members))
 
 	if len(members) > 0 {
-		accountSvc, err := g.getAccountSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
-		}
 
 		var peerIDs []peer.ID
 		for _, member := range members {
 			peerIDs = append(peerIDs, member.ID)
 		}
 
-		onlineStateMap, err := accountSvc.GetOnlineState(ctx, peerIDs)
-		if err != nil {
-			return nil, fmt.Errorf("get online state error: %w", err)
-		}
+		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
 
 		for i, member := range members {
 			memberList[i] = &proto.GroupMember{
-				Id:       member.ID.String(),
-				Name:     member.Name,
-				Avatar:   member.Avatar,
-				IsOnline: onlineStateMap[member.ID],
+				Id:          member.ID.String(),
+				Name:        member.Name,
+				Avatar:      member.Avatar,
+				OnlineState: encodeOnlineState(onlineStateMap[member.ID]),
 			}
 		}
 	}

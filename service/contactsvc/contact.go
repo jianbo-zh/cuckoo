@@ -6,11 +6,11 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	contactproto "github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto"
 	message "github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -21,7 +21,7 @@ type ContactSvc struct {
 	contactProto *contactproto.ContactProto
 }
 
-func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*ContactSvc, error) {
+func NewContactService(ctx context.Context, conf config.ContactServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*ContactSvc, error) {
 
 	var err error
 

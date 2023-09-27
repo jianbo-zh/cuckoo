@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	gevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/myerror"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/ds"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/messageproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
@@ -36,7 +36,7 @@ const (
 )
 
 type PeerMessageProto struct {
-	host host.Host
+	host myhost.Host
 	data ds.PeerMessageIface
 
 	emitters struct {
@@ -47,7 +47,7 @@ type PeerMessageProto struct {
 	}
 }
 
-func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageProto, error) {
+func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*PeerMessageProto, error) {
 	var err error
 	msgsvc := PeerMessageProto{
 		host: lhost,
@@ -58,27 +58,27 @@ func NewMessageSvc(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*P
 	lhost.SetStreamHandler(SYNC_ID, msgsvc.SyncHandler)
 
 	// 触发器：发送离线消息
-	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&gevent.PushDepositContactMessageEvt{}); err != nil {
+	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&myevent.EvtPushDepositContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
 	// 触发器：获取离线消息
-	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&gevent.PullDepositContactMessageEvt{}); err != nil {
+	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&myevent.EvtPullDepositContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
 	// 触发器：peer流进入
-	if msgsvc.emitters.evtReceivePeerStream, err = eventBus.Emitter(&gevent.EvtReceivePeerStream{}); err != nil {
+	if msgsvc.emitters.evtReceivePeerStream, err = eventBus.Emitter(&myevent.EvtReceivePeerStream{}); err != nil {
 		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 触发器：接收到消息
-	if msgsvc.emitters.evtReceiveMessage, err = eventBus.Emitter(&gevent.EvtReceivePeerMessage{}); err != nil {
+	if msgsvc.emitters.evtReceiveMessage, err = eventBus.Emitter(&myevent.EvtReceivePeerMessage{}); err != nil {
 		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 订阅：同步Peer的消息，拉取离线消息事件
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtSyncPeerMessage), new(event.EvtLocalAddressesUpdated)})
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncPeerMessage), new(event.EvtLocalAddressesUpdated)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
 
@@ -101,7 +101,7 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 			}
 
 			switch evt := e.(type) {
-			case gevent.EvtSyncPeerMessage:
+			case myevent.EvtSyncPeerMessage:
 				log.Debugln("event sync peer")
 				go p.goSync(evt.ContactID)
 
@@ -113,7 +113,7 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 
 				for _, curr := range evt.Current {
 					if isPublicAddr(curr.Address) {
-						p.emitters.evtPullOfflineMessage.Emit(gevent.PullDepositContactMessageEvt{
+						p.emitters.evtPullOfflineMessage.Emit(myevent.EvtPullDepositContactMessage{
 							DepositAddress: peer.ID(""),
 							MessageHandler: p.SaveMessage,
 						})
@@ -131,7 +131,7 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 func (p *PeerMessageProto) Handler(stream network.Stream) {
 
 	// 触发接收流
-	p.emitters.evtReceivePeerStream.Emit(gevent.EvtReceivePeerStream{
+	p.emitters.evtReceivePeerStream.Emit(myevent.EvtReceivePeerStream{
 		PeerID: stream.Conn().RemotePeer(),
 	})
 
@@ -172,7 +172,7 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 		return
 	}
 
-	p.emitters.evtReceiveMessage.Emit(gevent.EvtReceivePeerMessage{
+	p.emitters.evtReceiveMessage.Emit(myevent.EvtReceivePeerMessage{
 		MsgID:      msg.Id,
 		FromPeerID: peer.ID(msg.FromPeerId),
 		MsgType:    msg.MsgType,

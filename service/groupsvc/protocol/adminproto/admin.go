@@ -11,14 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
@@ -46,7 +46,7 @@ type GroupLogStats struct {
 }
 
 type AdminProto struct {
-	host host.Host
+	host myhost.Host
 
 	data ds.AdminIface
 
@@ -59,7 +59,7 @@ type AdminProto struct {
 	groupStats map[string]*GroupLogStats
 }
 
-func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*AdminProto, error) {
+func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*AdminProto, error) {
 	var err error
 
 	admsvc := &AdminProto{
@@ -72,15 +72,15 @@ func NewAdminProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus) (*A
 	lhost.SetStreamHandler(ID, admsvc.handler)
 	lhost.SetStreamHandler(SYNC_ID, admsvc.syncHandler)
 
-	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&gevent.EvtInviteJoinGroup{}); err != nil {
+	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&myevent.EvtInviteJoinGroup{}); err != nil {
 		return nil, fmt.Errorf("set emitter error: %v", err)
 	}
 
-	if admsvc.emitters.evtGroupsChange, err = eventBus.Emitter(&gevent.EvtGroupsChange{}); err != nil {
+	if admsvc.emitters.evtGroupsChange, err = eventBus.Emitter(&myevent.EvtGroupsChange{}); err != nil {
 		return nil, fmt.Errorf("set group change emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
@@ -193,7 +193,7 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 			}
 
 			switch evt := e.(type) {
-			case gevent.EvtGroupConnectChange:
+			case myevent.EvtGroupConnectChange:
 				if evt.IsConnected {
 					if _, exists := a.groupConns[evt.GroupID]; !exists {
 						a.groupConns[evt.GroupID] = make(map[peer.ID]struct{})
@@ -323,8 +323,8 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		return fmt.Errorf("ds set group session error: %w", err)
 	}
 
-	if err = a.emitters.evtGroupsChange.Emit(gevent.EvtGroupsChange{
-		AddGroups: []gevent.Groups{
+	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
+		AddGroups: []myevent.Groups{
 			{
 				GroupID:     group.ID,
 				PeerIDs:     []peer.ID{},
@@ -481,8 +481,8 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 	}
 
 	// 触发新增群组
-	if err = a.emitters.evtGroupsChange.Emit(gevent.EvtGroupsChange{
-		AddGroups: []gevent.Groups{
+	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
+		AddGroups: []myevent.Groups{
 			{
 				GroupID:     groupID,
 				PeerIDs:     []peer.ID{account.ID},
@@ -498,7 +498,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 	if err != nil {
 		return nil, err
 	}
-	if err = a.emitters.evtInviteJoinGroup.Emit(gevent.EvtInviteJoinGroup{
+	if err = a.emitters.evtInviteJoinGroup.Emit(myevent.EvtInviteJoinGroup{
 		PeerIDs:       memberIDs,
 		GroupID:       groupID,
 		GroupName:     name,

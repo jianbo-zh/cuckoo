@@ -6,10 +6,10 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -22,11 +22,11 @@ type DepositService struct {
 	client  *deposit.DepositClientProto
 
 	accountGetter types.AccountGetter
-	host          host.Host
+	host          myhost.Host
 	ids           ipfsds.Batching
 }
 
-func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost host.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*DepositService, error) {
+func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*DepositService, error) {
 
 	var err error
 	depositsvc = &DepositService{

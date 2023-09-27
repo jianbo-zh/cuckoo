@@ -5,7 +5,7 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	myevent "github.com/jianbo-zh/dchat/event"
+	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	goproto "google.golang.org/protobuf/proto"
 )
 

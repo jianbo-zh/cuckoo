@@ -6,11 +6,11 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/ds"
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/pb"
 	logging "github.com/jianbo-zh/go-log"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
@@ -26,14 +26,14 @@ const (
 )
 
 type SystemProto struct {
-	host  host.Host
+	host  myhost.Host
 	data  ds.SystemIface
 	msgCh chan<- *pb.SystemMsg
 }
 
 //go:generate protoc --proto_path=$PWD:$PWD/../../.. --go_out=. --go_opt=Mpb/system.proto=./pb pb/system.proto
 
-func NewSystemProto(lhost host.Host, ids ipfsds.Batching, msgCh chan<- *pb.SystemMsg) (*SystemProto, error) {
+func NewSystemProto(lhost myhost.Host, ids ipfsds.Batching, msgCh chan<- *pb.SystemMsg) (*SystemProto, error) {
 	systemProto := SystemProto{
 		host:  lhost,
 		data:  ds.Wrap(ids),

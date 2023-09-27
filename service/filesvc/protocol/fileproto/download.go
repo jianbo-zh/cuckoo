@@ -11,13 +11,13 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	myevent "github.com/jianbo-zh/dchat/event"
+	myevent "github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/filesvc/protocol/fileproto/ds"
 	"github.com/jianbo-zh/dchat/service/filesvc/protocol/fileproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
@@ -38,7 +38,7 @@ const (
 )
 
 type DownloadProto struct {
-	host host.Host
+	host myhost.Host
 	data ds.DownloadIface
 
 	downloadDir string
@@ -48,7 +48,7 @@ type DownloadProto struct {
 	}
 }
 
-func NewDownloadProto(lhost host.Host, ids ipfsds.Batching, ebus event.Bus, dldir string) (*DownloadProto, error) {
+func NewDownloadProto(lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, dldir string) (*DownloadProto, error) {
 	var err error
 	download := DownloadProto{
 		host:        lhost,
@@ -60,13 +60,13 @@ func NewDownloadProto(lhost host.Host, ids ipfsds.Batching, ebus event.Bus, dldi
 	lhost.SetStreamHandler(DOWNLOAD_ID, download.fileDownloadHandler)
 
 	// 触发器
-	download.emitters.evtDownloadResult, err = ebus.Emitter(&myevent.DownloadResultEvt{})
+	download.emitters.evtDownloadResult, err = ebus.Emitter(&myevent.EvtDownloadResult{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus emitter error: %w", err)
 	}
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.DownloadRequestEvt)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtDownloadRequest)})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
 	}
@@ -87,7 +87,7 @@ func (d *DownloadProto) subscribeHandler(ctx context.Context, sub event.Subscrip
 			}
 
 			switch evt := e.(type) {
-			case myevent.DownloadRequestEvt:
+			case myevent.EvtDownloadRequest:
 				log.Debugln("receive download request")
 				go d.goDownload(evt.FromPeerIDs, evt.FileName, evt.FileSize, evt.HashAlgo, evt.HashValue)
 			}

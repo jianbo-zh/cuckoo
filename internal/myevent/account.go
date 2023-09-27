@@ -1,4 +1,4 @@
-package event
+package myevent
 
 import "github.com/jianbo-zh/dchat/internal/types"
 

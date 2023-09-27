@@ -126,6 +126,12 @@ enum MsgType {
   Unknown = 4;
 }
 
+enum ConnState {
+  OnlineState = 0;
+  OfflineState = 1;
+  UnknownState = 2;
+}
+
 message Result {
   int32 code = 1;
   string message = 2;
@@ -561,7 +567,7 @@ message Contact {
   // 消息寄存地址
   string depositAddress = 4;
   // 是否在线
-  bool isOnline = 5;
+  ConnState onlineState = 5;
 }
 
 // 联系人消息
@@ -639,7 +645,7 @@ message  GroupMember {
   // 头像SHA1
   string avatar = 3;
   // 是否在线
-  bool isOnline = 4;
+  ConnState onlineState = 4;
 }
 
 // 群消息
@@ -679,7 +685,7 @@ message Session {
   // 头像 SHA1
   string avatar = 4;
   // 在线状态
-  bool isOnline = 5;
+  ConnState onlineState = 5;
   // 最新消息
   string lastMessage = 6;
   // 最新消息时间

@@ -7,17 +7,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto/pb"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
 	logging "github.com/jianbo-zh/go-log"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
@@ -36,7 +36,7 @@ const (
 )
 
 type NetworkProto struct {
-	host host.Host
+	host myhost.Host
 	data ds.NetworkIface
 
 	discv *drouting.RoutingDiscovery
@@ -58,7 +58,7 @@ type NetworkProto struct {
 	}
 }
 
-func NewNetworkProto(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus) (*NetworkProto, error) {
+func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus) (*NetworkProto, error) {
 
 	var err error
 
@@ -75,13 +75,13 @@ func NewNetworkProto(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids i
 	lhost.SetStreamHandler(CONN_ID, networksvc.connectHandler)    // 建立路由连接
 	lhost.SetStreamHandler(ROUTING_ID, networksvc.routingHandler) // 同步路由表信息
 
-	networksvc.emitters.evtGroupConnectChange, err = ebus.Emitter(&gevent.EvtGroupConnectChange{})
+	networksvc.emitters.evtGroupConnectChange, err = ebus.Emitter(&myevent.EvtGroupConnectChange{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
 	}
 
 	// EvtGroupsInit 第一步获取组信息
-	sub, err := ebus.Subscribe([]any{new(gevent.EvtGroupsInit), new(gevent.EvtGroupsChange), new(gevent.EvtGroupMemberChange)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtGroupsInit), new(myevent.EvtGroupsChange), new(myevent.EvtGroupMemberChange)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe event error: %w", err)
 
@@ -167,7 +167,7 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	}()
 
 	// 触发连接改变事件
-	if err := n.emitters.evtGroupConnectChange.Emit(gevent.EvtGroupConnectChange{
+	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
 		GroupID:     groupID,
 		PeerID:      peerID,
 		IsConnected: true,
@@ -228,10 +228,10 @@ func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscript
 				return
 			}
 			switch evt := e.(type) {
-			case gevent.EvtGroupsInit:
+			case myevent.EvtGroupsInit:
 				n.initNetwork(evt.Groups)
 
-			case gevent.EvtGroupsChange:
+			case myevent.EvtGroupsChange:
 				if len(evt.AddGroups) > 0 {
 					n.addNetwork(evt.AddGroups)
 				}
@@ -240,7 +240,7 @@ func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscript
 					n.deleteNetwork(evt.DeleteGroups)
 				}
 
-			case gevent.EvtGroupMemberChange:
+			case myevent.EvtGroupMemberChange:
 				n.updateNetwork(evt.GroupID, evt.PeerIDs, evt.AcptPeerIDs)
 			}
 

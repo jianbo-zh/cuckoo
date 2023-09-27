@@ -1,4 +1,4 @@
-package event
+package myevent
 
 // 主机引导完成
 type EvtHostBootComplete struct {

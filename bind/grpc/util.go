@@ -34,3 +34,14 @@ func decodeMsgType(msgType proto.MsgType) string {
 		return types.MsgTypeUnknown
 	}
 }
+
+func encodeOnlineState(state types.OnlineState) proto.ConnState {
+	switch state {
+	case types.OnlineStateOnline:
+		return proto.ConnState_OnlineState
+	case types.OnlineStateOffline:
+		return proto.ConnState_OfflineState
+	default:
+		return proto.ConnState_UnknownState
+	}
+}

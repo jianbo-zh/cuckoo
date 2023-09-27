@@ -2,16 +2,16 @@ package groupsvc
 
 import (
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	admin "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto"
 	network "github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 var groupsvc *GroupService
 
-func Setup(lhost host.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus) (*GroupService, error) {
+func Setup(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids ipfsds.Batching, ebus event.Bus) (*GroupService, error) {
 	var err error
 
 	groupsvc = &GroupService{}

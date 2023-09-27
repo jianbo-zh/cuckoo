@@ -6,14 +6,14 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	gevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto/ds"
 	"github.com/jianbo-zh/dchat/service/contactsvc/protocol/contactproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
@@ -31,7 +31,7 @@ const (
 )
 
 type ContactProto struct {
-	host host.Host
+	host myhost.Host
 	data ds.PeerIface
 
 	accountGetter types.AccountGetter
@@ -42,7 +42,7 @@ type ContactProto struct {
 	}
 }
 
-func NewContactProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, accountGetter types.AccountGetter) (*ContactProto, error) {
+func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus, accountGetter types.AccountGetter) (*ContactProto, error) {
 	var err error
 	contactsvc := ContactProto{
 		host:          lhost,
@@ -52,15 +52,15 @@ func NewContactProto(lhost host.Host, ids ipfsds.Batching, eventBus event.Bus, a
 
 	contactsvc.host.SetStreamHandler(ID, contactsvc.handler)
 
-	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&gevent.EvtSyncPeerMessage{}); err != nil {
+	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&myevent.EvtSyncPeerMessage{}); err != nil {
 		return nil, fmt.Errorf("set sync peers emitter error: %w", err)
 	}
 
-	if contactsvc.emitters.evtApplyAddContact, err = eventBus.Emitter(&gevent.EvtApplyAddContact{}); err != nil {
+	if contactsvc.emitters.evtApplyAddContact, err = eventBus.Emitter(&myevent.EvtApplyAddContact{}); err != nil {
 		return nil, fmt.Errorf("set apply add contact emitter error: %w", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(gevent.EvtHostBootComplete), new(gevent.EvtReceivePeerStream), new(gevent.EvtAccountPeerChange)})
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtHostBootComplete), new(myevent.EvtReceivePeerStream), new(myevent.EvtAccountPeerChange)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete error: %w", err)
 
@@ -172,7 +172,7 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer types.AccountPeer, 
 
 	if isBootSync {
 		// 启动时同步，还要触发同步消息事件
-		c.emitters.evtSyncPeerMessage.Emit(gevent.EvtSyncPeerMessage{
+		c.emitters.evtSyncPeerMessage.Emit(myevent.EvtSyncPeerMessage{
 			ContactID: contactID,
 		})
 	}
@@ -188,7 +188,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 				return
 			}
 			switch ev := e.(type) {
-			case gevent.EvtHostBootComplete:
+			case myevent.EvtHostBootComplete:
 				if !ev.IsSucc {
 					log.Warnf("host boot complete but not succ")
 					continue
@@ -213,7 +213,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 						}, true)
 					}
 				}
-			case gevent.EvtReceivePeerStream:
+			case myevent.EvtReceivePeerStream:
 				state, err := c.data.GetState(ctx, ev.PeerID)
 				if err != nil {
 					log.Warnf("get state error: %v", err)
@@ -226,7 +226,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 						continue
 					}
 				}
-			case gevent.EvtAccountPeerChange:
+			case myevent.EvtAccountPeerChange:
 				if contactIDs, err := c.data.GetSessionIDs(ctx); err != nil {
 					log.Warnf("get peer ids error: %v", err)
 					continue
@@ -263,7 +263,7 @@ func (c *ContactProto) ApplyAddContact(ctx context.Context, peer0 *types.Peer, c
 		return fmt.Errorf("data set session error: %w", err)
 	}
 
-	if err := c.emitters.evtApplyAddContact.Emit(gevent.EvtApplyAddContact{
+	if err := c.emitters.evtApplyAddContact.Emit(myevent.EvtApplyAddContact{
 		PeerID:  peer0.ID,
 		Content: content,
 	}); err != nil {

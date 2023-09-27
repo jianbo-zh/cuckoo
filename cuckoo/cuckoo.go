@@ -7,8 +7,10 @@ import (
 	"sync"
 
 	"github.com/jianbo-zh/dchat/cuckoo/config"
-	myevent "github.com/jianbo-zh/dchat/event"
 	"github.com/jianbo-zh/dchat/internal/datastore"
+	myevent "github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
@@ -17,7 +19,6 @@ import (
 	"github.com/jianbo-zh/dchat/service/systemsvc"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
@@ -28,7 +29,8 @@ type CuckooGetter interface {
 }
 
 type Cuckoo struct {
-	host host.Host
+	host myhost.Host
+
 	ddht *dual.DHT
 	ebus event.Bus
 
@@ -109,7 +111,7 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	return cuckoo, nil
 }
 
-func (c *Cuckoo) GetHost() (host.Host, error) {
+func (c *Cuckoo) GetHost() (myhost.Host, error) {
 	if c.host == nil {
 		return nil, fmt.Errorf("host not start")
 	}
@@ -165,6 +167,11 @@ func (c *Cuckoo) GetEbus() (event.Bus, error) {
 	}
 
 	return c.ebus, nil
+}
+
+// 获取Peer的在线状态
+func (c *Cuckoo) GetPeersOnlineStats(peerIDs []peer.ID) map[peer.ID]types.OnlineState {
+	return c.host.PeersOnlineStats(peerIDs)
 }
 
 func (c *Cuckoo) Close() {

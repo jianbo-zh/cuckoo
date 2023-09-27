@@ -6,7 +6,8 @@ import (
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	myevent "github.com/jianbo-zh/dchat/event"
+	myevent "github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
@@ -15,7 +16,6 @@ import (
 	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
@@ -23,7 +23,7 @@ import (
 var log = logging.Logger("system")
 
 type SystemSvc struct {
-	host host.Host
+	host myhost.Host
 
 	systemProto *systemproto.SystemProto
 
@@ -34,7 +34,7 @@ type SystemSvc struct {
 	msgCh chan *pb.SystemMsg
 }
 
-func NewSystemService(ctx context.Context, lhost host.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
 	accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface, groupSvc groupsvc.GroupServiceIface) (*SystemSvc, error) {
 
 	var err error

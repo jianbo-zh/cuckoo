@@ -7,7 +7,8 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
-	myevent "github.com/jianbo-zh/dchat/event"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/libp2p/go-libp2p"
 	ddht "github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -22,7 +23,7 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config) (host.Host, *ddht.DHT, error) {
+func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config) (myhost.Host, *ddht.DHT, error) {
 
 	privKey, err := conf.Identity.DecodePrivateKey("")
 	if err != nil {
@@ -111,7 +112,7 @@ func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config
 		bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc})
 	}()
 
-	return localhost, dualDHT, nil
+	return myhost.NewHost(localhost), dualDHT, nil
 }
 
 func autoRelayFeeder(ctx context.Context, h host.Host, dualDHT *ddht.DHT, peering config.Peering, peerChan chan<- peer.AddrInfo) {
