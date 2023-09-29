@@ -6,12 +6,16 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/depositsvc/protocol/deposit"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
+
+var log = logging.Logger("deposit")
 
 var depositsvc *DepositService
 
@@ -21,19 +25,17 @@ type DepositService struct {
 	service *deposit.DepositServiceProto
 	client  *deposit.DepositClientProto
 
-	accountGetter types.AccountGetter
-	host          myhost.Host
-	ids           ipfsds.Batching
+	host myhost.Host
+	ids  ipfsds.Batching
 }
 
-func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter types.AccountGetter) (*DepositService, error) {
+func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*DepositService, error) {
 
 	var err error
 	depositsvc = &DepositService{
-		cuckooCtx:     ctx,
-		accountGetter: accountGetter,
-		host:          lhost,
-		ids:           ids,
+		cuckooCtx: ctx,
+		host:      lhost,
+		ids:       ids,
 	}
 
 	depositsvc.client, err = deposit.NewDepositClientProto(ctx, lhost, ids, ebus)
@@ -41,17 +43,19 @@ func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lh
 		return nil, fmt.Errorf("new deposit client proto error: %w", err)
 	}
 
-	account, err := depositsvc.accountGetter.GetAccount(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get account error: %w", err)
-	}
-
-	if account.EnableDepositService {
+	if conf.EnableDepositService {
 		depositsvc.service, err = deposit.NewDepositServiceProto(ctx, lhost, ids)
 		if err != nil {
 			return nil, fmt.Errorf("new deposit service proto error: %w", err)
 		}
 	}
+
+	// 监听配置变化
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtConfigEnableDepositServiceChange)}, eventbus.Name("deposit"))
+	if err != nil {
+		return nil, err
+	}
+	go depositsvc.subscribeHandler(ctx, sub)
 
 	return depositsvc, nil
 }
@@ -64,13 +68,39 @@ func (d *DepositService) PushGroupMessage(depositPeerID peer.ID, groupID string,
 	return d.client.PushGroupMessage(depositPeerID, groupID, msgID, msgData)
 }
 
-func (d *DepositService) MaintainDepositService() error {
-	account, err := d.accountGetter.GetAccount(context.Background())
-	if err != nil {
-		return fmt.Errorf("get account error: %w", err)
-	}
+func (d *DepositService) subscribeHandler(ctx context.Context, sub event.Subscription) {
 
-	if account.EnableDepositService && d.service == nil {
+	defer func() {
+		log.Error("deposit subscribe exit")
+		sub.Close()
+	}()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			log.Debugf("get subscribe: %v", ok)
+			if !ok {
+				return
+			}
+			switch evt := e.(type) {
+			case myevent.EvtConfigEnableDepositServiceChange:
+				if err := d.handleEnableDepositService(evt.Enable); err != nil {
+					log.Errorf("handle enable deposit service error: %w", err)
+				}
+
+			default:
+				log.Warnf("undefined event type: %T", evt)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (d *DepositService) handleEnableDepositService(isEnable bool) error {
+	var err error
+	if isEnable && d.service == nil {
 		// start service
 		d.service, err = deposit.NewDepositServiceProto(d.cuckooCtx, d.host, d.ids)
 		if err != nil {
@@ -78,7 +108,7 @@ func (d *DepositService) MaintainDepositService() error {
 		}
 		fmt.Println("deposit service started")
 
-	} else if !account.EnableDepositService && d.service != nil {
+	} else if !isEnable && d.service != nil {
 		// close service
 		d.service.Close()
 		d.service = nil

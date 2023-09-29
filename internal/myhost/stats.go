@@ -3,13 +3,13 @@ package myhost
 import (
 	"time"
 
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const (
 	// 确定为在线的时长
-	OnlineDuration = 30 * time.Second
+	MaxOnlineDuration = 60 * time.Second
 	// 清理统计缓存间隔
 	ClearStatsInterval = 1000
 )
@@ -17,19 +17,27 @@ const (
 // 清理统计缓存计数
 var ClearStatsCounting = 0
 
-// PeersOnlineStats 节点在线统计
-func (h *MyHost) PeersOnlineStats(peerIDs []peer.ID) map[peer.ID]types.OnlineState {
-	peerStats := make(map[peer.ID]types.OnlineState)
+// PeersOnlineStats 节点在线统计，onlineDuration 指定多少秒内算才在线，最长60秒
+func (h *MyHost) OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState {
+	nowtime := time.Now()
+	peerStats := make(map[peer.ID]mytype.OnlineState)
 	h.statsMutex.RLock()
 	for _, peerID := range peerIDs {
-		if _, exists := h.onlineMap[peerID]; exists {
-			peerStats[peerID] = types.OnlineStateOnline
+		if onlineTime, exists := h.onlineMap[peerID]; exists {
+			if nowtime.Sub(onlineTime) <= onlineDuration {
+				peerStats[peerID] = mytype.OnlineStateOnline
+			} else {
+				peerStats[peerID] = mytype.OnlineStateUnknown
+			}
 
-		} else if _, exists = h.offlineMap[peerID]; exists {
-			peerStats[peerID] = types.OnlineStateOffline
-
+		} else if onlineTime, exists = h.offlineMap[peerID]; exists {
+			if nowtime.Sub(onlineTime) <= onlineDuration {
+				peerStats[peerID] = mytype.OnlineStateOffline
+			} else {
+				peerStats[peerID] = mytype.OnlineStateUnknown
+			}
 		} else {
-			peerStats[peerID] = types.OnlineStateUnknown
+			peerStats[peerID] = mytype.OnlineStateUnknown
 		}
 	}
 	h.statsMutex.RUnlock()
@@ -46,13 +54,13 @@ func (h *MyHost) online(peerID peer.ID) {
 	if ClearStatsCounting%ClearStatsInterval == 0 {
 		nowtime := time.Now()
 		for pid, ts := range h.onlineMap {
-			if nowtime.Sub(ts) > OnlineDuration { // 过期了
+			if nowtime.Sub(ts) > MaxOnlineDuration { // 过期了
 				delete(h.onlineMap, pid)
 			}
 		}
 
 		for pid, ts := range h.offlineMap {
-			if nowtime.Sub(ts) > OnlineDuration { // 过期了
+			if nowtime.Sub(ts) > MaxOnlineDuration { // 过期了
 				delete(h.offlineMap, pid)
 			}
 		}

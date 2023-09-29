@@ -51,10 +51,13 @@ func DefaultConfig() (*Config, error) {
 			Resolvers: map[string]string{},
 		},
 
-		AccountService: AccountServiceConfig{},
-		ContactService: ContactServiceConfig{},
-		GroupService:   GroupServiceConfig{},
-		DepositService: DepositServiceConfig{},
+		DepositService: DepositServiceConfig{
+			EnableDepositService: false,
+		},
+
+		FileService: FileServiceConfig{
+			DownloadDir: "./download",
+		},
 	}
 
 	return conf, nil

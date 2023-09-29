@@ -2,12 +2,12 @@ package protocol
 
 const (
 	AccountID_v100       = "/dchat/account/1.0.0"
-	AccountAvatarID_v100 = "/dchat/account/avatar/1.0.0"
 	AccountOnlineID_v100 = "/dchat/account/online/1.0.0"
 )
 
 const (
 	ContactID_v100            = "/dchat/contact/1.0.0"
+	ContactCheckID_v100       = "/dchat/contact/check/1.0.0"
 	ContactMessageID_v100     = "/dchat/contact/msg/1.0.0"
 	ContactMessageSyncID_v100 = "/dchat/contact/msg/sync/1.0.0"
 )
@@ -35,6 +35,7 @@ const (
 )
 
 const (
-	FileQueryID_v100    = "/dchat/file/query/1.0.0"
-	FileDownloadID_v100 = "/dchat/file/download/1.0.0"
+	FileQueryID_v100      = "/dchat/file/query/1.0.0"
+	FileDownloadID_v100   = "/dchat/file/download/1.0.0"
+	AvatarDownloadID_v100 = "/dchat/file/avatar/1.0.0"
 )

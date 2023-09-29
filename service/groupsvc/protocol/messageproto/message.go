@@ -10,8 +10,8 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/internal/protocol"
-	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -248,7 +248,7 @@ func (m *MessageProto) GetMessageList(ctx context.Context, groupID string, offse
 	return msgs, nil
 }
 
-func (m *MessageProto) SendGroupMessage(ctx context.Context, account *types.Account, groupID string, msgType string, mimeType string, payload []byte) (string, error) {
+func (m *MessageProto) SendGroupMessage(ctx context.Context, account *mytype.Account, groupID string, msgType string, mimeType string, payload []byte) (string, error) {
 
 	lamportime, err := m.data.TickLamportTime(context.Background(), groupID)
 	if err != nil {

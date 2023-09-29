@@ -17,7 +17,8 @@ const (
 	// DefaultPathRoot is the path to the default config dir location.
 	DefaultPathRoot = "~/" + DefaultPathName
 	// DefaultConfigFile is the filename of the configuration file
-	DefaultConfigFile = "config"
+	DefaultLevelDBDir = "leveldb" // storage/data/leveldb
+	DefaultConfigFile = "config"  // storage/data/config
 	// EnvDir is the environment variable used to change the path root.
 	EnvDir = "DCHAT_PATH"
 )
@@ -33,11 +34,8 @@ type Config struct {
 	Peering   Peering
 	DNS       DNS
 
-	StorageDir string
+	DataDir string
 
-	AccountService AccountServiceConfig
-	ContactService ContactServiceConfig
-	GroupService   GroupServiceConfig
 	DepositService DepositServiceConfig
 	FileService    FileServiceConfig
 }

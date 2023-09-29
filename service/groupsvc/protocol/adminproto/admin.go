@@ -13,8 +13,8 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/internal/protocol"
-	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/ds"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -42,7 +42,7 @@ type GroupLogStats struct {
 	Creator peer.ID
 	Name    string
 	Avatar  string
-	Members []types.GroupMember
+	Members []mytype.GroupMember
 }
 
 type AdminProto struct {
@@ -275,7 +275,7 @@ func (a *AdminProto) goSendAdminMessage(peerID peer.ID, msg *pb.Log) {
 }
 
 // AgreeJoinGroup 同意加入群
-func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account, group *types.Group, lamptime uint64) error {
+func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *mytype.Account, group *mytype.Group, lamptime uint64) error {
 
 	if err := a.data.MergeLamptime(ctx, group.ID, lamptime); err != nil {
 		return fmt.Errorf("data merge lamptime error: %w", err)
@@ -315,7 +315,7 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 		return fmt.Errorf("ds set group avatar error: %w", err)
 	}
 
-	if err = a.data.SetState(ctx, group.ID, types.GroupStateNormal); err != nil {
+	if err = a.data.SetState(ctx, group.ID, mytype.GroupStateNormal); err != nil {
 		return fmt.Errorf("ds set group state error: %w", err)
 	}
 
@@ -338,7 +338,7 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *types.Account,
 	return nil
 }
 
-func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, name string, avatar string, members []types.Contact) (*types.Group, error) {
+func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, name string, avatar string, members []mytype.Contact) (*mytype.Group, error) {
 
 	hostID := a.host.ID()
 	groupID := uuid.NewString()
@@ -472,7 +472,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		}
 	}
 
-	if err = a.data.SetState(ctx, groupID, types.GroupStateNormal); err != nil {
+	if err = a.data.SetState(ctx, groupID, mytype.GroupStateNormal); err != nil {
 		return nil, fmt.Errorf("ds set group state error: %w", err)
 	}
 
@@ -508,7 +508,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 		return nil, fmt.Errorf("emit invite join group error: %w", err)
 	}
 
-	return &types.Group{
+	return &mytype.Group{
 		ID:     groupID,
 		Name:   name,
 		Avatar: avatar,
@@ -516,7 +516,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *types.Account, na
 }
 
 // ExitGroup 退出群
-func (a *AdminProto) ExitGroup(ctx context.Context, account *types.Account, groupID string) error {
+func (a *AdminProto) ExitGroup(ctx context.Context, account *mytype.Account, groupID string) error {
 
 	lamptime, err := a.data.TickLamptime(ctx, groupID)
 	if err != nil {
@@ -548,7 +548,7 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *types.Account, grou
 		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
-	if err = a.data.SetState(ctx, groupID, types.GroupStateExit); err != nil {
+	if err = a.data.SetState(ctx, groupID, mytype.GroupStateExit); err != nil {
 		return fmt.Errorf("set state exit error: %w", err)
 	}
 
@@ -556,14 +556,14 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *types.Account, grou
 }
 
 // DeleteGroup 删除群
-func (a *AdminProto) DeleteGroup(ctx context.Context, account *types.Account, groupID string) error {
+func (a *AdminProto) DeleteGroup(ctx context.Context, account *mytype.Account, groupID string) error {
 
 	state, err := a.data.GetState(ctx, groupID)
 	if err != nil {
 		return fmt.Errorf("proto get state error: %w", err)
 	}
 
-	if state == types.GroupStateNormal {
+	if state == mytype.GroupStateNormal {
 		// 正常状态则先退出群
 		lamptime, err := a.data.TickLamptime(ctx, groupID)
 		if err != nil {
@@ -604,7 +604,7 @@ func (a *AdminProto) DeleteGroup(ctx context.Context, account *types.Account, gr
 }
 
 // DisbandGroup 解散群（所有人退出）
-func (a *AdminProto) DisbandGroup(ctx context.Context, account *types.Account, groupID string) error {
+func (a *AdminProto) DisbandGroup(ctx context.Context, account *mytype.Account, groupID string) error {
 
 	lamptime, err := a.data.TickLamptime(ctx, groupID)
 	if err != nil {
@@ -639,13 +639,13 @@ func (a *AdminProto) GetSessionIDs(ctx context.Context) ([]string, error) {
 	return a.data.GetSessionIDs(ctx)
 }
 
-func (a *AdminProto) GetSessions(ctx context.Context) ([]types.Group, error) {
+func (a *AdminProto) GetSessions(ctx context.Context) ([]mytype.Group, error) {
 	groupIDs, err := a.data.GetSessionIDs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("data get session ids error: %w", err)
 	}
 
-	var groups []types.Group
+	var groups []mytype.Group
 	for _, groupID := range groupIDs {
 		name, err := a.data.GetName(ctx, groupID)
 		if err != nil {
@@ -657,7 +657,7 @@ func (a *AdminProto) GetSessions(ctx context.Context) ([]types.Group, error) {
 			return nil, fmt.Errorf("data get name error: %w", err)
 		}
 
-		groups = append(groups, types.Group{
+		groups = append(groups, mytype.Group{
 			ID:     groupID,
 			Name:   name,
 			Avatar: avatar,
@@ -667,7 +667,7 @@ func (a *AdminProto) GetSessions(ctx context.Context) ([]types.Group, error) {
 	return groups, nil
 }
 
-func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group, error) {
+func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*mytype.Group, error) {
 	name, err := a.data.GetName(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get name error: %w", err)
@@ -683,7 +683,7 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group
 		return nil, fmt.Errorf("data get deposit peer error: %w", err)
 	}
 
-	return &types.Group{
+	return &mytype.Group{
 		ID:             groupID,
 		Name:           name,
 		Avatar:         avatar,
@@ -691,7 +691,7 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*types.Group
 	}, nil
 }
 
-func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) {
+func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*mytype.GroupDetail, error) {
 	name, err := a.data.GetName(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get name error: %w", err)
@@ -722,7 +722,7 @@ func (a *AdminProto) GetGroupDetail(ctx context.Context, groupID string) (*types
 		return nil, fmt.Errorf("data get create time error: %w", err)
 	}
 
-	return &types.GroupDetail{
+	return &mytype.GroupDetail{
 		ID:             groupID,
 		Name:           name,
 		Avatar:         avatar,
@@ -911,7 +911,7 @@ func (a *AdminProto) SetGroupNotice(ctx context.Context, groupID string, notice 
 	return nil
 }
 
-func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member *types.Peer, isAgree bool) error {
+func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member *mytype.Peer, isAgree bool) error {
 	hostID := a.host.ID()
 
 	creator, err := a.data.GetCreator(ctx, groupID)
@@ -978,7 +978,7 @@ func (a *AdminProto) RemoveMember(ctx context.Context, groupID string, memberID 
 		return fmt.Errorf("ds get group members error: %w", err)
 	}
 
-	var findMember types.GroupMember
+	var findMember mytype.GroupMember
 	for _, member := range members {
 		if member.ID == memberID {
 			findMember = member
@@ -1051,7 +1051,7 @@ func (a *AdminProto) GetAgreeMemberIDs(ctx context.Context, groupID string) ([]p
 	return memberIDs, nil
 }
 
-func (a *AdminProto) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]types.GroupMember, error) {
+func (a *AdminProto) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]mytype.GroupMember, error) {
 	if offset < 0 || limit <= 0 {
 		return nil, nil
 	}
@@ -1061,7 +1061,7 @@ func (a *AdminProto) GetGroupMembers(ctx context.Context, groupID string, keywor
 		return nil, fmt.Errorf("data get members error: %w", err)
 	}
 
-	var filters []types.GroupMember
+	var filters []mytype.GroupMember
 	if keywords == "" {
 		filters = members
 

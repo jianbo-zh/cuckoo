@@ -3,13 +3,13 @@ package accountsvc
 import (
 	"context"
 
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type AccountServiceIface interface {
-	GetAccount(ctx context.Context) (*types.Account, error)
-	CreateAccount(ctx context.Context, account types.Account) (*types.Account, error)
+	GetAccount(ctx context.Context) (*mytype.Account, error)
+	CreateAccount(ctx context.Context, account mytype.Account) (*mytype.Account, error)
 	SetAccountName(ctx context.Context, name string) error
 	SetAccountAvatar(ctx context.Context, avatar string) error
 	SetAccountAutoAddContact(ctx context.Context, autoAddContact bool) error
@@ -17,14 +17,12 @@ type AccountServiceIface interface {
 
 	SetAutoDepositMessage(ctx context.Context, autoDepositMessage bool) error
 	SetAccountDepositAddress(ctx context.Context, depositPeerID peer.ID) error
-	SetAccountEnableDepositService(ctx context.Context, enableDepositService bool) error
 
 	// 获取在线状态
-	GetOnlineState(ctx context.Context, peerIDs []peer.ID) (map[peer.ID]bool, error)
+	GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState
 
 	// peer is stranger no contact
-	GetPeer(ctx context.Context, peerID peer.ID) (*types.Peer, error)
-	DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error
+	GetPeer(ctx context.Context, peerID peer.ID) (*mytype.Peer, error)
 
 	Close()
 }

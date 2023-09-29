@@ -123,7 +123,12 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
+		accountSvc, err := cuckoo.GetAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
 
 		for i, contact := range contacts {
 			if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {

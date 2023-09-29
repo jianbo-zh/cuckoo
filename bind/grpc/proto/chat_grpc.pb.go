@@ -19,15 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccountSvc_CreateAccount_FullMethodName                  = "/chat.AccountSvc/CreateAccount"
-	AccountSvc_GetAccount_FullMethodName                     = "/chat.AccountSvc/GetAccount"
-	AccountSvc_SetAccountName_FullMethodName                 = "/chat.AccountSvc/SetAccountName"
-	AccountSvc_SetAccountAvatar_FullMethodName               = "/chat.AccountSvc/SetAccountAvatar"
-	AccountSvc_SetAutoAddContact_FullMethodName              = "/chat.AccountSvc/SetAutoAddContact"
-	AccountSvc_SetAutoJoinGroup_FullMethodName               = "/chat.AccountSvc/SetAutoJoinGroup"
-	AccountSvc_SetAutoDepositMessage_FullMethodName          = "/chat.AccountSvc/SetAutoDepositMessage"
-	AccountSvc_SetAccountDepositAddress_FullMethodName       = "/chat.AccountSvc/SetAccountDepositAddress"
-	AccountSvc_SetAccountEnableDepositService_FullMethodName = "/chat.AccountSvc/SetAccountEnableDepositService"
+	AccountSvc_CreateAccount_FullMethodName            = "/chat.AccountSvc/CreateAccount"
+	AccountSvc_GetAccount_FullMethodName               = "/chat.AccountSvc/GetAccount"
+	AccountSvc_SetAccountName_FullMethodName           = "/chat.AccountSvc/SetAccountName"
+	AccountSvc_SetAccountAvatar_FullMethodName         = "/chat.AccountSvc/SetAccountAvatar"
+	AccountSvc_SetAutoAddContact_FullMethodName        = "/chat.AccountSvc/SetAutoAddContact"
+	AccountSvc_SetAutoJoinGroup_FullMethodName         = "/chat.AccountSvc/SetAutoJoinGroup"
+	AccountSvc_SetAutoDepositMessage_FullMethodName    = "/chat.AccountSvc/SetAutoDepositMessage"
+	AccountSvc_SetAccountDepositAddress_FullMethodName = "/chat.AccountSvc/SetAccountDepositAddress"
 )
 
 // AccountSvcClient is the client API for AccountSvc service.
@@ -50,8 +49,6 @@ type AccountSvcClient interface {
 	SetAutoDepositMessage(ctx context.Context, in *SetAutoDepositMessageRequest, opts ...grpc.CallOption) (*SetAutoDepositMessageReply, error)
 	// 设置我不在线时，消息寄存地址
 	SetAccountDepositAddress(ctx context.Context, in *SetAccountDepositAddressRequest, opts ...grpc.CallOption) (*SetAccountDepositAddressReply, error)
-	// 启动寄存服务
-	SetAccountEnableDepositService(ctx context.Context, in *SetAccountEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetAccountEnableDepositServiceReply, error)
 }
 
 type accountSvcClient struct {
@@ -134,15 +131,6 @@ func (c *accountSvcClient) SetAccountDepositAddress(ctx context.Context, in *Set
 	return out, nil
 }
 
-func (c *accountSvcClient) SetAccountEnableDepositService(ctx context.Context, in *SetAccountEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetAccountEnableDepositServiceReply, error) {
-	out := new(SetAccountEnableDepositServiceReply)
-	err := c.cc.Invoke(ctx, AccountSvc_SetAccountEnableDepositService_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AccountSvcServer is the server API for AccountSvc service.
 // All implementations must embed UnimplementedAccountSvcServer
 // for forward compatibility
@@ -163,8 +151,6 @@ type AccountSvcServer interface {
 	SetAutoDepositMessage(context.Context, *SetAutoDepositMessageRequest) (*SetAutoDepositMessageReply, error)
 	// 设置我不在线时，消息寄存地址
 	SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error)
-	// 启动寄存服务
-	SetAccountEnableDepositService(context.Context, *SetAccountEnableDepositServiceRequest) (*SetAccountEnableDepositServiceReply, error)
 	mustEmbedUnimplementedAccountSvcServer()
 }
 
@@ -195,9 +181,6 @@ func (UnimplementedAccountSvcServer) SetAutoDepositMessage(context.Context, *Set
 }
 func (UnimplementedAccountSvcServer) SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAccountDepositAddress not implemented")
-}
-func (UnimplementedAccountSvcServer) SetAccountEnableDepositService(context.Context, *SetAccountEnableDepositServiceRequest) (*SetAccountEnableDepositServiceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetAccountEnableDepositService not implemented")
 }
 func (UnimplementedAccountSvcServer) mustEmbedUnimplementedAccountSvcServer() {}
 
@@ -356,24 +339,6 @@ func _AccountSvc_SetAccountDepositAddress_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AccountSvc_SetAccountEnableDepositService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetAccountEnableDepositServiceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccountSvcServer).SetAccountEnableDepositService(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccountSvc_SetAccountEnableDepositService_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountSvcServer).SetAccountEnableDepositService(ctx, req.(*SetAccountEnableDepositServiceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AccountSvc_ServiceDesc is the grpc.ServiceDesc for AccountSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -412,10 +377,6 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetAccountDepositAddress",
 			Handler:    _AccountSvc_SetAccountDepositAddress_Handler,
-		},
-		{
-			MethodName: "SetAccountEnableDepositService",
-			Handler:    _AccountSvc_SetAccountEnableDepositService_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1972,6 +1933,293 @@ var SystemSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClearSystemMessage",
 			Handler:    _SystemSvc_ClearSystemMessage_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "bind/grpc/proto/chat.proto",
+}
+
+const (
+	ConfigSvc_GetConfig_FullMethodName               = "/chat.ConfigSvc/GetConfig"
+	ConfigSvc_SetBootstraps_FullMethodName           = "/chat.ConfigSvc/SetBootstraps"
+	ConfigSvc_SetPeeringPeers_FullMethodName         = "/chat.ConfigSvc/SetPeeringPeers"
+	ConfigSvc_SetEnableMDNS_FullMethodName           = "/chat.ConfigSvc/SetEnableMDNS"
+	ConfigSvc_SetEnableDepositService_FullMethodName = "/chat.ConfigSvc/SetEnableDepositService"
+	ConfigSvc_SetDownloadDir_FullMethodName          = "/chat.ConfigSvc/SetDownloadDir"
+)
+
+// ConfigSvcClient is the client API for ConfigSvc service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ConfigSvcClient interface {
+	// 获取系统配置
+	GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigReply, error)
+	// 设置引导节点
+	SetBootstraps(ctx context.Context, in *SetBootstrapsRequest, opts ...grpc.CallOption) (*SetBootstrapsReply, error)
+	// 设置连接节点（中继服务节点）
+	SetPeeringPeers(ctx context.Context, in *SetPeeringPeersRequest, opts ...grpc.CallOption) (*SetPeeringPeersReply, error)
+	// 设置是否启动 mdns 服务
+	SetEnableMDNS(ctx context.Context, in *SetEnableMDNSRequest, opts ...grpc.CallOption) (*SetEnableMDNSReply, error)
+	// 设置是否启动寄存服务
+	SetEnableDepositService(ctx context.Context, in *SetEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetEnableDepositServiceReply, error)
+	// 设置默认下载路径
+	SetDownloadDir(ctx context.Context, in *SetDownloadDirRequest, opts ...grpc.CallOption) (*SetDownloadDirReply, error)
+}
+
+type configSvcClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewConfigSvcClient(cc grpc.ClientConnInterface) ConfigSvcClient {
+	return &configSvcClient{cc}
+}
+
+func (c *configSvcClient) GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigReply, error) {
+	out := new(GetConfigReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_GetConfig_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *configSvcClient) SetBootstraps(ctx context.Context, in *SetBootstrapsRequest, opts ...grpc.CallOption) (*SetBootstrapsReply, error) {
+	out := new(SetBootstrapsReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_SetBootstraps_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *configSvcClient) SetPeeringPeers(ctx context.Context, in *SetPeeringPeersRequest, opts ...grpc.CallOption) (*SetPeeringPeersReply, error) {
+	out := new(SetPeeringPeersReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_SetPeeringPeers_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *configSvcClient) SetEnableMDNS(ctx context.Context, in *SetEnableMDNSRequest, opts ...grpc.CallOption) (*SetEnableMDNSReply, error) {
+	out := new(SetEnableMDNSReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_SetEnableMDNS_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *configSvcClient) SetEnableDepositService(ctx context.Context, in *SetEnableDepositServiceRequest, opts ...grpc.CallOption) (*SetEnableDepositServiceReply, error) {
+	out := new(SetEnableDepositServiceReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_SetEnableDepositService_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *configSvcClient) SetDownloadDir(ctx context.Context, in *SetDownloadDirRequest, opts ...grpc.CallOption) (*SetDownloadDirReply, error) {
+	out := new(SetDownloadDirReply)
+	err := c.cc.Invoke(ctx, ConfigSvc_SetDownloadDir_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ConfigSvcServer is the server API for ConfigSvc service.
+// All implementations must embed UnimplementedConfigSvcServer
+// for forward compatibility
+type ConfigSvcServer interface {
+	// 获取系统配置
+	GetConfig(context.Context, *GetConfigRequest) (*GetConfigReply, error)
+	// 设置引导节点
+	SetBootstraps(context.Context, *SetBootstrapsRequest) (*SetBootstrapsReply, error)
+	// 设置连接节点（中继服务节点）
+	SetPeeringPeers(context.Context, *SetPeeringPeersRequest) (*SetPeeringPeersReply, error)
+	// 设置是否启动 mdns 服务
+	SetEnableMDNS(context.Context, *SetEnableMDNSRequest) (*SetEnableMDNSReply, error)
+	// 设置是否启动寄存服务
+	SetEnableDepositService(context.Context, *SetEnableDepositServiceRequest) (*SetEnableDepositServiceReply, error)
+	// 设置默认下载路径
+	SetDownloadDir(context.Context, *SetDownloadDirRequest) (*SetDownloadDirReply, error)
+	mustEmbedUnimplementedConfigSvcServer()
+}
+
+// UnimplementedConfigSvcServer must be embedded to have forward compatible implementations.
+type UnimplementedConfigSvcServer struct {
+}
+
+func (UnimplementedConfigSvcServer) GetConfig(context.Context, *GetConfigRequest) (*GetConfigReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetConfig not implemented")
+}
+func (UnimplementedConfigSvcServer) SetBootstraps(context.Context, *SetBootstrapsRequest) (*SetBootstrapsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetBootstraps not implemented")
+}
+func (UnimplementedConfigSvcServer) SetPeeringPeers(context.Context, *SetPeeringPeersRequest) (*SetPeeringPeersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetPeeringPeers not implemented")
+}
+func (UnimplementedConfigSvcServer) SetEnableMDNS(context.Context, *SetEnableMDNSRequest) (*SetEnableMDNSReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetEnableMDNS not implemented")
+}
+func (UnimplementedConfigSvcServer) SetEnableDepositService(context.Context, *SetEnableDepositServiceRequest) (*SetEnableDepositServiceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetEnableDepositService not implemented")
+}
+func (UnimplementedConfigSvcServer) SetDownloadDir(context.Context, *SetDownloadDirRequest) (*SetDownloadDirReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetDownloadDir not implemented")
+}
+func (UnimplementedConfigSvcServer) mustEmbedUnimplementedConfigSvcServer() {}
+
+// UnsafeConfigSvcServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ConfigSvcServer will
+// result in compilation errors.
+type UnsafeConfigSvcServer interface {
+	mustEmbedUnimplementedConfigSvcServer()
+}
+
+func RegisterConfigSvcServer(s grpc.ServiceRegistrar, srv ConfigSvcServer) {
+	s.RegisterService(&ConfigSvc_ServiceDesc, srv)
+}
+
+func _ConfigSvc_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).GetConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_GetConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).GetConfig(ctx, req.(*GetConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ConfigSvc_SetBootstraps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBootstrapsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).SetBootstraps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_SetBootstraps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).SetBootstraps(ctx, req.(*SetBootstrapsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ConfigSvc_SetPeeringPeers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPeeringPeersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).SetPeeringPeers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_SetPeeringPeers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).SetPeeringPeers(ctx, req.(*SetPeeringPeersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ConfigSvc_SetEnableMDNS_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEnableMDNSRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).SetEnableMDNS(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_SetEnableMDNS_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).SetEnableMDNS(ctx, req.(*SetEnableMDNSRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ConfigSvc_SetEnableDepositService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEnableDepositServiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).SetEnableDepositService(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_SetEnableDepositService_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).SetEnableDepositService(ctx, req.(*SetEnableDepositServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ConfigSvc_SetDownloadDir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetDownloadDirRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigSvcServer).SetDownloadDir(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigSvc_SetDownloadDir_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigSvcServer).SetDownloadDir(ctx, req.(*SetDownloadDirRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ConfigSvc_ServiceDesc is the grpc.ServiceDesc for ConfigSvc service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ConfigSvc_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "chat.ConfigSvc",
+	HandlerType: (*ConfigSvcServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetConfig",
+			Handler:    _ConfigSvc_GetConfig_Handler,
+		},
+		{
+			MethodName: "SetBootstraps",
+			Handler:    _ConfigSvc_SetBootstraps_Handler,
+		},
+		{
+			MethodName: "SetPeeringPeers",
+			Handler:    _ConfigSvc_SetPeeringPeers_Handler,
+		},
+		{
+			MethodName: "SetEnableMDNS",
+			Handler:    _ConfigSvc_SetEnableMDNS_Handler,
+		},
+		{
+			MethodName: "SetEnableDepositService",
+			Handler:    _ConfigSvc_SetEnableDepositService_Handler,
+		},
+		{
+			MethodName: "SetDownloadDir",
+			Handler:    _ConfigSvc_SetDownloadDir_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

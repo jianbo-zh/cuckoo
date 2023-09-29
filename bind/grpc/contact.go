@@ -9,7 +9,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/myerror"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
@@ -104,7 +104,12 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 		return nil, fmt.Errorf("svc get contact error: %w", err)
 	}
 
-	onlineStateMap := cuckoo.GetPeersOnlineStats([]peer.ID{peerID})
+	accountSvc, err := cuckoo.GetAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
+	onlineStateMap := accountSvc.GetOnlineState([]peer.ID{peerID})
 
 	reply = &proto.GetContactReply{
 		Result: &proto.Result{
@@ -158,7 +163,12 @@ func (c *ContactSvc) GetContacts(ctx context.Context, request *proto.GetContacts
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
+		accountSvc, err := cuckoo.GetAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
@@ -227,7 +237,12 @@ func (c *ContactSvc) GetSpecifiedContacts(ctx context.Context, request *proto.Ge
 			peerIDs = append(peerIDs, contact.ID)
 		}
 
-		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
+		accountSvc, err := cuckoo.GetAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
 
 		for _, contact := range contacts {
 			contactList = append(contactList, &proto.Contact{
@@ -322,7 +337,12 @@ func (c *ContactSvc) GetNearbyPeers(request *proto.GetNearbyPeersRequest, server
 				continue
 			}
 
-			err = accountSvc.DownloadPeerAvatar(ctx, peerID, peerAccount.Avatar)
+			fileSvc, err := cuckoo.GetFileSvc()
+			if err != nil {
+				return fmt.Errorf("get account svc error: %w", err)
+			}
+
+			err = fileSvc.AvatarDownload(ctx, peerID, peerAccount.Avatar)
 			if err != nil {
 				log.Errorf("svc download peer avatar error: %s", err.Error())
 				continue
@@ -713,7 +733,7 @@ func (c *ContactSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAd
 		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
 	}
 
-	peer0 := &types.Peer{
+	peer0 := &mytype.Peer{
 		ID:     peerID,
 		Name:   request.Name,
 		Avatar: request.Avatar,

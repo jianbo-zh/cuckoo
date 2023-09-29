@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*types.ContactMessage, error) {
+func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*mytype.ContactMessage, error) {
 	msg, err := c.msgProto.GetMessage(ctx, peerID, msgID)
 	if err != nil {
 		return nil, fmt.Errorf("msgSvc.GetMessage error: %w", err)
 	}
 
-	return &types.ContactMessage{
+	return &mytype.ContactMessage{
 		ID:         msg.Id,
 		MsgType:    msg.MsgType,
 		MimeType:   msg.MimeType,
@@ -39,8 +39,8 @@ func (c *ContactSvc) GetMessageData(ctx context.Context, peerID peer.ID, msgID s
 	return bs, nil
 }
 
-func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]types.ContactMessage, error) {
-	var peerMsgs []types.ContactMessage
+func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]mytype.ContactMessage, error) {
+	var peerMsgs []mytype.ContactMessage
 
 	msgs, err := c.msgProto.GetMessages(ctx, peerID, offset, limit)
 	if err != nil {
@@ -48,7 +48,7 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	}
 
 	for _, msg := range msgs {
-		peerMsgs = append(peerMsgs, types.ContactMessage{
+		peerMsgs = append(peerMsgs, mytype.ContactMessage{
 			ID:         msg.Id,
 			MsgType:    msg.MsgType,
 			MimeType:   msg.MimeType,

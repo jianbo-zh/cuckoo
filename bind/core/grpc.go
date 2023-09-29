@@ -40,6 +40,7 @@ func startGrpc(scheme string, socketpath string) {
 
 	serviceWrapper := &ServiceWrapper{}
 
+	proto.RegisterConfigSvcServer(s, service.NewConfigSvc(serviceWrapper))
 	proto.RegisterAccountSvcServer(s, service.NewAccountSvc(serviceWrapper))
 	proto.RegisterContactSvcServer(s, service.NewContactSvc(serviceWrapper))
 	proto.RegisterGroupSvcServer(s, service.NewGroupSvc(serviceWrapper))

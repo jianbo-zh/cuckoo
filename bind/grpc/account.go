@@ -7,9 +7,8 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
-	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -40,20 +39,6 @@ func (a *AccountSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	return accountSvc, nil
 }
 
-func (a *AccountSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
-	cuckoo, err := a.getter.GetCuckoo()
-	if err != nil {
-		return nil, fmt.Errorf("get cuckoo error: %s", err.Error())
-	}
-
-	depositSvc, err := cuckoo.GetDepositSvc()
-	if err != nil {
-		return nil, fmt.Errorf("cuckoo get deposit svc error: %s", err.Error())
-	}
-
-	return depositSvc, nil
-}
-
 func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (reply *proto.CreateAccountReply, err error) {
 
 	log.Infoln("CreateAccount request: ", request.String())
@@ -72,7 +57,7 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
 	}
 
-	fullAccount, err := accountSvc.CreateAccount(ctx, types.Account{
+	fullAccount, err := accountSvc.CreateAccount(ctx, mytype.Account{
 		Name:           request.Name,
 		Avatar:         request.Avatar,
 		AutoAddContact: true,
@@ -124,21 +109,14 @@ func (a *AccountSvc) GetAccount(ctx context.Context, request *proto.GetAccountRe
 		return nil, fmt.Errorf("svc get account error: %w", err)
 	}
 
-	depositServiceAddress := ""
-	if account.EnableDepositService {
-		depositServiceAddress = account.ID.String()
-	}
-
 	protoAccount = proto.Account{
-		PeerId:                account.ID.String(),
-		Name:                  account.Name,
-		Avatar:                account.Avatar,
-		AutoAddContact:        account.AutoAddContact,
-		AutoJoinGroup:         account.AutoJoinGroup,
-		AutoDepositMessage:    account.AutoDepositMessage,
-		DepositAddress:        account.DepositAddress.String(),
-		EnableDepositService:  account.EnableDepositService,
-		DepositServiceAddress: depositServiceAddress,
+		PeerId:             account.ID.String(),
+		Name:               account.Name,
+		Avatar:             account.Avatar,
+		AutoAddContact:     account.AutoAddContact,
+		AutoJoinGroup:      account.AutoJoinGroup,
+		AutoDepositMessage: account.AutoDepositMessage,
+		DepositAddress:     account.DepositAddress.String(),
 	}
 
 	reply = &proto.GetAccountReply{
@@ -396,56 +374,6 @@ func (a *AccountSvc) SetAccountDepositAddress(ctx context.Context, request *prot
 			Message: "ok",
 		},
 		DepositAddress: peerID.String(),
-	}
-	return reply, nil
-}
-
-func (a *AccountSvc) SetAccountEnableDepositService(ctx context.Context, request *proto.SetAccountEnableDepositServiceRequest) (reply *proto.SetAccountEnableDepositServiceReply, err error) {
-
-	log.Infoln("SetAccountEnableDepositService request: ", request.String())
-	defer func() {
-		if e := recover(); e != nil {
-			log.Panicln("SetAccountEnableDepositService panic: ", e)
-		} else if err != nil {
-			log.Errorln("SetAccountEnableDepositService error: ", err.Error())
-		} else {
-			log.Infoln("SetAccountEnableDepositService reply: ", reply.String())
-		}
-	}()
-
-	accountSvc, err := a.getAccountSvc()
-	if err != nil {
-		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
-	}
-
-	account, err := accountSvc.GetAccount(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("svc get account error: %w", err)
-	}
-
-	if request.GetEnable() != account.EnableDepositService {
-
-		err = accountSvc.SetAccountEnableDepositService(ctx, request.GetEnable())
-		if err != nil {
-			return nil, fmt.Errorf("svc enable deposit svc error: %w", err)
-		}
-
-		depositSvc, err := a.getDepositSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get deposit svc error: %w", err)
-		}
-
-		if err = depositSvc.MaintainDepositService(); err != nil {
-			return nil, fmt.Errorf("svc maintain deposit service error: %w", err)
-		}
-	}
-
-	reply = &proto.SetAccountEnableDepositServiceReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Enable: request.GetEnable(),
 	}
 	return reply, nil
 }

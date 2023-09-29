@@ -8,7 +8,7 @@ import (
 	"os"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/filesvc/protocol/fileproto/ds"
 )
 
@@ -24,7 +24,7 @@ func NewFileProto(ids ipfsds.Batching) (*FileProto, error) {
 	return &fileProto, nil
 }
 
-func (f *FileProto) CalcFileHash(ctx context.Context, filePath string) (*types.FileHash, error) {
+func (f *FileProto) CalcFileHash(ctx context.Context, filePath string) (*mytype.FileHash, error) {
 	// 计算hash
 	ofile, err := os.Open(filePath)
 	if err != nil {
@@ -51,7 +51,7 @@ func (f *FileProto) CalcFileHash(ctx context.Context, filePath string) (*types.F
 		return nil, fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
 	}
 
-	fileHash := types.FileHash{
+	fileHash := mytype.FileHash{
 		HashAlgo:  "md5",
 		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
 	}

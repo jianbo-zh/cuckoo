@@ -541,7 +541,12 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 			peerIDs = append(peerIDs, member.ID)
 		}
 
-		onlineStateMap := cuckoo.GetPeersOnlineStats(peerIDs)
+		accountSvc, err := cuckoo.GetAccountSvc()
+		if err != nil {
+			return nil, fmt.Errorf("get account svc error: %w", err)
+		}
+
+		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
 
 		for i, member := range members {
 			memberList[i] = &proto.GroupMember{

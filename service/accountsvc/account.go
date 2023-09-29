@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -19,14 +18,14 @@ type AccountSvc struct {
 	accountProto *accountproto.AccountProto
 }
 
-func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewAccountService(ctx context.Context, avatarDir string, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery) (*AccountSvc, error) {
 
 	var err error
 
 	accountsvc := &AccountSvc{}
 
-	accountsvc.accountProto, err = accountproto.NewAccountProto(lhost, ids, ebus, conf.AvatarDir)
+	accountsvc.accountProto, err = accountproto.NewAccountProto(lhost, ids, ebus, avatarDir)
 	if err != nil {
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
@@ -39,49 +38,46 @@ func NewAccountService(ctx context.Context, conf config.AccountServiceConfig, lh
 	return accountsvc, nil
 }
 
-func (a *AccountSvc) CreateAccount(ctx context.Context, account types.Account) (*types.Account, error) {
+func (a *AccountSvc) CreateAccount(ctx context.Context, account mytype.Account) (*mytype.Account, error) {
 
 	pbAccount, err := a.accountProto.CreateAccount(ctx, &pb.Account{
-		Name:                 account.Name,
-		Avatar:               account.Avatar,
-		AutoAddContact:       account.AutoAddContact,
-		AutoJoinGroup:        account.AutoJoinGroup,
-		AutoDepositMessage:   account.AutoDepositMessage,
-		DepositAddress:       []byte(account.DepositAddress),
-		EnableDepositService: account.EnableDepositService,
+		Name:               account.Name,
+		Avatar:             account.Avatar,
+		AutoAddContact:     account.AutoAddContact,
+		AutoJoinGroup:      account.AutoJoinGroup,
+		AutoDepositMessage: account.AutoDepositMessage,
+		DepositAddress:     []byte(account.DepositAddress),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("proto create account error: %w", err)
 	}
 
-	return &types.Account{
-		ID:                   peer.ID(pbAccount.Id),
-		Name:                 pbAccount.Name,
-		Avatar:               pbAccount.Avatar,
-		AutoAddContact:       pbAccount.AutoAddContact,
-		AutoJoinGroup:        pbAccount.AutoJoinGroup,
-		AutoDepositMessage:   pbAccount.AutoDepositMessage,
-		DepositAddress:       peer.ID(pbAccount.DepositAddress),
-		EnableDepositService: pbAccount.EnableDepositService,
+	return &mytype.Account{
+		ID:                 peer.ID(pbAccount.Id),
+		Name:               pbAccount.Name,
+		Avatar:             pbAccount.Avatar,
+		AutoAddContact:     pbAccount.AutoAddContact,
+		AutoJoinGroup:      pbAccount.AutoJoinGroup,
+		AutoDepositMessage: pbAccount.AutoDepositMessage,
+		DepositAddress:     peer.ID(pbAccount.DepositAddress),
 	}, nil
 
 }
 
-func (a *AccountSvc) GetAccount(ctx context.Context) (*types.Account, error) {
+func (a *AccountSvc) GetAccount(ctx context.Context) (*mytype.Account, error) {
 	pbAccount, err := a.accountProto.GetAccount(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("proto get account error: %w", err)
 	}
 
-	return &types.Account{
-		ID:                   peer.ID(pbAccount.Id),
-		Name:                 pbAccount.Name,
-		Avatar:               pbAccount.Avatar,
-		AutoAddContact:       pbAccount.AutoAddContact,
-		AutoJoinGroup:        pbAccount.AutoJoinGroup,
-		AutoDepositMessage:   pbAccount.AutoDepositMessage,
-		DepositAddress:       peer.ID(pbAccount.DepositAddress),
-		EnableDepositService: pbAccount.EnableDepositService,
+	return &mytype.Account{
+		ID:                 peer.ID(pbAccount.Id),
+		Name:               pbAccount.Name,
+		Avatar:             pbAccount.Avatar,
+		AutoAddContact:     pbAccount.AutoAddContact,
+		AutoJoinGroup:      pbAccount.AutoJoinGroup,
+		AutoDepositMessage: pbAccount.AutoDepositMessage,
+		DepositAddress:     peer.ID(pbAccount.DepositAddress),
 	}, nil
 }
 
@@ -109,29 +105,21 @@ func (a *AccountSvc) SetAccountDepositAddress(ctx context.Context, depositPeerID
 	return a.accountProto.UpdateAccountDepositAddress(ctx, depositPeerID)
 }
 
-func (a *AccountSvc) SetAccountEnableDepositService(ctx context.Context, enableDepositService bool) error {
-	return a.accountProto.UpdateAccountEnableDepositService(ctx, enableDepositService)
-}
-
-func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*types.Peer, error) {
+func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*mytype.Peer, error) {
 	pbPeer, err := a.accountProto.GetPeer(ctx, peerID)
 	if err != nil {
 		return nil, fmt.Errorf("proto get peer error: %w", err)
 	}
 
-	return &types.Peer{
+	return &mytype.Peer{
 		ID:     peer.ID(pbPeer.Id),
 		Name:   pbPeer.Name,
 		Avatar: pbPeer.Avatar,
 	}, nil
 }
 
-func (a *AccountSvc) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
-	return a.accountProto.DownloadPeerAvatar(ctx, peerID, avatar)
-}
-
-func (a *AccountSvc) GetOnlineState(ctx context.Context, peerIDs []peer.ID) (res map[peer.ID]bool, err error) {
-	return a.accountProto.GetOnlineState(ctx, peerIDs)
+func (a *AccountSvc) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
+	return a.accountProto.GetOnlineState(peerIDs)
 }
 
 func (a *AccountSvc) Close() {}

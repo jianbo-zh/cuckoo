@@ -1,4 +1,4 @@
-package types
+package mytype
 
 const (
 	MsgTypeText    string = "text"

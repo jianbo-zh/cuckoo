@@ -2,18 +2,18 @@ package service
 
 import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 )
 
 func encodeMsgType(msgType string) proto.MsgType {
 	switch msgType {
-	case types.MsgTypeText:
+	case mytype.MsgTypeText:
 		return proto.MsgType_Text
-	case types.MsgTypeImage:
+	case mytype.MsgTypeImage:
 		return proto.MsgType_Image
-	case types.MsgTypeAudio:
+	case mytype.MsgTypeAudio:
 		return proto.MsgType_Audio
-	case types.MsgTypeVideo:
+	case mytype.MsgTypeVideo:
 		return proto.MsgType_Video
 	default:
 		return proto.MsgType_Unknown
@@ -23,23 +23,23 @@ func encodeMsgType(msgType string) proto.MsgType {
 func decodeMsgType(msgType proto.MsgType) string {
 	switch msgType {
 	case proto.MsgType_Text:
-		return types.MsgTypeText
+		return mytype.MsgTypeText
 	case proto.MsgType_Image:
-		return types.MsgTypeImage
+		return mytype.MsgTypeImage
 	case proto.MsgType_Audio:
-		return types.MsgTypeAudio
+		return mytype.MsgTypeAudio
 	case proto.MsgType_Video:
-		return types.MsgTypeVideo
+		return mytype.MsgTypeVideo
 	default:
-		return types.MsgTypeUnknown
+		return mytype.MsgTypeUnknown
 	}
 }
 
-func encodeOnlineState(state types.OnlineState) proto.ConnState {
+func encodeOnlineState(state mytype.OnlineState) proto.ConnState {
 	switch state {
-	case types.OnlineStateOnline:
+	case mytype.OnlineStateOnline:
 		return proto.ConnState_OnlineState
-	case types.OnlineStateOffline:
+	case mytype.OnlineStateOffline:
 		return proto.ConnState_OfflineState
 	default:
 		return proto.ConnState_UnknownState

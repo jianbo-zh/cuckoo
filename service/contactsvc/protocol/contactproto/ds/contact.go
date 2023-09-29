@@ -142,24 +142,50 @@ func (p *PeerDS) DeleteContact(ctx context.Context, peerID peer.ID) error {
 	return nil
 }
 
-// GetState 获取联系人状态
-func (p *PeerDS) GetState(ctx context.Context, peerID peer.ID) (string, error) {
-	val, err := p.Get(ctx, contactDsKey.StateKey(peerID))
+// SetApply 设置新申请
+func (p *PeerDS) SetApply(ctx context.Context, peerID peer.ID) error {
+	err := p.Put(ctx, contactDsKey.ApplyKey(peerID), []byte(strconv.FormatInt(time.Now().Unix(), 10)))
 	if err != nil {
-		return "", fmt.Errorf("get state error: %w", err)
-	}
-
-	return string(val), nil
-}
-
-// SetState 设置联系人状态
-func (p *PeerDS) SetState(ctx context.Context, peerID peer.ID, state string) error {
-	err := p.Put(ctx, contactDsKey.StateKey(peerID), []byte(state))
-	if err != nil {
-		return fmt.Errorf("set state error: %w", err)
+		return fmt.Errorf("set apply error: %w", err)
 	}
 
 	return nil
+}
+
+// DeleteApply 删除申请
+func (p *PeerDS) DeleteApply(ctx context.Context, peerID peer.ID) error {
+	if err := p.Delete(ctx, contactDsKey.ApplyKey(peerID)); err != nil {
+		return fmt.Errorf("delete apply error: %w", err)
+	}
+
+	return nil
+}
+
+// GetApplyIDs 获取会话ID列表
+func (p *PeerDS) GetApplyIDs(ctx context.Context) ([]peer.ID, error) {
+	results, err := p.Query(ctx, query.Query{
+		Prefix:   contactDsKey.ApplyPrefix(),
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ds query error: %w", err)
+	}
+
+	var peerIDs []peer.ID
+	for result := range results.Next() {
+		if result.Error != nil {
+			return nil, fmt.Errorf("ds result next error: %w", err)
+		}
+
+		peerID, err := peer.Decode(strings.TrimPrefix(result.Key, contactDsKey.ApplyPrefix()))
+		if err != nil {
+			return nil, fmt.Errorf("peer decode error: %w", err)
+		}
+
+		peerIDs = append(peerIDs, peerID)
+	}
+
+	return peerIDs, nil
 }
 
 // SetSession 设置新会话

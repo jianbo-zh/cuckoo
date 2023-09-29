@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package contact.pb;
 
+enum State {
+  None = 0;
+  Apply = 1;
+  Normal = 2;
+}
+
 message Peer {
   bytes id = 1;
   string name = 2;
@@ -14,6 +20,15 @@ message Contact {
   string name = 2;
   string avatar = 3;
   bytes depositAddress = 4;
-  int64 createTime = 5;
-  int64 accessTime = 6;
+  State state = 5;
+  int64 createTime = 6;
+  int64 accessTime = 7;
+}
+
+message PeerState {
+  bytes id = 1;
+  string name = 2;
+  string avatar = 3;
+  bytes depositAddress = 4;
+  State state = 5;
 }

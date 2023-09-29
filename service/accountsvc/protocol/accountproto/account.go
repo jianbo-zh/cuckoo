@@ -1,21 +1,17 @@
 package accountproto
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path"
-	"strings"
 	"sync"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/internal/protocol"
-	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/ds"
 	"github.com/jianbo-zh/dchat/service/accountsvc/protocol/accountproto/pb"
 	logging "github.com/jianbo-zh/go-log"
@@ -29,14 +25,10 @@ var log = logging.Logger("account-protocol")
 
 var StreamTimeout = 1 * time.Minute
 
-var OnlineTimeMap = make(map[peer.ID]int64)
-
 const (
-	ID            = protocol.AccountID_v100
-	ONLINE_ID     = protocol.AccountOnlineID_v100
-	AVATAR_ID     = protocol.AccountAvatarID_v100
-	maxMsgSize    = 4 * 1024 // 4K
-	OfflineSecond = 60       // 60s
+	ID         = protocol.AccountID_v100
+	ONLINE_ID  = protocol.AccountOnlineID_v100
+	maxMsgSize = 4 * 1024 // 4K
 )
 
 type AccountProto struct {
@@ -45,8 +37,8 @@ type AccountProto struct {
 	avatarDir string
 
 	emitter struct {
-		evtAccountPeerChange           event.Emitter
-		evtAccountDepositServiceChange event.Emitter
+		evtAccountPeerChange   event.Emitter
+		evtOnlineStateDiscover event.Emitter
 	}
 }
 
@@ -60,75 +52,83 @@ func NewAccountProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 
 	lhost.SetStreamHandler(ID, accountProto.GetPeerHandler)
 	lhost.SetStreamHandler(ONLINE_ID, accountProto.onlineHandler)
-	lhost.SetStreamHandler(AVATAR_ID, accountProto.DownloadPeerAvatarHandler)
 
 	if accountProto.emitter.evtAccountPeerChange, err = eventBus.Emitter(&myevent.EvtAccountPeerChange{}); err != nil {
 		return nil, fmt.Errorf("set account peer change emitter error: %w", err)
 	}
 
-	if accountProto.emitter.evtAccountDepositServiceChange, err = eventBus.Emitter(&myevent.EvtAccountDepositServiceChange{}); err != nil {
-		return nil, fmt.Errorf("set account deposit service change emitter error: %w", err)
+	if accountProto.emitter.evtOnlineStateDiscover, err = eventBus.Emitter(&myevent.EvtOnlineStateDiscover{}); err != nil {
+		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
 	}
 
 	return &accountProto, nil
 }
 
-func (a *AccountProto) GetOnlineState(ctx context.Context, peerIDs []peer.ID) (map[peer.ID]bool, error) {
+func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
 
-	nowtime := time.Now().Unix()
-	result := make(map[peer.ID]bool)
+	go a.goCheckOnlineState(peerIDs, 30*time.Second)
 
-	if len(peerIDs) == 0 {
-		return result, nil
-	}
-
-	// 检查缓存
-	var maybeOfflinePeers []peer.ID
-	for _, peerID := range peerIDs {
-		if nowtime-OnlineTimeMap[peerID] < OfflineSecond {
-			result[peerID] = true
-		} else {
-			maybeOfflinePeers = append(maybeOfflinePeers, peerID)
-		}
-	}
-	if len(maybeOfflinePeers) == 0 { // 都在线
-		return result, nil
-	}
-
-	onlineCh := make(chan types.PeerState, len(maybeOfflinePeers))
-
-	st := time.Now()
-	var wg sync.WaitGroup
-	wg.Add(len(maybeOfflinePeers))
-	for _, peerID := range maybeOfflinePeers {
-		go a.goCheckOnline(ctx, &wg, peerID, onlineCh)
-	}
-	wg.Wait()
-	close(onlineCh)
-
-	log.Debugf("check online use time: %d", time.Since(st).Milliseconds())
-
-	for res := range onlineCh {
-		if res.IsOnline {
-			result[res.PeerID] = true
-			OnlineTimeMap[res.PeerID] = time.Now().Unix()
-
-		} else {
-			result[res.PeerID] = false
-		}
-	}
-
-	return result, nil
+	return a.host.OnlineStats(peerIDs, 60*time.Second)
 }
 
-func (a *AccountProto) goCheckOnline(ctx context.Context, wg *sync.WaitGroup, peerID peer.ID, onlineCh chan<- types.PeerState) {
-	defer wg.Done()
+func (a *AccountProto) goCheckOnlineState(peerIDs []peer.ID, onlineDuration time.Duration) {
 
-	peerState := types.PeerState{
-		PeerID:   peerID,
-		IsOnline: false,
+	peersOnlineState := make(map[peer.ID]bool)
+	if len(peerIDs) == 0 {
+		return
 	}
 
+	var checkOnlinePeerIDs []peer.ID
+	onlineStats := a.host.OnlineStats(peerIDs, onlineDuration)
+	for _, peerID := range peerIDs {
+		if onlineStats[peerID] == mytype.OnlineStateOnline {
+			peersOnlineState[peerID] = true
+		} else {
+			checkOnlinePeerIDs = append(checkOnlinePeerIDs, peerID)
+		}
+	}
+
+	if len(checkOnlinePeerIDs) > 0 {
+		onlineCh := make(chan mytype.PeerState, len(checkOnlinePeerIDs))
+
+		st := time.Now()
+		var wg sync.WaitGroup
+		wg.Add(len(checkOnlinePeerIDs))
+		for _, peerID := range checkOnlinePeerIDs {
+			go a.goCheckOnline(&wg, peerID, onlineCh)
+		}
+		wg.Wait()
+		close(onlineCh)
+
+		log.Debugf("check online use time: %d", time.Since(st).Milliseconds())
+
+		for res := range onlineCh {
+			if res.IsOnline {
+				peersOnlineState[res.PeerID] = true
+			} else {
+				peersOnlineState[res.PeerID] = false
+			}
+		}
+
+		// 触发在线更新事件发送到前端
+		err := a.emitter.evtOnlineStateDiscover.Emit(myevent.EvtOnlineStateDiscover{
+			OnlineState: peersOnlineState,
+		})
+		if err != nil {
+			log.Errorf("emit peer online state discover error: %v", err)
+		}
+	}
+}
+
+func (a *AccountProto) goCheckOnline(wg *sync.WaitGroup, peerID peer.ID, onlineCh chan<- mytype.PeerState) {
+	defer wg.Done()
+
+	peerState := mytype.PeerState{
+		PeerID:   peerID,
+		IsOnline: false, // default: offline
+	}
+
+	ctx := context.Background()
 	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ONLINE_ID)
 	if err != nil {
 		onlineCh <- peerState
@@ -315,26 +315,6 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 	return nil
 }
 
-func (a *AccountProto) UpdateAccountEnableDepositService(ctx context.Context, enableDepositService bool) error {
-	account, err := a.data.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("data get account error: %w", err)
-	}
-
-	if account.EnableDepositService != enableDepositService {
-		account.EnableDepositService = enableDepositService
-		if err = a.data.UpdateAccount(ctx, account); err != nil {
-			return fmt.Errorf("data update account error: %w", err)
-		}
-
-		a.emitter.evtAccountDepositServiceChange.Emit(myevent.EvtAccountDepositServiceChange{
-			Enable: enableDepositService,
-		})
-	}
-
-	return nil
-}
-
 func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*pb.Peer, error) {
 	log.Debugln("do get peer")
 
@@ -354,49 +334,6 @@ func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*pb.Peer, e
 	}
 
 	return &peerInfo, nil
-}
-
-func (a *AccountProto) DownloadPeerAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
-	log.Debugln("do download peer avatar")
-
-	// 检查文件在不在
-	avatarPath := path.Join(a.avatarDir, avatar)
-	if fi, err := os.Stat(avatarPath); err == nil {
-		if fi.Size() > 0 {
-			log.Warnln("avatar file exists")
-			return nil
-		}
-
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("os stat error: %w", err)
-	}
-
-	// 打开输入流下载文件
-	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, AVATAR_ID)
-	if err != nil {
-		return fmt.Errorf("new stream error: %w", err)
-	}
-	defer stream.Close()
-
-	bfwt := bufio.NewWriter(stream)
-	if _, err := bfwt.WriteString(fmt.Sprintf("%s\n", avatar)); err != nil {
-		return fmt.Errorf("bufio write string error: %w", err)
-	}
-	bfwt.Flush()
-
-	// 打开文件，接收下载文件
-	file, err := os.OpenFile(avatarPath, os.O_CREATE|os.O_RDWR, 0755)
-	if err != nil {
-		return fmt.Errorf("os.OpenFile error: %w", err)
-	}
-	defer file.Close()
-
-	bfrd := bufio.NewReader(stream)
-	if _, err := bfrd.WriteTo(file); err != nil {
-		return fmt.Errorf("bufio write to file error: %s", err.Error())
-	}
-
-	return nil
 }
 
 // PeerHandler 查询Peer信息
@@ -420,32 +357,4 @@ func (a *AccountProto) GetPeerHandler(stream network.Stream) {
 		log.Errorf("pbio write peer msg error: %s", err.Error())
 		return
 	}
-}
-
-// AvatarHandler 下载账号头像
-func (a *AccountProto) DownloadPeerAvatarHandler(stream network.Stream) {
-	log.Debugln("handle download peer avatar")
-
-	defer stream.Close()
-	bfrd := bufio.NewReader(stream)
-	avatar, err := bfrd.ReadString('\n')
-	if err != nil {
-		log.Errorf("bufio read avatar error: %s", err.Error())
-		return
-	}
-	avatarPath := path.Join(a.avatarDir, strings.TrimSpace(avatar))
-	file, err := os.Open(avatarPath)
-	if err != nil {
-		log.Errorf("os open avatar error: %s", err.Error())
-		return
-	}
-	defer file.Close()
-
-	bfrw := bufio.NewWriter(stream)
-	_, err = bfrw.ReadFrom(file)
-	if err != nil {
-		log.Errorf("bufio read from file error: %s", err.Error())
-		return
-	}
-	bfrw.Flush()
 }

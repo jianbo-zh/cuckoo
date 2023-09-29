@@ -1,16 +1,20 @@
 package fileproto
 
 import (
+	"bufio"
 	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/cuckoo/config"
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/protocol"
@@ -30,6 +34,7 @@ var StreamTimeout = 1 * time.Minute
 const (
 	QUERY_ID    = protocol.FileQueryID_v100
 	DOWNLOAD_ID = protocol.FileDownloadID_v100
+	AVATAR_ID   = protocol.AvatarDownloadID_v100
 
 	ServiceName = "peer.message"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -41,23 +46,24 @@ type DownloadProto struct {
 	host myhost.Host
 	data ds.DownloadIface
 
-	downloadDir string
+	conf config.FileServiceConfig
 
 	emitters struct {
 		evtDownloadResult event.Emitter
 	}
 }
 
-func NewDownloadProto(lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, dldir string) (*DownloadProto, error) {
+func NewDownloadProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*DownloadProto, error) {
 	var err error
 	download := DownloadProto{
-		host:        lhost,
-		data:        ds.DownloadWrap(ids),
-		downloadDir: dldir,
+		host: lhost,
+		data: ds.DownloadWrap(ids),
+		conf: conf,
 	}
 
 	lhost.SetStreamHandler(QUERY_ID, download.fileQueryHandler)
 	lhost.SetStreamHandler(DOWNLOAD_ID, download.fileDownloadHandler)
+	lhost.SetStreamHandler(AVATAR_ID, download.avatarDownloadHandler)
 
 	// 触发器
 	download.emitters.evtDownloadResult, err = ebus.Emitter(&myevent.EvtDownloadResult{})
@@ -305,4 +311,75 @@ func (d *DownloadProto) fileQueryHandler(stream network.Stream) {
 // 文件下载处理
 func (d *DownloadProto) fileDownloadHandler(stream network.Stream) {
 
+}
+
+func (d *DownloadProto) AvatarDownload(ctx context.Context, peerID peer.ID, avatar string) error {
+	log.Debugln("do download peer avatar")
+
+	// 检查文件在不在
+	avatarPath := path.Join(d.conf.ResourceDir, avatar)
+	if fi, err := os.Stat(avatarPath); err == nil {
+		if fi.Size() > 0 {
+			log.Warnln("avatar file exists")
+			return nil
+		}
+
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("os stat error: %w", err)
+	}
+
+	// 打开输入流下载文件
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, AVATAR_ID)
+	if err != nil {
+		return fmt.Errorf("new stream error: %w", err)
+	}
+	defer stream.Close()
+
+	bfwt := bufio.NewWriter(stream)
+	if _, err := bfwt.WriteString(fmt.Sprintf("%s\n", avatar)); err != nil {
+		return fmt.Errorf("bufio write string error: %w", err)
+	}
+	bfwt.Flush()
+
+	// 打开文件，接收下载文件
+	file, err := os.OpenFile(avatarPath, os.O_CREATE|os.O_RDWR, 0755)
+	if err != nil {
+		return fmt.Errorf("os.OpenFile error: %w", err)
+	}
+	defer file.Close()
+
+	bfrd := bufio.NewReader(stream)
+	if _, err := bfrd.WriteTo(file); err != nil {
+		return fmt.Errorf("bufio write to file error: %s", err.Error())
+	}
+
+	return nil
+}
+
+// AvatarHandler 下载账号头像
+func (d *DownloadProto) avatarDownloadHandler(stream network.Stream) {
+	log.Debugln("handle download peer avatar")
+
+	defer stream.Close()
+	bfrd := bufio.NewReader(stream)
+	avatar, err := bfrd.ReadString('\n')
+	if err != nil {
+		log.Errorf("bufio read avatar error: %s", err.Error())
+		return
+	}
+	avatarPath := path.Join(d.conf.ResourceDir, strings.TrimSpace(avatar))
+	file, err := os.Open(avatarPath)
+	if err != nil {
+		log.Errorf("os open avatar error: %s", err.Error())
+		return
+	}
+	defer file.Close()
+
+	bfrw := bufio.NewWriter(stream)
+	_, err = bfrw.ReadFrom(file)
+	if err != nil {
+		log.Errorf("bufio read from file error: %s", err.Error())
+		return
+	}
+	bfrw.Flush()
 }

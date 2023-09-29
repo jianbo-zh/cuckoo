@@ -10,8 +10,8 @@ import (
 	"github.com/jianbo-zh/dchat/internal/datastore"
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
+	"github.com/jianbo-zh/dchat/service/configsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/filesvc"
@@ -34,6 +34,7 @@ type Cuckoo struct {
 	ddht *dual.DHT
 	ebus event.Bus
 
+	configSvc  configsvc.ConfigServiceIface
 	accountSvc accountsvc.AccountServiceIface
 	contactSvc contactsvc.ContactServiceIface
 	groupSvc   groupsvc.GroupServiceIface
@@ -72,41 +73,46 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	routingDiscovery := drouting.NewRoutingDiscovery(ddht)
 
 	ds, err := datastore.New(datastore.Config{
-		Path: filepath.Join(conf.StorageDir, "leveldb"),
+		Path: filepath.Join(conf.DataDir, config.DefaultLevelDBDir),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("datastore.New error: %w", err)
 	}
 
-	cuckoo.accountSvc, err = accountsvc.NewAccountService(ctx, conf.AccountService, cuckoo.host, ds, ebus, routingDiscovery)
+	cuckoo.configSvc, err = configsvc.NewConfigService(ctx, conf, ebus)
+	if err != nil {
+		return nil, fmt.Errorf("config svc new config service error: %w", err)
+	}
+
+	cuckoo.accountSvc, err = accountsvc.NewAccountService(ctx, "avatardir", cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
 		return nil, fmt.Errorf("accountsvc.NewAccountService error: %s", err.Error())
 	}
 
-	cuckoo.contactSvc, err = contactsvc.NewContactService(ctx, conf.ContactService, cuckoo.host, ds, ebus, cuckoo.accountSvc)
+	cuckoo.contactSvc, err = contactsvc.NewContactService(ctx, cuckoo.host, ds, ebus, cuckoo.accountSvc)
 	if err != nil {
 		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
 	}
 
-	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, conf.GroupService, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc, cuckoo.contactSvc)
+	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc, cuckoo.contactSvc)
 	if err != nil {
 		return nil, fmt.Errorf("group.NewGroupService error: %s", err.Error())
 	}
 
-	cuckoo.depositSvc, err = depositsvc.NewDepositService(ctx, conf.DepositService, cuckoo.host, ds, ebus, cuckoo.accountSvc)
+	cuckoo.depositSvc, err = depositsvc.NewDepositService(ctx, conf.DepositService, cuckoo.host, ds, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
+	}
+
+	cuckoo.fileSvc, err = filesvc.NewFileService(ctx, conf.FileService, cuckoo.host, ds, ebus)
+	if err != nil {
+		return nil, fmt.Errorf("deposit.NewFileService error: %s", err.Error())
 	}
 
 	cuckoo.systemSvc, err = systemsvc.NewSystemService(ctx, cuckoo.host, ds, ebus, cuckoo.accountSvc, cuckoo.contactSvc, cuckoo.groupSvc)
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewSystemService error: %s", err.Error())
 	}
-
-	// cuckoo.fileSvc, err = filesvc.NewFileService(ctx, conf.FileService, cuckoo.host, ds, ebus)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
-	// }
 
 	return cuckoo, nil
 }
@@ -116,6 +122,13 @@ func (c *Cuckoo) GetHost() (myhost.Host, error) {
 		return nil, fmt.Errorf("host not start")
 	}
 	return c.host, nil
+}
+
+func (c *Cuckoo) GetConfigSvc() (configsvc.ConfigServiceIface, error) {
+	if c.configSvc == nil {
+		return nil, fmt.Errorf("config service not start")
+	}
+	return c.configSvc, nil
 }
 
 func (c *Cuckoo) GetAccountSvc() (accountsvc.AccountServiceIface, error) {
@@ -153,6 +166,13 @@ func (c *Cuckoo) GetSystemSvc() (systemsvc.SystemServiceIface, error) {
 	return c.systemSvc, nil
 }
 
+func (c *Cuckoo) GetFileSvc() (filesvc.FileServiceIface, error) {
+	if c.fileSvc == nil {
+		return nil, fmt.Errorf("config service not start")
+	}
+	return c.fileSvc, nil
+}
+
 func (c *Cuckoo) GetLanPeerIDs() ([]peer.ID, error) {
 	if c.ddht == nil {
 		return nil, fmt.Errorf("ddht is nil")
@@ -167,11 +187,6 @@ func (c *Cuckoo) GetEbus() (event.Bus, error) {
 	}
 
 	return c.ebus, nil
-}
-
-// 获取Peer的在线状态
-func (c *Cuckoo) GetPeersOnlineStats(peerIDs []peer.ID) map[peer.ID]types.OnlineState {
-	return c.host.PeersOnlineStats(peerIDs)
 }
 
 func (c *Cuckoo) Close() {

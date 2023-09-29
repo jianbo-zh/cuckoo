@@ -13,7 +13,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/jianbo-zh/dchat/internal/datastore"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"google.golang.org/protobuf/proto"
@@ -333,7 +333,7 @@ func (a *AdminDs) GetSessionIDs(ctx context.Context) ([]string, error) {
 	return groupIDs, nil
 }
 
-func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]types.GroupMember, error) {
+func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error) {
 
 	if err := a.checkInitCache(ctx, groupID); err != nil {
 		return nil, fmt.Errorf("check init cache error: %w", err)
@@ -347,7 +347,7 @@ func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]types.Group
 		return nil, fmt.Errorf("ds get member error: %w", err)
 	}
 
-	var members []types.GroupMember
+	var members []mytype.GroupMember
 	if err = json.Unmarshal(value, &members); err != nil {
 		return nil, fmt.Errorf("json unmarshal error: %w", err)
 	}
@@ -355,7 +355,7 @@ func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]types.Group
 	return members, nil
 }
 
-func (a *AdminDs) GetAgreeMembers(ctx context.Context, groupID string) ([]types.GroupMember, error) {
+func (a *AdminDs) GetAgreeMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error) {
 
 	if err := a.checkInitCache(ctx, groupID); err != nil {
 		return nil, fmt.Errorf("check init cache error: %w", err)
@@ -369,7 +369,7 @@ func (a *AdminDs) GetAgreeMembers(ctx context.Context, groupID string) ([]types.
 		return nil, fmt.Errorf("ds get member error: %w", err)
 	}
 
-	var members []types.GroupMember
+	var members []mytype.GroupMember
 	if err = json.Unmarshal(value, &members); err != nil {
 		return nil, fmt.Errorf("json unmarshal error: %w", err)
 	}
@@ -583,9 +583,9 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 	}
 
 	// 正式成员
-	var members []types.GroupMember
+	var members []mytype.GroupMember
 	for memberID := range formalMap {
-		members = append(members, types.GroupMember{
+		members = append(members, mytype.GroupMember{
 			ID:     memberID,
 			Name:   allMemberMap[memberID].Name,
 			Avatar: allMemberMap[memberID].Avatar,
@@ -605,7 +605,7 @@ func (a *AdminDs) initLogCache(ctx context.Context, groupID string) error {
 	for memberID, operate := range operateMap {
 		if operate == pb.Log_AGREE {
 			if _, exists := formalMap[memberID]; !exists {
-				agreeMembers = append(agreeMembers, types.GroupMember{
+				agreeMembers = append(agreeMembers, mytype.GroupMember{
 					ID:     memberID,
 					Name:   allMemberMap[memberID].Name,
 					Avatar: allMemberMap[memberID].Avatar,
@@ -861,9 +861,9 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 		}
 
 		// 正式成员
-		var members []types.GroupMember
+		var members []mytype.GroupMember
 		for memberID := range formalMap {
-			members = append(members, types.GroupMember{
+			members = append(members, mytype.GroupMember{
 				ID:     memberID,
 				Name:   allMemberMap[memberID].Name,
 				Avatar: allMemberMap[memberID].Avatar,
@@ -883,7 +883,7 @@ func (a *AdminDs) syncLogCache(ctx context.Context, groupID string, synclog *pb.
 		for memberID, operate := range operateMap {
 			if operate == pb.Log_AGREE {
 				if _, exists := formalMap[memberID]; !exists {
-					agreeMembers = append(agreeMembers, types.GroupMember{
+					agreeMembers = append(agreeMembers, mytype.GroupMember{
 						ID:     memberID,
 						Name:   allMemberMap[memberID].Name,
 						Avatar: allMemberMap[memberID].Avatar,

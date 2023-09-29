@@ -4,7 +4,7 @@ import (
 	"context"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -28,8 +28,8 @@ type AdminIface interface {
 	GetCreator(ctx context.Context, groupID string) (peer.ID, error)
 	GetCreateTime(ctx context.Context, groupID string) (int64, error)
 	GetSessionIDs(ctx context.Context) ([]string, error)
-	GetMembers(ctx context.Context, groupID string) ([]types.GroupMember, error)      // 正式成员
-	GetAgreeMembers(ctx context.Context, groupID string) ([]types.GroupMember, error) // 所有审核通过的成员
+	GetMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error)      // 正式成员
+	GetAgreeMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error) // 所有审核通过的成员
 
 	SetState(ctx context.Context, groupID string, state string) error
 	SetName(ctx context.Context, groupID string, name string) error

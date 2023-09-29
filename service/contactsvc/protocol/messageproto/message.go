@@ -43,7 +43,6 @@ type PeerMessageProto struct {
 		evtPushOfflineMessage event.Emitter
 		evtPullOfflineMessage event.Emitter
 		evtReceiveMessage     event.Emitter
-		evtReceivePeerStream  event.Emitter
 	}
 }
 
@@ -65,11 +64,6 @@ func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	// 触发器：获取离线消息
 	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&myevent.EvtPullDepositContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
-	}
-
-	// 触发器：peer流进入
-	if msgsvc.emitters.evtReceivePeerStream, err = eventBus.Emitter(&myevent.EvtReceivePeerStream{}); err != nil {
-		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 触发器：接收到消息
@@ -129,11 +123,6 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 }
 
 func (p *PeerMessageProto) Handler(stream network.Stream) {
-
-	// 触发接收流
-	p.emitters.evtReceivePeerStream.Emit(myevent.EvtReceivePeerStream{
-		PeerID: stream.Conn().RemotePeer(),
-	})
 
 	// 开始处理流
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)

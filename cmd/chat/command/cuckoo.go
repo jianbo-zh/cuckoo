@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/jianbo-zh/dchat/cmd/chat/httpapi"
 	"github.com/jianbo-zh/dchat/cuckoo"
@@ -17,14 +18,14 @@ func init() {
 		Usage: "run cuckoo",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "storage",
-				Value: "./.datadir/storage",
+				Name:  "datadir",
+				Value: "./.datadir",
 				Usage: "set storage dir",
 			},
 			&cli.StringFlag{
-				Name:  "avatar",
-				Value: "./.datadir/avatar",
-				Usage: "set avatar dir",
+				Name:  "resdir",
+				Value: "./.resdir",
+				Usage: "set resource dir",
 			},
 			&cli.StringFlag{
 				Name:    "host",
@@ -41,10 +42,17 @@ func init() {
 		},
 		Action: func(cCtx *cli.Context) error {
 
-			var storageDir = cCtx.String("storage")
-			var avatarDir = cCtx.String("avatar")
+			dataDir, err := filepath.Abs(cCtx.String("datadir"))
+			if err != nil {
+				return fmt.Errorf("filepath.Abs error: %w", err)
+			}
 
-			conf, err := cuckoo.LoadConfig(storageDir, avatarDir)
+			resourceDir, err := filepath.Abs(cCtx.String("resdir"))
+			if err != nil {
+				return fmt.Errorf("filepath.Abs error: %w", err)
+			}
+
+			conf, err := cuckoo.LoadConfig(dataDir, resourceDir)
 			if err != nil {
 				return fmt.Errorf("cuckoo.LoadConfig error: %w", err)
 			}

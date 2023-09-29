@@ -7,9 +7,10 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/filesvc/protocol/fileproto"
 	"github.com/libp2p/go-libp2p/core/event"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var _ FileServiceIface = (*FileService)(nil)
@@ -26,7 +27,7 @@ func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost my
 		return nil, fmt.Errorf("new download client proto error: %w", err)
 	}
 
-	downloadProto, err := fileproto.NewDownloadProto(lhost, ids, ebus, conf.DownloadDir)
+	downloadProto, err := fileproto.NewDownloadProto(conf, lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("new download client proto error: %w", err)
 	}
@@ -40,8 +41,12 @@ func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost my
 }
 
 // CalcFileHash 计算文件Hash并保存
-func (f *FileService) CalcFileHash(ctx context.Context, filePath string) (*types.FileHash, error) {
+func (f *FileService) CalcFileHash(ctx context.Context, filePath string) (*mytype.FileHash, error) {
 	return f.fileProto.CalcFileHash(ctx, filePath)
+}
+
+func (f *FileService) AvatarDownload(ctx context.Context, peerID peer.ID, avatar string) error {
+	return f.downloadProto.AvatarDownload(ctx, peerID, avatar)
 }
 
 func (f *FileService) Close() {}

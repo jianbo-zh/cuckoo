@@ -43,7 +43,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 		return fmt.Errorf("cuckoo.GetEbus error: %w", err)
 	}
 
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtReceivePeerMessage), new(myevent.EvtReceiveGroupMessage)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtReceivePeerMessage), new(myevent.EvtReceiveGroupMessage), new(myevent.EvtOnlineStateDiscover)})
 	if err != nil {
 		return fmt.Errorf("ebus.Subscribe error: %w", err)
 	}
@@ -86,6 +86,39 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 			reply := proto.SubscribeCommonEventReply{
 				Event: &proto.CommonEvent{
 					Type:    proto.CommonEvent_GroupMessage,
+					Payload: payload,
+				},
+			}
+
+			err = server.Send(&reply)
+			if err != nil {
+				return fmt.Errorf("server.Send error: %w", err)
+			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
+
+		case myevent.EvtOnlineStateDiscover:
+
+			var onlines []string
+			var offlines []string
+			for peerID, isOnline := range evt.OnlineState {
+				if isOnline {
+					onlines = append(onlines, peerID.String())
+				} else {
+					offlines = append(offlines, peerID.String())
+				}
+			}
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadOnlineState{
+				OnlinePeerIds:  onlines,
+				OfflinePeerIds: offlines,
+			})
+			if err != nil {
+				return fmt.Errorf("proto.Marshal error: %w", err)
+			}
+
+			reply := proto.SubscribeCommonEventReply{
+				Event: &proto.CommonEvent{
+					Type:    proto.CommonEvent_OnlineState,
 					Payload: payload,
 				},
 			}

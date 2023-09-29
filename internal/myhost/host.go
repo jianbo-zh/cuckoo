@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -21,7 +21,7 @@ type Host interface {
 	host.Host
 
 	// peer在线状态统计
-	PeersOnlineStats(peerIDs []peer.ID) map[peer.ID]types.OnlineState
+	OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState
 }
 
 type MyHost struct {

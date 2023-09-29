@@ -1,4 +1,4 @@
-package types
+package mytype
 
 import (
 	"context"
@@ -7,14 +7,13 @@ import (
 )
 
 type Account struct {
-	ID                   peer.ID
-	Name                 string
-	Avatar               string
-	AutoAddContact       bool
-	AutoJoinGroup        bool
-	AutoDepositMessage   bool
-	DepositAddress       peer.ID
-	EnableDepositService bool
+	ID                 peer.ID
+	Name               string
+	Avatar             string
+	AutoAddContact     bool
+	AutoJoinGroup      bool
+	AutoDepositMessage bool
+	DepositAddress     peer.ID
 }
 
 type AccountPeer struct {

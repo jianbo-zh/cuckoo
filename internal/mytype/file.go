@@ -1,4 +1,4 @@
-package types
+package mytype
 
 type FileHash struct {
 	HashAlgo  string

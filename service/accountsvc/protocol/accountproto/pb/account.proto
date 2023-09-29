@@ -13,8 +13,6 @@ message Account {
   bool autoDepositMessage = 6;
   // 设置消息寄存地址(peerID)
   bytes depositAddress = 7;
-  // 启动寄存服务
-  bool enableDepositService = 8;
 }
 
 message Peer {

@@ -1,11 +1,7 @@
 package myevent
 
-import "github.com/jianbo-zh/dchat/internal/types"
+import "github.com/jianbo-zh/dchat/internal/mytype"
 
 type EvtAccountPeerChange struct {
-	AccountPeer types.AccountPeer
-}
-
-type EvtAccountDepositServiceChange struct {
-	Enable bool
+	AccountPeer mytype.AccountPeer
 }

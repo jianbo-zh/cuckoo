@@ -20,3 +20,7 @@ type EvtReceiveGroupMessage struct {
 	Payload    []byte
 	Timestamp  int64
 }
+
+type EvtOnlineStateDiscover struct {
+	OnlineState map[peer.ID]bool
+}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
 )
 
@@ -152,7 +152,7 @@ func (s *SystemSvc) GetSystemMessages(ctx context.Context, request *proto.GetSys
 	for _, msg := range msgs {
 		var msgType proto.SystemMessage_SystemType
 		switch msg.SystemType {
-		case types.SystemTypeApplyAddContact:
+		case mytype.SystemTypeApplyAddContact:
 			msgType = proto.SystemMessage_ApplyAddContact
 		default:
 			msgType = proto.SystemMessage_InviteJoinGroup

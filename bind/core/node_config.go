@@ -2,16 +2,16 @@ package core
 
 // Config is used in NewNode.
 type NodeConfig struct {
-	avatarDir        string
-	storageDir       string
+	dataDir          string
+	resourceDir      string
 	netDriver        NativeNetDriver
 	mdnsLockerDriver NativeMDNSLockerDriver
 }
 
-func NewNodeConfig(storageDir string, avatarDir string) *NodeConfig {
+func NewNodeConfig(dataDir string, resourceDir string) *NodeConfig {
 	return &NodeConfig{
-		avatarDir:  avatarDir,
-		storageDir: storageDir,
+		dataDir:     dataDir,
+		resourceDir: resourceDir,
 	}
 }
 

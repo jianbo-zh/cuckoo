@@ -8,7 +8,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
@@ -86,7 +86,7 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 
 				msg := pb.SystemMsg{
 					Id:         GenMsgID(account.ID),
-					SystemType: types.SystemTypeApplyAddContact,
+					SystemType: mytype.SystemTypeApplyAddContact,
 					Group:      nil,
 					FromPeer: &pb.SystemMsg_Peer{
 						PeerId: []byte(account.ID),
@@ -95,7 +95,7 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 					},
 					ToPeerId:    []byte(evt.PeerID),
 					Content:     evt.Content,
-					SystemState: types.SystemStateSended,
+					SystemState: mytype.SystemStateSended,
 					CreateTime:  time.Now().Unix(),
 					UpdateTime:  time.Now().Unix(),
 				}
@@ -120,7 +120,7 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 				for _, peerID := range evt.PeerIDs {
 					msg := pb.SystemMsg{
 						Id:         GenMsgID(account.ID),
-						SystemType: types.SystemTypeInviteJoinGroup,
+						SystemType: mytype.SystemTypeInviteJoinGroup,
 						Group: &pb.SystemMsg_Group{
 							Id:       evt.GroupID,
 							Name:     evt.GroupName,
@@ -134,7 +134,7 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 						},
 						ToPeerId:    []byte(peerID),
 						Content:     "",
-						SystemState: types.SystemStateSended,
+						SystemState: mytype.SystemStateSended,
 						CreateTime:  time.Now().Unix(),
 						UpdateTime:  time.Now().Unix(),
 					}
@@ -171,7 +171,7 @@ func (s *SystemSvc) goHandleMessage() {
 		}
 
 		switch msg.SystemType {
-		case types.SystemTypeApplyAddContact: // 申请加好友
+		case mytype.SystemTypeApplyAddContact: // 申请加好友
 			ctx := context.Background()
 			// 系统消息入库
 			if err := s.systemProto.SaveMessage(ctx, msg); err != nil {
@@ -189,7 +189,7 @@ func (s *SystemSvc) goHandleMessage() {
 			if account.AutoAddContact {
 				// 添加为好友
 				fmt.Println("auto add contact avatar: ", msg.FromPeer.Avatar)
-				if err = s.contactSvc.AgreeAddContact(ctx, &types.Peer{
+				if err = s.contactSvc.AgreeAddContact(ctx, &mytype.Peer{
 					ID:     peer.ID(msg.FromPeer.PeerId),
 					Name:   msg.FromPeer.Name,
 					Avatar: msg.FromPeer.Avatar,
@@ -198,13 +198,13 @@ func (s *SystemSvc) goHandleMessage() {
 					continue
 				}
 				// 如果是自动加好友，则更新系统消息状态为已同意
-				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, types.SystemStateAgreed); err != nil {
+				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, mytype.SystemStateAgreed); err != nil {
 					log.Errorf("update message state error: %s", err.Error())
 					continue
 				}
 			}
 
-		case types.SystemTypeInviteJoinGroup:
+		case mytype.SystemTypeInviteJoinGroup:
 			ctx := context.Background()
 			// 系统消息入库
 			if err := s.systemProto.SaveMessage(ctx, msg); err != nil {
@@ -228,7 +228,7 @@ func (s *SystemSvc) goHandleMessage() {
 				}
 
 				// 如果是自动加好友，则更新系统消息状态为已同意
-				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, types.SystemStateAgreed); err != nil {
+				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, mytype.SystemStateAgreed); err != nil {
 					log.Errorf("update message state error: %s", err.Error())
 					continue
 				}
@@ -240,7 +240,7 @@ func (s *SystemSvc) goHandleMessage() {
 	}
 }
 
-func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, content string) error {
+func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *mytype.Peer, content string) error {
 	account, err := s.accountSvc.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("accountSvc.GetAccount error: %w", err)
@@ -252,7 +252,7 @@ func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, cont
 
 	msg := pb.SystemMsg{
 		Id:         GenMsgID(account.ID),
-		SystemType: types.SystemTypeApplyAddContact,
+		SystemType: mytype.SystemTypeApplyAddContact,
 		Group:      nil,
 		FromPeer: &pb.SystemMsg_Peer{
 			PeerId: []byte(account.ID),
@@ -261,7 +261,7 @@ func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, cont
 		},
 		ToPeerId:    []byte(peer0.ID),
 		Content:     content,
-		SystemState: types.SystemStateSended,
+		SystemState: mytype.SystemStateSended,
 		CreateTime:  time.Now().Unix(),
 		UpdateTime:  time.Now().Unix(),
 	}
@@ -277,19 +277,19 @@ func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *types.Peer, cont
 	return nil
 }
 
-func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit int) ([]types.SystemMessage, error) {
+func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit int) ([]mytype.SystemMessage, error) {
 	msgs, err := s.systemProto.GetMessageList(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("systemProto.GetMessageList error: %w", err)
 	}
 
-	var sysmsgs []types.SystemMessage
+	var sysmsgs []mytype.SystemMessage
 	for _, msg := range msgs {
 
-		sysmsgs = append(sysmsgs, types.SystemMessage{
+		sysmsgs = append(sysmsgs, mytype.SystemMessage{
 			ID:         msg.Id,
 			SystemType: msg.SystemType,
-			FromPeer: types.Peer{
+			FromPeer: mytype.Peer{
 				ID:     peer.ID(msg.FromPeer.PeerId),
 				Name:   msg.FromPeer.Name,
 				Avatar: msg.FromPeer.Avatar,
@@ -307,7 +307,7 @@ func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit 
 
 func (s *SystemSvc) AgreeAddContact(ctx context.Context, msgID string) error {
 	// 发送同意加好友消息
-	if err := s.systemProto.UpdateMessageState(ctx, msgID, types.SystemStateAgreed); err != nil {
+	if err := s.systemProto.UpdateMessageState(ctx, msgID, mytype.SystemStateAgreed); err != nil {
 		return fmt.Errorf("systemProto.UpdateMessageState error: %w", err)
 	}
 
@@ -316,7 +316,7 @@ func (s *SystemSvc) AgreeAddContact(ctx context.Context, msgID string) error {
 
 func (s *SystemSvc) RejectAddContact(ctx context.Context, ackID string) error {
 
-	if err := s.systemProto.UpdateMessageState(ctx, ackID, types.SystemStateRejected); err != nil {
+	if err := s.systemProto.UpdateMessageState(ctx, ackID, mytype.SystemStateRejected); err != nil {
 		return fmt.Errorf("systemProto.UpdateMessageState error: %w", err)
 	}
 

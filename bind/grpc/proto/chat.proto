@@ -26,8 +26,6 @@ service AccountSvc {
   rpc SetAutoDepositMessage(SetAutoDepositMessageRequest) returns (SetAutoDepositMessageReply) {}
   // 设置我不在线时，消息寄存地址
   rpc SetAccountDepositAddress(SetAccountDepositAddressRequest) returns (SetAccountDepositAddressReply) {}
-  // 启动寄存服务
-  rpc SetAccountEnableDepositService(SetAccountEnableDepositServiceRequest) returns (SetAccountEnableDepositServiceReply) {}
 }
 
 // 联系人服务
@@ -110,6 +108,21 @@ service SystemSvc {
 
 
   rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
+}
+
+service ConfigSvc {
+  // 获取系统配置
+  rpc GetConfig(GetConfigRequest) returns (GetConfigReply) {}
+  // 设置引导节点
+  rpc SetBootstraps(SetBootstrapsRequest) returns (SetBootstrapsReply) {}
+  // 设置连接节点（中继服务节点）
+  rpc SetPeeringPeers(SetPeeringPeersRequest) returns (SetPeeringPeersReply) {}
+  // 设置是否启动 mdns 服务
+  rpc SetEnableMDNS(SetEnableMDNSRequest) returns (SetEnableMDNSReply) {}
+  // 设置是否启动寄存服务
+  rpc SetEnableDepositService(SetEnableDepositServiceRequest) returns (SetEnableDepositServiceReply) {}
+  // 设置默认下载路径
+  rpc SetDownloadDir(SetDownloadDirRequest) returns (SetDownloadDirReply) {}
 }
 
 // 消息订阅服务
@@ -199,14 +212,6 @@ message SetAccountDepositAddressRequest {
 message SetAccountDepositAddressReply {
   Result result = 1;
   string depositAddress = 2;
-}
-
-message SetAccountEnableDepositServiceRequest {
-  bool enable = 1;
-}
-message SetAccountEnableDepositServiceReply {
-  Result result = 1;
-  bool enable = 2;
 }
 
 // -------------------- 分隔符 --------------------
@@ -518,12 +523,68 @@ message RejectAddContactReply {
   string ackMsgId = 2;
 }
 
+// -------------------- 分隔符 --------------------
+
+message GetConfigRequest {}
+message GetConfigReply {
+  Result result = 1;
+  Config config = 2;
+}
+
+message SetBootstrapsRequest {
+  repeated string bootstraps = 1;
+}
+message SetBootstrapsReply {
+  Result result = 1;
+  repeated string bootstraps = 2;
+}
+
+message SetPeeringPeersRequest {
+  repeated string peeringPeers = 1;
+}
+message SetPeeringPeersReply {
+  Result result = 1;
+  repeated string peeringPeers = 2;
+}
+
+message SetEnableMDNSRequest {
+  bool enable = 1;
+}
+message SetEnableMDNSReply {
+  Result result = 1;
+  bool enable = 2;
+}
+
+message SetEnableDepositServiceRequest {
+  bool enable = 1;
+}
+message SetEnableDepositServiceReply {
+  Result result = 1;
+  bool enableDepositService = 2;
+  string depositServiceAddress = 3;
+}
+
+message SetDownloadDirRequest {
+  string downloadDir = 1;
+}
+message SetDownloadDirReply {
+  Result result = 1;
+  string downloadDir = 2;
+}
+
+// -------------------- 分隔符 --------------------
+
 message SubscribeCommonEventRequest {}
 message SubscribeCommonEventReply {
   CommonEvent event = 1;
 }
 
 // -------------------- 分隔符 --------------------
+
+message Config {
+  bool enableDepositService = 1;
+  string depositServiceAddress = 2;
+}
 
 message Account {
   // PeerId
@@ -540,10 +601,6 @@ message Account {
   bool autoDepositMessage = 6;
   // 离线消息寄存地址
   string depositAddress = 7;
-  // 启动寄存服务
-  bool enableDepositService = 8;
-  // 寄存服务地址
-  string depositServiceAddress = 9;
 }
 
 // Peer（陌生人）
@@ -721,6 +778,7 @@ message CommonEvent {
   enum EventType {
     PeerMessage = 0;
     GroupMessage = 1;
+    OnlineState = 2;
   }
 
   message PayloadPeerMessage {
@@ -731,6 +789,11 @@ message CommonEvent {
   message PayloadGroupMessage {
     string msgId = 1;
     string groupId = 2;
+  }
+
+  message PayloadOnlineState {
+    repeated string OnlinePeerIds = 1;
+    repeated string OfflinePeerIds = 2;
   }
 
   EventType type = 1;

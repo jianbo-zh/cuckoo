@@ -8,7 +8,3 @@ import (
 type EvtSyncPeerMessage struct {
 	ContactID peer.ID
 }
-
-type EvtReceivePeerStream struct {
-	PeerID peer.ID
-}

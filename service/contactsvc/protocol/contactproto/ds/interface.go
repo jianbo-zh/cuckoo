@@ -18,8 +18,10 @@ type PeerIface interface {
 	UpdateContact(context.Context, *pb.Contact) error
 	DeleteContact(context.Context, peer.ID) error
 
-	GetState(ctx context.Context, peerID peer.ID) (string, error)
-	SetState(ctx context.Context, peerID peer.ID, state string) error
+	SetApply(ctx context.Context, peerID peer.ID) error
+	DeleteApply(ctx context.Context, peerID peer.ID) error
+	GetApplyIDs(ctx context.Context) ([]peer.ID, error)
+
 	SetSession(ctx context.Context, peerID peer.ID) error
 	GetSessionIDs(ctx context.Context) ([]peer.ID, error)
 }

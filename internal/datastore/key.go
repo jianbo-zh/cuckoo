@@ -21,12 +21,18 @@ func (a *AccountDsKey) Key() ipfsds.Key {
  */
 const contactKeyPrefix = "/dchat/peer/"
 const contactSessionKeyPrefix = "/dchat/peer/session/"
+const contactApplyKeyPrefix = "/dchat/peer/apply/"
 
 type ContactDsKey struct{}
 
 func (c *ContactDsKey) SessionPrefix() string {
 	return contactSessionKeyPrefix
 }
+
+func (c *ContactDsKey) ApplyPrefix() string {
+	return contactApplyKeyPrefix
+}
+
 func (c *ContactDsKey) ContactPrefix(peerID peer.ID) string {
 	return contactKeyPrefix + peerID.String() + "/"
 }
@@ -37,6 +43,10 @@ func (c *ContactDsKey) MsgPrefix(peerID peer.ID) string {
 
 func (c *ContactDsKey) SessionKey(peerID peer.ID) ipfsds.Key {
 	return ipfsds.NewKey(contactSessionKeyPrefix + peerID.String())
+}
+
+func (c *ContactDsKey) ApplyKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(contactApplyKeyPrefix + peerID.String())
 }
 
 func (c *ContactDsKey) DetailKey(peerID peer.ID) ipfsds.Key {

@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/types"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	admin "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto"
@@ -35,7 +34,7 @@ type GroupService struct {
 	}
 }
 
-func NewGroupService(ctx context.Context, conf config.GroupServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
+func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
 	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface) (*GroupService, error) {
 
 	var err error
@@ -140,7 +139,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 }
 
 // 创建群
-func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*types.Group, error) {
+func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*mytype.Group, error) {
 
 	account, err := g.accountSvc.GetAccount(ctx)
 	if err != nil {
@@ -156,12 +155,12 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar stri
 }
 
 // GetGroup 获取群信息
-func (g *GroupService) GetGroup(ctx context.Context, groupID string) (*types.Group, error) {
+func (g *GroupService) GetGroup(ctx context.Context, groupID string) (*mytype.Group, error) {
 	return g.adminProto.GetGroup(ctx, groupID)
 }
 
 // GetGroupDetail 获取群详情
-func (g *GroupService) GetGroupDetail(ctx context.Context, groupID string) (*types.GroupDetail, error) {
+func (g *GroupService) GetGroupDetail(ctx context.Context, groupID string) (*mytype.GroupDetail, error) {
 	return g.adminProto.GetGroupDetail(ctx, groupID)
 }
 
@@ -173,7 +172,7 @@ func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, group
 		return fmt.Errorf("svc get account error: %w", err)
 	}
 
-	group := &types.Group{
+	group := &mytype.Group{
 		ID:     groupID,
 		Name:   groupName,
 		Avatar: groupAvatar,
@@ -229,20 +228,20 @@ func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 }
 
 // 群列表
-func (g *GroupService) GetGroups(ctx context.Context) ([]types.Group, error) {
+func (g *GroupService) GetGroups(ctx context.Context) ([]mytype.Group, error) {
 	return g.adminProto.GetSessions(ctx)
 }
 
 // 群列表
-func (g *GroupService) GetGroupSessions(ctx context.Context) ([]types.GroupSession, error) {
+func (g *GroupService) GetGroupSessions(ctx context.Context) ([]mytype.GroupSession, error) {
 	grps, err := g.adminProto.GetSessions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("proto get groups error: %w", err)
 	}
 
-	var groups []types.GroupSession
+	var groups []mytype.GroupSession
 	for _, group := range grps {
-		groups = append(groups, types.GroupSession{
+		groups = append(groups, mytype.GroupSession{
 			ID:     group.ID,
 			Name:   group.Name,
 			Avatar: group.Avatar,
@@ -287,7 +286,7 @@ func (g *GroupService) ApplyJoinGroup(ctx context.Context, groupID string) error
 }
 
 // 进群审核
-func (g *GroupService) ReviewJoinGroup(ctx context.Context, groupID string, member *types.Peer, isAgree bool) error {
+func (g *GroupService) ReviewJoinGroup(ctx context.Context, groupID string, member *mytype.Peer, isAgree bool) error {
 	return g.adminProto.ReviewJoinGroup(ctx, groupID, member, isAgree)
 }
 
@@ -297,7 +296,7 @@ func (g *GroupService) RemoveGroupMember(ctx context.Context, groupID string, me
 }
 
 // 成员列表
-func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]types.GroupMember, error) {
+func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]mytype.GroupMember, error) {
 	return g.adminProto.GetGroupMembers(ctx, groupID, keywords, offset, limit)
 }
 
@@ -313,16 +312,16 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 }
 
 // 获取消息消息
-func (g *GroupService) GetGroupMessage(ctx context.Context, groupID string, msgID string) (*types.GroupMessage, error) {
+func (g *GroupService) GetGroupMessage(ctx context.Context, groupID string, msgID string) (*mytype.GroupMessage, error) {
 	msg, err := g.messageProto.GetMessage(ctx, groupID, msgID)
 	if err != nil {
 		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
 	}
 
-	message := &types.GroupMessage{
+	message := &mytype.GroupMessage{
 		ID:      msg.Id,
 		GroupID: msg.GroupId,
-		FromPeer: types.GroupMember{
+		FromPeer: mytype.GroupMember{
 			ID:     peer.ID(msg.Member.Id),
 			Name:   msg.Member.Name,
 			Avatar: msg.Member.Avatar,
@@ -345,20 +344,20 @@ func (g *GroupService) DeleteGroupMessage(ctx context.Context, groupID string, m
 }
 
 // 消息列表
-func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]types.GroupMessage, error) {
+func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]mytype.GroupMessage, error) {
 	msgs, err := g.messageProto.GetMessageList(ctx, groupID, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
 	}
 
-	var messageList []types.GroupMessage
+	var messageList []mytype.GroupMessage
 	for _, msg := range msgs {
-		messageList = append(messageList, types.GroupMessage{
+		messageList = append(messageList, mytype.GroupMessage{
 			ID:       msg.Id,
 			GroupID:  msg.GroupId,
 			MsgType:  msg.MsgType,
 			MimeType: msg.MimeType,
-			FromPeer: types.GroupMember{
+			FromPeer: mytype.GroupMember{
 				ID:     peer.ID(msg.Member.Id),
 				Name:   msg.Member.Name,
 				Avatar: msg.Member.Avatar,
