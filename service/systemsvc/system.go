@@ -100,11 +100,6 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 					UpdateTime:  time.Now().Unix(),
 				}
 
-				if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
-					log.Errorf("systemProto.SaveMessage error: %v", err)
-					continue
-				}
-
 				if err = s.systemProto.SendMessage(ctx, &msg); err != nil {
 					log.Errorf("systemProto.SendMessage error: %v", err)
 					continue
@@ -137,11 +132,6 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 						SystemState: mytype.SystemStateSended,
 						CreateTime:  time.Now().Unix(),
 						UpdateTime:  time.Now().Unix(),
-					}
-
-					if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
-						log.Errorf("systemProto.SaveMessage error: %v", err)
-						continue
 					}
 
 					fmt.Println("send system message: ", msg.String())
@@ -220,7 +210,6 @@ func (s *SystemSvc) goHandleMessage() {
 			}
 
 			if account.AutoJoinGroup {
-
 				// 创建群组
 				if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Group.Lamptime); err != nil {
 					log.Errorf("groupSvc.JoinGroup error: %s", err.Error())
@@ -238,43 +227,6 @@ func (s *SystemSvc) goHandleMessage() {
 			log.Error("msg type error")
 		}
 	}
-}
-
-func (s *SystemSvc) ApplyAddContact(ctx context.Context, peer0 *mytype.Peer, content string) error {
-	account, err := s.accountSvc.GetAccount(ctx)
-	if err != nil {
-		return fmt.Errorf("accountSvc.GetAccount error: %w", err)
-	}
-
-	if err = s.contactSvc.ApplyAddContact(ctx, peer0, content); err != nil {
-		return fmt.Errorf("svc apply add contact error: %w", err)
-	}
-
-	msg := pb.SystemMsg{
-		Id:         GenMsgID(account.ID),
-		SystemType: mytype.SystemTypeApplyAddContact,
-		Group:      nil,
-		FromPeer: &pb.SystemMsg_Peer{
-			PeerId: []byte(account.ID),
-			Name:   account.Name,
-			Avatar: account.Avatar,
-		},
-		ToPeerId:    []byte(peer0.ID),
-		Content:     content,
-		SystemState: mytype.SystemStateSended,
-		CreateTime:  time.Now().Unix(),
-		UpdateTime:  time.Now().Unix(),
-	}
-
-	if err := s.systemProto.SaveMessage(ctx, &msg); err != nil {
-		return fmt.Errorf("systemProto.SaveMessage error: %w", err)
-	}
-
-	if err = s.systemProto.SendMessage(ctx, &msg); err != nil {
-		return fmt.Errorf("systemProto.SendMessage error: %w", err)
-	}
-
-	return nil
 }
 
 func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit int) ([]mytype.SystemMessage, error) {
@@ -306,7 +258,22 @@ func (s *SystemSvc) GetSystemMessageList(ctx context.Context, offset int, limit 
 }
 
 func (s *SystemSvc) AgreeAddContact(ctx context.Context, msgID string) error {
-	// 发送同意加好友消息
+
+	msg, err := s.systemProto.GetMessage(ctx, msgID)
+	if err != nil {
+		return fmt.Errorf("proto get message error: %w", err)
+	}
+
+	// 添加为好友
+	if err := s.contactSvc.AgreeAddContact(ctx, &mytype.Peer{
+		ID:     peer.ID(msg.FromPeer.PeerId),
+		Name:   msg.FromPeer.Name,
+		Avatar: msg.FromPeer.Avatar,
+	}); err != nil {
+		return fmt.Errorf("contactSvc.AddContact error: %w", err)
+	}
+
+	// 更新系统消息状态
 	if err := s.systemProto.UpdateMessageState(ctx, msgID, mytype.SystemStateAgreed); err != nil {
 		return fmt.Errorf("systemProto.UpdateMessageState error: %w", err)
 	}
@@ -321,6 +288,42 @@ func (s *SystemSvc) RejectAddContact(ctx context.Context, ackID string) error {
 	}
 
 	return nil
+}
+
+func (s *SystemSvc) AgreeJoinGroup(ctx context.Context, msgID string) error {
+
+	msg, err := s.systemProto.GetMessage(ctx, msgID)
+	if err != nil {
+		return fmt.Errorf("proto get message error: %w", err)
+
+	} else if msg.SystemType != mytype.SystemTypeInviteJoinGroup {
+		return fmt.Errorf("message type is not invite group")
+	}
+
+	// 创建群组
+	if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Group.Lamptime); err != nil {
+		return fmt.Errorf("groupSvc.JoinGroup error: %w", err)
+
+	}
+
+	// 更新系统消息状态
+	if err = s.systemProto.UpdateMessageState(ctx, msg.Id, mytype.SystemStateAgreed); err != nil {
+		return fmt.Errorf("update message state error: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SystemSvc) RejectJoinGroup(ctx context.Context, ackID string) error {
+	if err := s.systemProto.UpdateMessageState(ctx, ackID, mytype.SystemStateRejected); err != nil {
+		return fmt.Errorf("systemProto.UpdateMessageState error: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SystemSvc) DeleteSystemMessage(ctx context.Context, msgIDs []string) error {
+	return s.systemProto.DeleteSystemMessage(ctx, msgIDs)
 }
 
 func (s *SystemSvc) Close() {}

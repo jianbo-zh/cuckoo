@@ -8,9 +8,6 @@ import (
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	"github.com/jianbo-zh/dchat/service/accountsvc"
-	"github.com/jianbo-zh/dchat/service/contactsvc"
-	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -25,48 +22,6 @@ func NewSessionSvc(getter cuckoo.CuckooGetter) *SessionSvc {
 	return &SessionSvc{
 		getter: getter,
 	}
-}
-
-func (c *SessionSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
-	cuckoo, err := c.getter.GetCuckoo()
-	if err != nil {
-		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
-	}
-
-	accountSvc, err := cuckoo.GetAccountSvc()
-	if err != nil {
-		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
-	}
-
-	return accountSvc, nil
-}
-
-func (c *SessionSvc) getContactSvc() (contactsvc.ContactServiceIface, error) {
-	cuckoo, err := c.getter.GetCuckoo()
-	if err != nil {
-		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
-	}
-
-	contactSvc, err := cuckoo.GetContactSvc()
-	if err != nil {
-		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
-	}
-
-	return contactSvc, nil
-}
-
-func (c *SessionSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
-	cuckoo, err := c.getter.GetCuckoo()
-	if err != nil {
-		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
-	}
-
-	groupSvc, err := cuckoo.GetGroupSvc()
-	if err != nil {
-		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
-	}
-
-	return groupSvc, nil
 }
 
 func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessionsRequest) (reply *proto.GetSessionsReply, err error) {

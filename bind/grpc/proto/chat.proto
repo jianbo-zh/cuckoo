@@ -92,7 +92,6 @@ service GroupSvc {
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 清空聊天记录
   rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
-
 }
 
 // 会话服务
@@ -105,9 +104,9 @@ service SystemSvc {
   rpc GetSystemMessages(GetSystemMessagesRequest) returns (GetSystemMessagesReply) {}
   rpc AgreeAddContact(AgreeAddContactRequest) returns (AgreeAddContactReply) {}
   rpc RejectAddContact(RejectAddContactRequest) returns (RejectAddContactReply) {}
-
-
-  rpc ClearSystemMessage(ClearSystemMessageRequest) returns (ClearSystemMessageReply) {}
+  rpc AgreeJoinGroup(AgreeJoinGroupRequest) returns (AgreeJoinGroupReply) {}
+  rpc RejectJoinGroup(RejectJoinGroupRequest) returns (RejectJoinGroupReply) {}
+  rpc DeleteSystemMessage(DeleteSystemMessageRequest) returns (DeleteSystemMessageReply) {}
 }
 
 service ConfigSvc {
@@ -492,8 +491,10 @@ message GetSystemMessagesReply {
   repeated SystemMessage messages = 2;
 }
 
-message ClearSystemMessageRequest {}
-message ClearSystemMessageReply {
+message DeleteSystemMessageRequest {
+  repeated string messageIds = 1;
+}
+message DeleteSystemMessageReply {
   Result result = 1;
 }
 
@@ -522,6 +523,25 @@ message RejectAddContactReply {
   Result result = 1;
   string ackMsgId = 2;
 }
+
+
+message AgreeJoinGroupRequest {
+  string ackMsgId = 1;
+}
+message AgreeJoinGroupReply {
+  Result result = 1;
+  string ackMsgId = 2;
+}
+
+message RejectJoinGroupRequest {
+  string ackMsgId = 1;
+}
+message RejectJoinGroupReply {
+  Result result = 1;
+  string ackMsgId = 2;
+}
+
+
 
 // -------------------- 分隔符 --------------------
 

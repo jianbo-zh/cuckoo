@@ -37,20 +37,31 @@ func (c *SystemSvc) getSystemSvc() (systemsvc.SystemServiceIface, error) {
 	return systemSvc, nil
 }
 
-func (s *SystemSvc) ClearSystemMessage(ctx context.Context, request *proto.ClearSystemMessageRequest) (reply *proto.ClearSystemMessageReply, err error) {
+func (s *SystemSvc) DeleteSystemMessage(ctx context.Context, request *proto.DeleteSystemMessageRequest) (reply *proto.DeleteSystemMessageReply, err error) {
 
-	log.Infoln("ClearSystemMessage request: ", request.String())
+	log.Infoln("DeleteSystemMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("ClearSystemMessage panic: ", e)
+			log.Panicln("DeleteSystemMessage panic: ", e)
 		} else if err != nil {
-			log.Errorln("ClearSystemMessage error: ", err.Error())
+			log.Errorln("DeleteSystemMessage error: ", err.Error())
 		} else {
-			log.Infoln("ClearSystemMessage reply: ", reply.String())
+			log.Infoln("DeleteSystemMessage reply: ", reply.String())
 		}
 	}()
 
-	reply = &proto.ClearSystemMessageReply{
+	systemSvc, err := s.getSystemSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get system svc error: %w", err)
+	}
+
+	if len(request.MessageIds) > 0 {
+		if err = systemSvc.DeleteSystemMessage(ctx, request.MessageIds); err != nil {
+			return nil, fmt.Errorf("svc delete system message error: %w", err)
+		}
+	}
+
+	reply = &proto.DeleteSystemMessageReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -116,6 +127,72 @@ func (c *SystemSvc) RejectAddContact(ctx context.Context, request *proto.RejectA
 	}
 
 	reply = &proto.RejectAddContactReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		AckMsgId: request.AckMsgId,
+	}
+	return reply, nil
+}
+
+func (c *SystemSvc) AgreeJoinGroup(ctx context.Context, request *proto.AgreeJoinGroupRequest) (reply *proto.AgreeJoinGroupReply, err error) {
+
+	log.Infoln("AgreeJoinGroup request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("AgreeJoinGroup panic: ", e)
+		} else if err != nil {
+			log.Errorln("AgreeJoinGroup error: ", err.Error())
+		} else {
+			log.Infoln("AgreeJoinGroup reply: ", reply.String())
+		}
+	}()
+
+	systemSvc, err := c.getSystemSvc()
+	if err != nil {
+		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
+	}
+
+	err = systemSvc.AgreeJoinGroup(ctx, request.AckMsgId)
+	if err != nil {
+		return nil, fmt.Errorf("systemSvc.AgreeJoinGroup error: %w", err)
+	}
+
+	reply = &proto.AgreeJoinGroupReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		AckMsgId: request.AckMsgId,
+	}
+	return reply, nil
+}
+
+func (c *SystemSvc) RejectJoinGroup(ctx context.Context, request *proto.RejectJoinGroupRequest) (reply *proto.RejectJoinGroupReply, err error) {
+
+	log.Infoln("RejectJoinGroup request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("RejectJoinGroup panic: ", e)
+		} else if err != nil {
+			log.Errorln("RejectJoinGroup error: ", err.Error())
+		} else {
+			log.Infoln("RejectJoinGroup reply: ", reply.String())
+		}
+	}()
+
+	systemSvc, err := c.getSystemSvc()
+	if err != nil {
+		return nil, fmt.Errorf("getContactSvc error: %s", err.Error())
+	}
+
+	err = systemSvc.RejectJoinGroup(ctx, request.AckMsgId)
+	if err != nil {
+		return nil, fmt.Errorf("systemSvc.RejectJoinGroup error: %w", err)
+	}
+
+	reply = &proto.RejectJoinGroupReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

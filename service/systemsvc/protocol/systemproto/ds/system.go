@@ -2,6 +2,7 @@ package ds
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
@@ -66,6 +67,15 @@ func (a *SystemDS) UpdateSystemMessageState(ctx context.Context, msgID string, s
 	}
 
 	return a.Put(ctx, systemDsKey.MsgLogKey(msgID), value2)
+}
+
+func (a *SystemDS) DeleteSystemMessage(ctx context.Context, msgIDs []string) error {
+	for _, msgID := range msgIDs {
+		if err := a.Delete(ctx, systemDsKey.MsgLogKey(msgID)); err != nil {
+			return fmt.Errorf("ds delete key error: %w", err)
+		}
+	}
+	return nil
 }
 
 func (a *SystemDS) GetSystemMessageList(ctx context.Context, offset int, limit int) ([]*pb.SystemMsg, error) {

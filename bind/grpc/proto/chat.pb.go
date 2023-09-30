@@ -171,7 +171,7 @@ func (x Session_SessionType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Session_SessionType.Descriptor instead.
 func (Session_SessionType) EnumDescriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{111, 0}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{115, 0}
 }
 
 // 系统操作类型
@@ -220,7 +220,7 @@ func (x SystemMessage_SystemType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SystemMessage_SystemType.Descriptor instead.
 func (SystemMessage_SystemType) EnumDescriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{112, 0}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{116, 0}
 }
 
 type CommonEvent_EventType int32
@@ -269,7 +269,7 @@ func (x CommonEvent_EventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CommonEvent_EventType.Descriptor instead.
 func (CommonEvent_EventType) EnumDescriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113, 0}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{117, 0}
 }
 
 type Result struct {
@@ -4456,14 +4456,16 @@ func (x *GetSystemMessagesReply) GetMessages() []*SystemMessage {
 	return nil
 }
 
-type ClearSystemMessageRequest struct {
+type DeleteSystemMessageRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	MessageIds []string `protobuf:"bytes,1,rep,name=messageIds,proto3" json:"messageIds,omitempty"`
 }
 
-func (x *ClearSystemMessageRequest) Reset() {
-	*x = ClearSystemMessageRequest{}
+func (x *DeleteSystemMessageRequest) Reset() {
+	*x = DeleteSystemMessageRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_bind_grpc_proto_chat_proto_msgTypes[79]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -4471,13 +4473,13 @@ func (x *ClearSystemMessageRequest) Reset() {
 	}
 }
 
-func (x *ClearSystemMessageRequest) String() string {
+func (x *DeleteSystemMessageRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClearSystemMessageRequest) ProtoMessage() {}
+func (*DeleteSystemMessageRequest) ProtoMessage() {}
 
-func (x *ClearSystemMessageRequest) ProtoReflect() protoreflect.Message {
+func (x *DeleteSystemMessageRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_bind_grpc_proto_chat_proto_msgTypes[79]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -4489,12 +4491,19 @@ func (x *ClearSystemMessageRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClearSystemMessageRequest.ProtoReflect.Descriptor instead.
-func (*ClearSystemMessageRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteSystemMessageRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSystemMessageRequest) Descriptor() ([]byte, []int) {
 	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{79}
 }
 
-type ClearSystemMessageReply struct {
+func (x *DeleteSystemMessageRequest) GetMessageIds() []string {
+	if x != nil {
+		return x.MessageIds
+	}
+	return nil
+}
+
+type DeleteSystemMessageReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -4502,8 +4511,8 @@ type ClearSystemMessageReply struct {
 	Result *Result `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 }
 
-func (x *ClearSystemMessageReply) Reset() {
-	*x = ClearSystemMessageReply{}
+func (x *DeleteSystemMessageReply) Reset() {
+	*x = DeleteSystemMessageReply{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_bind_grpc_proto_chat_proto_msgTypes[80]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -4511,13 +4520,13 @@ func (x *ClearSystemMessageReply) Reset() {
 	}
 }
 
-func (x *ClearSystemMessageReply) String() string {
+func (x *DeleteSystemMessageReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClearSystemMessageReply) ProtoMessage() {}
+func (*DeleteSystemMessageReply) ProtoMessage() {}
 
-func (x *ClearSystemMessageReply) ProtoReflect() protoreflect.Message {
+func (x *DeleteSystemMessageReply) ProtoReflect() protoreflect.Message {
 	mi := &file_bind_grpc_proto_chat_proto_msgTypes[80]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -4529,12 +4538,12 @@ func (x *ClearSystemMessageReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClearSystemMessageReply.ProtoReflect.Descriptor instead.
-func (*ClearSystemMessageReply) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeleteSystemMessageReply.ProtoReflect.Descriptor instead.
+func (*DeleteSystemMessageReply) Descriptor() ([]byte, []int) {
 	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{80}
 }
 
-func (x *ClearSystemMessageReply) GetResult() *Result {
+func (x *DeleteSystemMessageReply) GetResult() *Result {
 	if x != nil {
 		return x.Result
 	}
@@ -4863,6 +4872,210 @@ func (x *RejectAddContactReply) GetAckMsgId() string {
 	return ""
 }
 
+type AgreeJoinGroupRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AckMsgId string `protobuf:"bytes,1,opt,name=ackMsgId,proto3" json:"ackMsgId,omitempty"`
+}
+
+func (x *AgreeJoinGroupRequest) Reset() {
+	*x = AgreeJoinGroupRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[87]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AgreeJoinGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgreeJoinGroupRequest) ProtoMessage() {}
+
+func (x *AgreeJoinGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[87]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgreeJoinGroupRequest.ProtoReflect.Descriptor instead.
+func (*AgreeJoinGroupRequest) Descriptor() ([]byte, []int) {
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *AgreeJoinGroupRequest) GetAckMsgId() string {
+	if x != nil {
+		return x.AckMsgId
+	}
+	return ""
+}
+
+type AgreeJoinGroupReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Result   *Result `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	AckMsgId string  `protobuf:"bytes,2,opt,name=ackMsgId,proto3" json:"ackMsgId,omitempty"`
+}
+
+func (x *AgreeJoinGroupReply) Reset() {
+	*x = AgreeJoinGroupReply{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[88]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AgreeJoinGroupReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgreeJoinGroupReply) ProtoMessage() {}
+
+func (x *AgreeJoinGroupReply) ProtoReflect() protoreflect.Message {
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[88]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgreeJoinGroupReply.ProtoReflect.Descriptor instead.
+func (*AgreeJoinGroupReply) Descriptor() ([]byte, []int) {
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{88}
+}
+
+func (x *AgreeJoinGroupReply) GetResult() *Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *AgreeJoinGroupReply) GetAckMsgId() string {
+	if x != nil {
+		return x.AckMsgId
+	}
+	return ""
+}
+
+type RejectJoinGroupRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AckMsgId string `protobuf:"bytes,1,opt,name=ackMsgId,proto3" json:"ackMsgId,omitempty"`
+}
+
+func (x *RejectJoinGroupRequest) Reset() {
+	*x = RejectJoinGroupRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[89]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RejectJoinGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectJoinGroupRequest) ProtoMessage() {}
+
+func (x *RejectJoinGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[89]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectJoinGroupRequest.ProtoReflect.Descriptor instead.
+func (*RejectJoinGroupRequest) Descriptor() ([]byte, []int) {
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *RejectJoinGroupRequest) GetAckMsgId() string {
+	if x != nil {
+		return x.AckMsgId
+	}
+	return ""
+}
+
+type RejectJoinGroupReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Result   *Result `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	AckMsgId string  `protobuf:"bytes,2,opt,name=ackMsgId,proto3" json:"ackMsgId,omitempty"`
+}
+
+func (x *RejectJoinGroupReply) Reset() {
+	*x = RejectJoinGroupReply{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[90]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RejectJoinGroupReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectJoinGroupReply) ProtoMessage() {}
+
+func (x *RejectJoinGroupReply) ProtoReflect() protoreflect.Message {
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[90]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectJoinGroupReply.ProtoReflect.Descriptor instead.
+func (*RejectJoinGroupReply) Descriptor() ([]byte, []int) {
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *RejectJoinGroupReply) GetResult() *Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *RejectJoinGroupReply) GetAckMsgId() string {
+	if x != nil {
+		return x.AckMsgId
+	}
+	return ""
+}
+
 type GetConfigRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -4872,7 +5085,7 @@ type GetConfigRequest struct {
 func (x *GetConfigRequest) Reset() {
 	*x = GetConfigRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[87]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[91]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4885,7 +5098,7 @@ func (x *GetConfigRequest) String() string {
 func (*GetConfigRequest) ProtoMessage() {}
 
 func (x *GetConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[87]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[91]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4898,7 +5111,7 @@ func (x *GetConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetConfigRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{87}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{91}
 }
 
 type GetConfigReply struct {
@@ -4913,7 +5126,7 @@ type GetConfigReply struct {
 func (x *GetConfigReply) Reset() {
 	*x = GetConfigReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[88]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[92]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4926,7 +5139,7 @@ func (x *GetConfigReply) String() string {
 func (*GetConfigReply) ProtoMessage() {}
 
 func (x *GetConfigReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[88]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[92]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4939,7 +5152,7 @@ func (x *GetConfigReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConfigReply.ProtoReflect.Descriptor instead.
 func (*GetConfigReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{88}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *GetConfigReply) GetResult() *Result {
@@ -4967,7 +5180,7 @@ type SetBootstrapsRequest struct {
 func (x *SetBootstrapsRequest) Reset() {
 	*x = SetBootstrapsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[89]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[93]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4980,7 +5193,7 @@ func (x *SetBootstrapsRequest) String() string {
 func (*SetBootstrapsRequest) ProtoMessage() {}
 
 func (x *SetBootstrapsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[89]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[93]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4993,7 +5206,7 @@ func (x *SetBootstrapsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBootstrapsRequest.ProtoReflect.Descriptor instead.
 func (*SetBootstrapsRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{89}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *SetBootstrapsRequest) GetBootstraps() []string {
@@ -5015,7 +5228,7 @@ type SetBootstrapsReply struct {
 func (x *SetBootstrapsReply) Reset() {
 	*x = SetBootstrapsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[90]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[94]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5028,7 +5241,7 @@ func (x *SetBootstrapsReply) String() string {
 func (*SetBootstrapsReply) ProtoMessage() {}
 
 func (x *SetBootstrapsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[90]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[94]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5041,7 +5254,7 @@ func (x *SetBootstrapsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBootstrapsReply.ProtoReflect.Descriptor instead.
 func (*SetBootstrapsReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{90}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *SetBootstrapsReply) GetResult() *Result {
@@ -5069,7 +5282,7 @@ type SetPeeringPeersRequest struct {
 func (x *SetPeeringPeersRequest) Reset() {
 	*x = SetPeeringPeersRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[91]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[95]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5082,7 +5295,7 @@ func (x *SetPeeringPeersRequest) String() string {
 func (*SetPeeringPeersRequest) ProtoMessage() {}
 
 func (x *SetPeeringPeersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[91]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[95]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5095,7 +5308,7 @@ func (x *SetPeeringPeersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPeeringPeersRequest.ProtoReflect.Descriptor instead.
 func (*SetPeeringPeersRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{91}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *SetPeeringPeersRequest) GetPeeringPeers() []string {
@@ -5117,7 +5330,7 @@ type SetPeeringPeersReply struct {
 func (x *SetPeeringPeersReply) Reset() {
 	*x = SetPeeringPeersReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[92]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[96]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5130,7 +5343,7 @@ func (x *SetPeeringPeersReply) String() string {
 func (*SetPeeringPeersReply) ProtoMessage() {}
 
 func (x *SetPeeringPeersReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[92]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[96]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5143,7 +5356,7 @@ func (x *SetPeeringPeersReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPeeringPeersReply.ProtoReflect.Descriptor instead.
 func (*SetPeeringPeersReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{92}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *SetPeeringPeersReply) GetResult() *Result {
@@ -5171,7 +5384,7 @@ type SetEnableMDNSRequest struct {
 func (x *SetEnableMDNSRequest) Reset() {
 	*x = SetEnableMDNSRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[93]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[97]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5184,7 +5397,7 @@ func (x *SetEnableMDNSRequest) String() string {
 func (*SetEnableMDNSRequest) ProtoMessage() {}
 
 func (x *SetEnableMDNSRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[93]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[97]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5197,7 +5410,7 @@ func (x *SetEnableMDNSRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEnableMDNSRequest.ProtoReflect.Descriptor instead.
 func (*SetEnableMDNSRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{93}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *SetEnableMDNSRequest) GetEnable() bool {
@@ -5219,7 +5432,7 @@ type SetEnableMDNSReply struct {
 func (x *SetEnableMDNSReply) Reset() {
 	*x = SetEnableMDNSReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[94]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[98]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5232,7 +5445,7 @@ func (x *SetEnableMDNSReply) String() string {
 func (*SetEnableMDNSReply) ProtoMessage() {}
 
 func (x *SetEnableMDNSReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[94]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[98]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5245,7 +5458,7 @@ func (x *SetEnableMDNSReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEnableMDNSReply.ProtoReflect.Descriptor instead.
 func (*SetEnableMDNSReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{94}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *SetEnableMDNSReply) GetResult() *Result {
@@ -5273,7 +5486,7 @@ type SetEnableDepositServiceRequest struct {
 func (x *SetEnableDepositServiceRequest) Reset() {
 	*x = SetEnableDepositServiceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[95]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[99]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5286,7 +5499,7 @@ func (x *SetEnableDepositServiceRequest) String() string {
 func (*SetEnableDepositServiceRequest) ProtoMessage() {}
 
 func (x *SetEnableDepositServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[95]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[99]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5299,7 +5512,7 @@ func (x *SetEnableDepositServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEnableDepositServiceRequest.ProtoReflect.Descriptor instead.
 func (*SetEnableDepositServiceRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{95}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *SetEnableDepositServiceRequest) GetEnable() bool {
@@ -5322,7 +5535,7 @@ type SetEnableDepositServiceReply struct {
 func (x *SetEnableDepositServiceReply) Reset() {
 	*x = SetEnableDepositServiceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[96]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[100]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5335,7 +5548,7 @@ func (x *SetEnableDepositServiceReply) String() string {
 func (*SetEnableDepositServiceReply) ProtoMessage() {}
 
 func (x *SetEnableDepositServiceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[96]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[100]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5348,7 +5561,7 @@ func (x *SetEnableDepositServiceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEnableDepositServiceReply.ProtoReflect.Descriptor instead.
 func (*SetEnableDepositServiceReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{96}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *SetEnableDepositServiceReply) GetResult() *Result {
@@ -5383,7 +5596,7 @@ type SetDownloadDirRequest struct {
 func (x *SetDownloadDirRequest) Reset() {
 	*x = SetDownloadDirRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[97]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[101]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5396,7 +5609,7 @@ func (x *SetDownloadDirRequest) String() string {
 func (*SetDownloadDirRequest) ProtoMessage() {}
 
 func (x *SetDownloadDirRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[97]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[101]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5409,7 +5622,7 @@ func (x *SetDownloadDirRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDownloadDirRequest.ProtoReflect.Descriptor instead.
 func (*SetDownloadDirRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{97}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *SetDownloadDirRequest) GetDownloadDir() string {
@@ -5431,7 +5644,7 @@ type SetDownloadDirReply struct {
 func (x *SetDownloadDirReply) Reset() {
 	*x = SetDownloadDirReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[98]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[102]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5444,7 +5657,7 @@ func (x *SetDownloadDirReply) String() string {
 func (*SetDownloadDirReply) ProtoMessage() {}
 
 func (x *SetDownloadDirReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[98]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[102]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5457,7 +5670,7 @@ func (x *SetDownloadDirReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDownloadDirReply.ProtoReflect.Descriptor instead.
 func (*SetDownloadDirReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{98}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *SetDownloadDirReply) GetResult() *Result {
@@ -5483,7 +5696,7 @@ type SubscribeCommonEventRequest struct {
 func (x *SubscribeCommonEventRequest) Reset() {
 	*x = SubscribeCommonEventRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[99]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[103]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5496,7 +5709,7 @@ func (x *SubscribeCommonEventRequest) String() string {
 func (*SubscribeCommonEventRequest) ProtoMessage() {}
 
 func (x *SubscribeCommonEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[99]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[103]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5509,7 +5722,7 @@ func (x *SubscribeCommonEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeCommonEventRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeCommonEventRequest) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{99}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{103}
 }
 
 type SubscribeCommonEventReply struct {
@@ -5523,7 +5736,7 @@ type SubscribeCommonEventReply struct {
 func (x *SubscribeCommonEventReply) Reset() {
 	*x = SubscribeCommonEventReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[100]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[104]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5536,7 +5749,7 @@ func (x *SubscribeCommonEventReply) String() string {
 func (*SubscribeCommonEventReply) ProtoMessage() {}
 
 func (x *SubscribeCommonEventReply) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[100]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[104]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5549,7 +5762,7 @@ func (x *SubscribeCommonEventReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeCommonEventReply.ProtoReflect.Descriptor instead.
 func (*SubscribeCommonEventReply) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{100}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *SubscribeCommonEventReply) GetEvent() *CommonEvent {
@@ -5571,7 +5784,7 @@ type Config struct {
 func (x *Config) Reset() {
 	*x = Config{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[101]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[105]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5584,7 +5797,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[101]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[105]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5597,7 +5810,7 @@ func (x *Config) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Config.ProtoReflect.Descriptor instead.
 func (*Config) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{101}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *Config) GetEnableDepositService() bool {
@@ -5638,7 +5851,7 @@ type Account struct {
 func (x *Account) Reset() {
 	*x = Account{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[102]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[106]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5651,7 +5864,7 @@ func (x *Account) String() string {
 func (*Account) ProtoMessage() {}
 
 func (x *Account) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[102]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[106]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5664,7 +5877,7 @@ func (x *Account) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Account.ProtoReflect.Descriptor instead.
 func (*Account) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{102}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *Account) GetPeerId() string {
@@ -5733,7 +5946,7 @@ type Peer struct {
 func (x *Peer) Reset() {
 	*x = Peer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[103]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[107]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5746,7 +5959,7 @@ func (x *Peer) String() string {
 func (*Peer) ProtoMessage() {}
 
 func (x *Peer) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[103]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[107]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5759,7 +5972,7 @@ func (x *Peer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Peer.ProtoReflect.Descriptor instead.
 func (*Peer) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{103}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *Peer) GetId() string {
@@ -5804,7 +6017,7 @@ type Contact struct {
 func (x *Contact) Reset() {
 	*x = Contact{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[104]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[108]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5817,7 +6030,7 @@ func (x *Contact) String() string {
 func (*Contact) ProtoMessage() {}
 
 func (x *Contact) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[104]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[108]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5830,7 +6043,7 @@ func (x *Contact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contact.ProtoReflect.Descriptor instead.
 func (*Contact) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{104}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *Contact) GetId() string {
@@ -5895,7 +6108,7 @@ type ContactMessage struct {
 func (x *ContactMessage) Reset() {
 	*x = ContactMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[105]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[109]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5908,7 +6121,7 @@ func (x *ContactMessage) String() string {
 func (*ContactMessage) ProtoMessage() {}
 
 func (x *ContactMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[105]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[109]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5921,7 +6134,7 @@ func (x *ContactMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactMessage.ProtoReflect.Descriptor instead.
 func (*ContactMessage) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{105}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ContactMessage) GetId() string {
@@ -5999,7 +6212,7 @@ type Group struct {
 func (x *Group) Reset() {
 	*x = Group{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[106]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[110]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6012,7 +6225,7 @@ func (x *Group) String() string {
 func (*Group) ProtoMessage() {}
 
 func (x *Group) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[106]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[110]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6025,7 +6238,7 @@ func (x *Group) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Group.ProtoReflect.Descriptor instead.
 func (*Group) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{106}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *Group) GetId() string {
@@ -6077,7 +6290,7 @@ type GroupSession struct {
 func (x *GroupSession) Reset() {
 	*x = GroupSession{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[107]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[111]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6090,7 +6303,7 @@ func (x *GroupSession) String() string {
 func (*GroupSession) ProtoMessage() {}
 
 func (x *GroupSession) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[107]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[111]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6103,7 +6316,7 @@ func (x *GroupSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupSession.ProtoReflect.Descriptor instead.
 func (*GroupSession) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{107}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *GroupSession) GetGroupId() string {
@@ -6168,7 +6381,7 @@ type GroupDetail struct {
 func (x *GroupDetail) Reset() {
 	*x = GroupDetail{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[108]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[112]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6181,7 +6394,7 @@ func (x *GroupDetail) String() string {
 func (*GroupDetail) ProtoMessage() {}
 
 func (x *GroupDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[108]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[112]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6194,7 +6407,7 @@ func (x *GroupDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupDetail.ProtoReflect.Descriptor instead.
 func (*GroupDetail) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{108}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *GroupDetail) GetGroupId() string {
@@ -6272,7 +6485,7 @@ type GroupMember struct {
 func (x *GroupMember) Reset() {
 	*x = GroupMember{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[109]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[113]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6285,7 +6498,7 @@ func (x *GroupMember) String() string {
 func (*GroupMember) ProtoMessage() {}
 
 func (x *GroupMember) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[109]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[113]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6298,7 +6511,7 @@ func (x *GroupMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupMember.ProtoReflect.Descriptor instead.
 func (*GroupMember) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{109}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *GroupMember) GetId() string {
@@ -6354,7 +6567,7 @@ type GroupMessage struct {
 func (x *GroupMessage) Reset() {
 	*x = GroupMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[110]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[114]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6367,7 +6580,7 @@ func (x *GroupMessage) String() string {
 func (*GroupMessage) ProtoMessage() {}
 
 func (x *GroupMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[110]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[114]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6380,7 +6593,7 @@ func (x *GroupMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupMessage.ProtoReflect.Descriptor instead.
 func (*GroupMessage) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{110}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *GroupMessage) GetId() string {
@@ -6459,7 +6672,7 @@ type Session struct {
 func (x *Session) Reset() {
 	*x = Session{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[111]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[115]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6472,7 +6685,7 @@ func (x *Session) String() string {
 func (*Session) ProtoMessage() {}
 
 func (x *Session) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[111]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[115]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6485,7 +6698,7 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Session.ProtoReflect.Descriptor instead.
 func (*Session) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{111}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *Session) GetType() Session_SessionType {
@@ -6564,7 +6777,7 @@ type SystemMessage struct {
 func (x *SystemMessage) Reset() {
 	*x = SystemMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[112]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[116]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6577,7 +6790,7 @@ func (x *SystemMessage) String() string {
 func (*SystemMessage) ProtoMessage() {}
 
 func (x *SystemMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[112]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[116]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6590,7 +6803,7 @@ func (x *SystemMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemMessage.ProtoReflect.Descriptor instead.
 func (*SystemMessage) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{112}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *SystemMessage) GetId() string {
@@ -6669,7 +6882,7 @@ type CommonEvent struct {
 func (x *CommonEvent) Reset() {
 	*x = CommonEvent{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[113]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[117]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6682,7 +6895,7 @@ func (x *CommonEvent) String() string {
 func (*CommonEvent) ProtoMessage() {}
 
 func (x *CommonEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[113]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[117]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6695,7 +6908,7 @@ func (x *CommonEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommonEvent.ProtoReflect.Descriptor instead.
 func (*CommonEvent) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *CommonEvent) GetType() CommonEvent_EventType {
@@ -6724,7 +6937,7 @@ type CommonEvent_PayloadPeerMessage struct {
 func (x *CommonEvent_PayloadPeerMessage) Reset() {
 	*x = CommonEvent_PayloadPeerMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[114]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[118]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6737,7 +6950,7 @@ func (x *CommonEvent_PayloadPeerMessage) String() string {
 func (*CommonEvent_PayloadPeerMessage) ProtoMessage() {}
 
 func (x *CommonEvent_PayloadPeerMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[114]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[118]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6750,7 +6963,7 @@ func (x *CommonEvent_PayloadPeerMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommonEvent_PayloadPeerMessage.ProtoReflect.Descriptor instead.
 func (*CommonEvent_PayloadPeerMessage) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113, 0}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{117, 0}
 }
 
 func (x *CommonEvent_PayloadPeerMessage) GetMsgId() string {
@@ -6779,7 +6992,7 @@ type CommonEvent_PayloadGroupMessage struct {
 func (x *CommonEvent_PayloadGroupMessage) Reset() {
 	*x = CommonEvent_PayloadGroupMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[115]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[119]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6792,7 +7005,7 @@ func (x *CommonEvent_PayloadGroupMessage) String() string {
 func (*CommonEvent_PayloadGroupMessage) ProtoMessage() {}
 
 func (x *CommonEvent_PayloadGroupMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[115]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[119]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6805,7 +7018,7 @@ func (x *CommonEvent_PayloadGroupMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommonEvent_PayloadGroupMessage.ProtoReflect.Descriptor instead.
 func (*CommonEvent_PayloadGroupMessage) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113, 1}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{117, 1}
 }
 
 func (x *CommonEvent_PayloadGroupMessage) GetMsgId() string {
@@ -6834,7 +7047,7 @@ type CommonEvent_PayloadOnlineState struct {
 func (x *CommonEvent_PayloadOnlineState) Reset() {
 	*x = CommonEvent_PayloadOnlineState{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_bind_grpc_proto_chat_proto_msgTypes[116]
+		mi := &file_bind_grpc_proto_chat_proto_msgTypes[120]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -6847,7 +7060,7 @@ func (x *CommonEvent_PayloadOnlineState) String() string {
 func (*CommonEvent_PayloadOnlineState) ProtoMessage() {}
 
 func (x *CommonEvent_PayloadOnlineState) ProtoReflect() protoreflect.Message {
-	mi := &file_bind_grpc_proto_chat_proto_msgTypes[116]
+	mi := &file_bind_grpc_proto_chat_proto_msgTypes[120]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6860,7 +7073,7 @@ func (x *CommonEvent_PayloadOnlineState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommonEvent_PayloadOnlineState.ProtoReflect.Descriptor instead.
 func (*CommonEvent_PayloadOnlineState) Descriptor() ([]byte, []int) {
-	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{113, 2}
+	return file_bind_grpc_proto_chat_proto_rawDescGZIP(), []int{117, 2}
 }
 
 func (x *CommonEvent_PayloadOnlineState) GetOnlinePeerIds() []string {
@@ -7278,38 +7491,58 @@ var file_bind_grpc_proto_chat_proto_rawDesc = []byte{
 	0x74, 0x52, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x2f, 0x0a, 0x08, 0x6d, 0x65, 0x73,
 	0x73, 0x61, 0x67, 0x65, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x63, 0x68,
 	0x61, 0x74, 0x2e, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x52, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x22, 0x1b, 0x0a, 0x19, 0x43, 0x6c,
-	0x65, 0x61, 0x72, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x3f, 0x0a, 0x17, 0x43, 0x6c, 0x65, 0x61, 0x72,
-	0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x12, 0x24, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74,
-	0x52, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x76, 0x0a, 0x16, 0x41, 0x70, 0x70, 0x6c,
-	0x79, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x16,
-	0x0a, 0x06, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
-	0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
-	0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74,
-	0x22, 0x3c, 0x0a, 0x14, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74,
-	0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75,
-	0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e,
-	0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x34,
-	0x0a, 0x16, 0x41, 0x67, 0x72, 0x65, 0x65, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63,
-	0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d,
-	0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b, 0x4d,
-	0x73, 0x67, 0x49, 0x64, 0x22, 0x58, 0x0a, 0x14, 0x41, 0x67, 0x72, 0x65, 0x65, 0x41, 0x64, 0x64,
-	0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24, 0x0a, 0x06,
-	0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63,
-	0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65, 0x73, 0x75,
-	0x6c, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x35,
-	0x0a, 0x17, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61,
-	0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b,
-	0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b,
-	0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x59, 0x0a, 0x15, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x41,
+	0x52, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x22, 0x3c, 0x0a, 0x1a, 0x44, 0x65,
+	0x6c, 0x65, 0x74, 0x65, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x6d, 0x65, 0x73, 0x73,
+	0x61, 0x67, 0x65, 0x49, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x49, 0x64, 0x73, 0x22, 0x40, 0x0a, 0x18, 0x44, 0x65, 0x6c, 0x65,
+	0x74, 0x65, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52,
+	0x65, 0x70, 0x6c, 0x79, 0x12, 0x24, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75,
+	0x6c, 0x74, 0x52, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x76, 0x0a, 0x16, 0x41, 0x70,
+	0x70, 0x6c, 0x79, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04,
+	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65,
+	0x12, 0x16, 0x0a, 0x06, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x61, 0x76, 0x61, 0x74, 0x61, 0x72, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74,
+	0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
+	0x6e, 0x74, 0x22, 0x3c, 0x0a, 0x14, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x41, 0x64, 0x64, 0x43, 0x6f,
+	0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24, 0x0a, 0x06, 0x72, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63, 0x68, 0x61,
+	0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74,
+	0x22, 0x34, 0x0a, 0x16, 0x41, 0x67, 0x72, 0x65, 0x65, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74,
+	0x61, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63,
+	0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63,
+	0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x58, 0x0a, 0x14, 0x41, 0x67, 0x72, 0x65, 0x65, 0x41,
 	0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24,
+	0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c,
+	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64,
+	0x22, 0x35, 0x0a, 0x17, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e,
+	0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61,
+	0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61,
+	0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x59, 0x0a, 0x15, 0x52, 0x65, 0x6a, 0x65, 0x63,
+	0x74, 0x41, 0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x12, 0x24, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x0c, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06,
+	0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67,
+	0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67,
+	0x49, 0x64, 0x22, 0x33, 0x0a, 0x15, 0x41, 0x67, 0x72, 0x65, 0x65, 0x4a, 0x6f, 0x69, 0x6e, 0x47,
+	0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61,
+	0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61,
+	0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x57, 0x0a, 0x13, 0x41, 0x67, 0x72, 0x65, 0x65,
+	0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24,
+	0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c,
+	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64,
+	0x22, 0x34, 0x0a, 0x16, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72,
+	0x6f, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63,
+	0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x61, 0x63,
+	0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64, 0x22, 0x58, 0x0a, 0x14, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74,
+	0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x24,
 	0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c,
 	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x06, 0x72, 0x65,
 	0x73, 0x75, 0x6c, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x61, 0x63, 0x6b, 0x4d, 0x73, 0x67, 0x49, 0x64,
@@ -7755,7 +7988,7 @@ var file_bind_grpc_proto_chat_proto_rawDesc = []byte{
 	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x18, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x47,
 	0x65, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x1a, 0x16, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x65, 0x73, 0x73,
-	0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x32, 0xd9, 0x02, 0x0a, 0x09,
+	0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x32, 0xf7, 0x03, 0x0a, 0x09,
 	0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x53, 0x76, 0x63, 0x12, 0x53, 0x0a, 0x11, 0x47, 0x65, 0x74,
 	0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x12, 0x1e,
 	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d,
@@ -7772,52 +8005,62 @@ var file_bind_grpc_proto_chat_proto_rawDesc = []byte{
 	0x64, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x1b, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x41, 0x64,
 	0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x63, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12,
-	0x56, 0x0a, 0x12, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65,
-	0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x1f, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x43, 0x6c, 0x65,
-	0x61, 0x72, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x43, 0x6c,
-	0x65, 0x61, 0x72, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x32, 0xdc, 0x03, 0x0a, 0x09, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x53, 0x76, 0x63, 0x12, 0x3b, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x12, 0x16, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x63, 0x68, 0x61,
-	0x74, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x79,
-	0x22, 0x00, 0x12, 0x47, 0x0a, 0x0d, 0x53, 0x65, 0x74, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72,
-	0x61, 0x70, 0x73, 0x12, 0x1a, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x42, 0x6f,
-	0x6f, 0x74, 0x73, 0x74, 0x72, 0x61, 0x70, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
-	0x18, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74,
-	0x72, 0x61, 0x70, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4d, 0x0a, 0x0f, 0x53,
-	0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x69, 0x6e, 0x67, 0x50, 0x65, 0x65, 0x72, 0x73, 0x12, 0x1c,
-	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x69, 0x6e, 0x67,
-	0x50, 0x65, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x63,
+	0x4a, 0x0a, 0x0e, 0x41, 0x67, 0x72, 0x65, 0x65, 0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72, 0x6f, 0x75,
+	0x70, 0x12, 0x1b, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x41, 0x67, 0x72, 0x65, 0x65, 0x4a, 0x6f,
+	0x69, 0x6e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19,
+	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x41, 0x67, 0x72, 0x65, 0x65, 0x4a, 0x6f, 0x69, 0x6e, 0x47,
+	0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4d, 0x0a, 0x0f, 0x52,
+	0x65, 0x6a, 0x65, 0x63, 0x74, 0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x1c,
+	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x4a, 0x6f, 0x69, 0x6e,
+	0x47, 0x72, 0x6f, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x63,
+	0x68, 0x61, 0x74, 0x2e, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x4a, 0x6f, 0x69, 0x6e, 0x47, 0x72,
+	0x6f, 0x75, 0x70, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x59, 0x0a, 0x13, 0x44, 0x65,
+	0x6c, 0x65, 0x74, 0x65, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x12, 0x20, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x53,
+	0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x65,
+	0x70, 0x6c, 0x79, 0x22, 0x00, 0x32, 0xdc, 0x03, 0x0a, 0x09, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x53, 0x76, 0x63, 0x12, 0x3b, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x12, 0x16, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e,
+	0x47, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00,
+	0x12, 0x47, 0x0a, 0x0d, 0x53, 0x65, 0x74, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72, 0x61, 0x70,
+	0x73, 0x12, 0x1a, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x42, 0x6f, 0x6f, 0x74,
+	0x73, 0x74, 0x72, 0x61, 0x70, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e,
+	0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x42, 0x6f, 0x6f, 0x74, 0x73, 0x74, 0x72, 0x61,
+	0x70, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4d, 0x0a, 0x0f, 0x53, 0x65, 0x74,
+	0x50, 0x65, 0x65, 0x72, 0x69, 0x6e, 0x67, 0x50, 0x65, 0x65, 0x72, 0x73, 0x12, 0x1c, 0x2e, 0x63,
 	0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x69, 0x6e, 0x67, 0x50, 0x65,
-	0x65, 0x72, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x47, 0x0a, 0x0d, 0x53, 0x65,
-	0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53, 0x12, 0x1a, 0x2e, 0x63, 0x68,
-	0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53,
-	0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53, 0x52, 0x65, 0x70, 0x6c,
-	0x79, 0x22, 0x00, 0x12, 0x65, 0x0a, 0x17, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65,
-	0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x24,
-	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x44,
-	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x45,
-	0x6e, 0x61, 0x62, 0x6c, 0x65, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76,
-	0x69, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4a, 0x0a, 0x0e, 0x53, 0x65,
-	0x74, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44, 0x69, 0x72, 0x12, 0x1b, 0x2e, 0x63,
-	0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44,
-	0x69, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x63, 0x68, 0x61, 0x74,
-	0x2e, 0x53, 0x65, 0x74, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44, 0x69, 0x72, 0x52,
-	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x32, 0x6e, 0x0a, 0x0c, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72,
-	0x69, 0x62, 0x65, 0x53, 0x76, 0x63, 0x12, 0x5e, 0x0a, 0x14, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72,
-	0x69, 0x62, 0x65, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x21,
-	0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x43,
-	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x1f, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69,
-	0x62, 0x65, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x22, 0x00, 0x30, 0x01, 0x42, 0x2e, 0x0a, 0x14, 0x78, 0x79, 0x7a, 0x2e, 0x74, 0x6f,
-	0x62, 0x69, 0x6e, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x42, 0x09,
-	0x43, 0x68, 0x61, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x06, 0x2f, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x88, 0x01, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x63, 0x68, 0x61,
+	0x74, 0x2e, 0x53, 0x65, 0x74, 0x50, 0x65, 0x65, 0x72, 0x69, 0x6e, 0x67, 0x50, 0x65, 0x65, 0x72,
+	0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x47, 0x0a, 0x0d, 0x53, 0x65, 0x74, 0x45,
+	0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53, 0x12, 0x1a, 0x2e, 0x63, 0x68, 0x61, 0x74,
+	0x2e, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74,
+	0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x4d, 0x44, 0x4e, 0x53, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22,
+	0x00, 0x12, 0x65, 0x0a, 0x17, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x44, 0x65,
+	0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x24, 0x2e, 0x63,
+	0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x44, 0x65, 0x70,
+	0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x22, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x65, 0x74, 0x45, 0x6e, 0x61,
+	0x62, 0x6c, 0x65, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
+	0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x12, 0x4a, 0x0a, 0x0e, 0x53, 0x65, 0x74, 0x44,
+	0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44, 0x69, 0x72, 0x12, 0x1b, 0x2e, 0x63, 0x68, 0x61,
+	0x74, 0x2e, 0x53, 0x65, 0x74, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44, 0x69, 0x72,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53,
+	0x65, 0x74, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x44, 0x69, 0x72, 0x52, 0x65, 0x70,
+	0x6c, 0x79, 0x22, 0x00, 0x32, 0x6e, 0x0a, 0x0c, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62,
+	0x65, 0x53, 0x76, 0x63, 0x12, 0x5e, 0x0a, 0x14, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62,
+	0x65, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x21, 0x2e, 0x63,
+	0x68, 0x61, 0x74, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x43, 0x6f, 0x6d,
+	0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x1f, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65,
+	0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x22, 0x00, 0x30, 0x01, 0x42, 0x2e, 0x0a, 0x14, 0x78, 0x79, 0x7a, 0x2e, 0x74, 0x6f, 0x62, 0x69,
+	0x6e, 0x2e, 0x63, 0x68, 0x61, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x42, 0x09, 0x43, 0x68,
+	0x61, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x06, 0x2f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x88, 0x01, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -7833,7 +8076,7 @@ func file_bind_grpc_proto_chat_proto_rawDescGZIP() []byte {
 }
 
 var file_bind_grpc_proto_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_bind_grpc_proto_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 117)
+var file_bind_grpc_proto_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 121)
 var file_bind_grpc_proto_chat_proto_goTypes = []interface{}{
 	(MsgType)(0),                            // 0: chat.MsgType
 	(ConnState)(0),                          // 1: chat.ConnState
@@ -7919,50 +8162,54 @@ var file_bind_grpc_proto_chat_proto_goTypes = []interface{}{
 	(*GetSessionsReply)(nil),                // 81: chat.GetSessionsReply
 	(*GetSystemMessagesRequest)(nil),        // 82: chat.GetSystemMessagesRequest
 	(*GetSystemMessagesReply)(nil),          // 83: chat.GetSystemMessagesReply
-	(*ClearSystemMessageRequest)(nil),       // 84: chat.ClearSystemMessageRequest
-	(*ClearSystemMessageReply)(nil),         // 85: chat.ClearSystemMessageReply
+	(*DeleteSystemMessageRequest)(nil),      // 84: chat.DeleteSystemMessageRequest
+	(*DeleteSystemMessageReply)(nil),        // 85: chat.DeleteSystemMessageReply
 	(*ApplyAddContactRequest)(nil),          // 86: chat.ApplyAddContactRequest
 	(*ApplyAddContactReply)(nil),            // 87: chat.ApplyAddContactReply
 	(*AgreeAddContactRequest)(nil),          // 88: chat.AgreeAddContactRequest
 	(*AgreeAddContactReply)(nil),            // 89: chat.AgreeAddContactReply
 	(*RejectAddContactRequest)(nil),         // 90: chat.RejectAddContactRequest
 	(*RejectAddContactReply)(nil),           // 91: chat.RejectAddContactReply
-	(*GetConfigRequest)(nil),                // 92: chat.GetConfigRequest
-	(*GetConfigReply)(nil),                  // 93: chat.GetConfigReply
-	(*SetBootstrapsRequest)(nil),            // 94: chat.SetBootstrapsRequest
-	(*SetBootstrapsReply)(nil),              // 95: chat.SetBootstrapsReply
-	(*SetPeeringPeersRequest)(nil),          // 96: chat.SetPeeringPeersRequest
-	(*SetPeeringPeersReply)(nil),            // 97: chat.SetPeeringPeersReply
-	(*SetEnableMDNSRequest)(nil),            // 98: chat.SetEnableMDNSRequest
-	(*SetEnableMDNSReply)(nil),              // 99: chat.SetEnableMDNSReply
-	(*SetEnableDepositServiceRequest)(nil),  // 100: chat.SetEnableDepositServiceRequest
-	(*SetEnableDepositServiceReply)(nil),    // 101: chat.SetEnableDepositServiceReply
-	(*SetDownloadDirRequest)(nil),           // 102: chat.SetDownloadDirRequest
-	(*SetDownloadDirReply)(nil),             // 103: chat.SetDownloadDirReply
-	(*SubscribeCommonEventRequest)(nil),     // 104: chat.SubscribeCommonEventRequest
-	(*SubscribeCommonEventReply)(nil),       // 105: chat.SubscribeCommonEventReply
-	(*Config)(nil),                          // 106: chat.Config
-	(*Account)(nil),                         // 107: chat.Account
-	(*Peer)(nil),                            // 108: chat.Peer
-	(*Contact)(nil),                         // 109: chat.Contact
-	(*ContactMessage)(nil),                  // 110: chat.ContactMessage
-	(*Group)(nil),                           // 111: chat.Group
-	(*GroupSession)(nil),                    // 112: chat.GroupSession
-	(*GroupDetail)(nil),                     // 113: chat.GroupDetail
-	(*GroupMember)(nil),                     // 114: chat.GroupMember
-	(*GroupMessage)(nil),                    // 115: chat.GroupMessage
-	(*Session)(nil),                         // 116: chat.Session
-	(*SystemMessage)(nil),                   // 117: chat.SystemMessage
-	(*CommonEvent)(nil),                     // 118: chat.CommonEvent
-	(*CommonEvent_PayloadPeerMessage)(nil),  // 119: chat.CommonEvent.PayloadPeerMessage
-	(*CommonEvent_PayloadGroupMessage)(nil), // 120: chat.CommonEvent.PayloadGroupMessage
-	(*CommonEvent_PayloadOnlineState)(nil),  // 121: chat.CommonEvent.PayloadOnlineState
+	(*AgreeJoinGroupRequest)(nil),           // 92: chat.AgreeJoinGroupRequest
+	(*AgreeJoinGroupReply)(nil),             // 93: chat.AgreeJoinGroupReply
+	(*RejectJoinGroupRequest)(nil),          // 94: chat.RejectJoinGroupRequest
+	(*RejectJoinGroupReply)(nil),            // 95: chat.RejectJoinGroupReply
+	(*GetConfigRequest)(nil),                // 96: chat.GetConfigRequest
+	(*GetConfigReply)(nil),                  // 97: chat.GetConfigReply
+	(*SetBootstrapsRequest)(nil),            // 98: chat.SetBootstrapsRequest
+	(*SetBootstrapsReply)(nil),              // 99: chat.SetBootstrapsReply
+	(*SetPeeringPeersRequest)(nil),          // 100: chat.SetPeeringPeersRequest
+	(*SetPeeringPeersReply)(nil),            // 101: chat.SetPeeringPeersReply
+	(*SetEnableMDNSRequest)(nil),            // 102: chat.SetEnableMDNSRequest
+	(*SetEnableMDNSReply)(nil),              // 103: chat.SetEnableMDNSReply
+	(*SetEnableDepositServiceRequest)(nil),  // 104: chat.SetEnableDepositServiceRequest
+	(*SetEnableDepositServiceReply)(nil),    // 105: chat.SetEnableDepositServiceReply
+	(*SetDownloadDirRequest)(nil),           // 106: chat.SetDownloadDirRequest
+	(*SetDownloadDirReply)(nil),             // 107: chat.SetDownloadDirReply
+	(*SubscribeCommonEventRequest)(nil),     // 108: chat.SubscribeCommonEventRequest
+	(*SubscribeCommonEventReply)(nil),       // 109: chat.SubscribeCommonEventReply
+	(*Config)(nil),                          // 110: chat.Config
+	(*Account)(nil),                         // 111: chat.Account
+	(*Peer)(nil),                            // 112: chat.Peer
+	(*Contact)(nil),                         // 113: chat.Contact
+	(*ContactMessage)(nil),                  // 114: chat.ContactMessage
+	(*Group)(nil),                           // 115: chat.Group
+	(*GroupSession)(nil),                    // 116: chat.GroupSession
+	(*GroupDetail)(nil),                     // 117: chat.GroupDetail
+	(*GroupMember)(nil),                     // 118: chat.GroupMember
+	(*GroupMessage)(nil),                    // 119: chat.GroupMessage
+	(*Session)(nil),                         // 120: chat.Session
+	(*SystemMessage)(nil),                   // 121: chat.SystemMessage
+	(*CommonEvent)(nil),                     // 122: chat.CommonEvent
+	(*CommonEvent_PayloadPeerMessage)(nil),  // 123: chat.CommonEvent.PayloadPeerMessage
+	(*CommonEvent_PayloadGroupMessage)(nil), // 124: chat.CommonEvent.PayloadGroupMessage
+	(*CommonEvent_PayloadOnlineState)(nil),  // 125: chat.CommonEvent.PayloadOnlineState
 }
 var file_bind_grpc_proto_chat_proto_depIdxs = []int32{
 	5,   // 0: chat.CreateAccountReply.result:type_name -> chat.Result
-	107, // 1: chat.CreateAccountReply.account:type_name -> chat.Account
+	111, // 1: chat.CreateAccountReply.account:type_name -> chat.Account
 	5,   // 2: chat.GetAccountReply.result:type_name -> chat.Result
-	107, // 3: chat.GetAccountReply.account:type_name -> chat.Account
+	111, // 3: chat.GetAccountReply.account:type_name -> chat.Account
 	5,   // 4: chat.SetAccountAvatarReply.result:type_name -> chat.Result
 	5,   // 5: chat.SetAccountNameReply.result:type_name -> chat.Result
 	5,   // 6: chat.SetAutoAddContactReply.result:type_name -> chat.Result
@@ -7970,44 +8217,44 @@ var file_bind_grpc_proto_chat_proto_depIdxs = []int32{
 	5,   // 8: chat.SetAutoDepositMessageReply.result:type_name -> chat.Result
 	5,   // 9: chat.SetAccountDepositAddressReply.result:type_name -> chat.Result
 	5,   // 10: chat.GetContactReply.result:type_name -> chat.Result
-	109, // 11: chat.GetContactReply.contact:type_name -> chat.Contact
+	113, // 11: chat.GetContactReply.contact:type_name -> chat.Contact
 	5,   // 12: chat.GetContactsReply.result:type_name -> chat.Result
-	109, // 13: chat.GetContactsReply.contacts:type_name -> chat.Contact
+	113, // 13: chat.GetContactsReply.contacts:type_name -> chat.Contact
 	5,   // 14: chat.GetSpecifiedContactsReply.result:type_name -> chat.Result
-	109, // 15: chat.GetSpecifiedContactsReply.contacts:type_name -> chat.Contact
+	113, // 15: chat.GetSpecifiedContactsReply.contacts:type_name -> chat.Contact
 	5,   // 16: chat.GetNearbyPeersStreamReply.result:type_name -> chat.Result
-	108, // 17: chat.GetNearbyPeersStreamReply.peer:type_name -> chat.Peer
+	112, // 17: chat.GetNearbyPeersStreamReply.peer:type_name -> chat.Peer
 	5,   // 18: chat.GetContactMessageReply.result:type_name -> chat.Result
-	110, // 19: chat.GetContactMessageReply.message:type_name -> chat.ContactMessage
+	114, // 19: chat.GetContactMessageReply.message:type_name -> chat.ContactMessage
 	5,   // 20: chat.GetContactMessagesReply.result:type_name -> chat.Result
-	110, // 21: chat.GetContactMessagesReply.messages:type_name -> chat.ContactMessage
+	114, // 21: chat.GetContactMessagesReply.messages:type_name -> chat.ContactMessage
 	0,   // 22: chat.SendContactMessageRequest.msgType:type_name -> chat.MsgType
 	5,   // 23: chat.SendContactMessageReply.result:type_name -> chat.Result
-	110, // 24: chat.SendContactMessageReply.message:type_name -> chat.ContactMessage
+	114, // 24: chat.SendContactMessageReply.message:type_name -> chat.ContactMessage
 	5,   // 25: chat.SetContactNameReply.result:type_name -> chat.Result
 	5,   // 26: chat.ClearContactMessageReply.result:type_name -> chat.Result
 	5,   // 27: chat.DeleteContactReply.result:type_name -> chat.Result
 	5,   // 28: chat.CreateGroupReply.result:type_name -> chat.Result
-	111, // 29: chat.CreateGroupReply.group:type_name -> chat.Group
+	115, // 29: chat.CreateGroupReply.group:type_name -> chat.Group
 	5,   // 30: chat.GetGroupReply.result:type_name -> chat.Result
-	111, // 31: chat.GetGroupReply.group:type_name -> chat.Group
+	115, // 31: chat.GetGroupReply.group:type_name -> chat.Group
 	5,   // 32: chat.GetGroupDetailReply.result:type_name -> chat.Result
-	113, // 33: chat.GetGroupDetailReply.group:type_name -> chat.GroupDetail
+	117, // 33: chat.GetGroupDetailReply.group:type_name -> chat.GroupDetail
 	5,   // 34: chat.GetGroupsReply.result:type_name -> chat.Result
-	111, // 35: chat.GetGroupsReply.groups:type_name -> chat.Group
+	115, // 35: chat.GetGroupsReply.groups:type_name -> chat.Group
 	5,   // 36: chat.GetGroupMessageReply.result:type_name -> chat.Result
-	115, // 37: chat.GetGroupMessageReply.message:type_name -> chat.GroupMessage
+	119, // 37: chat.GetGroupMessageReply.message:type_name -> chat.GroupMessage
 	5,   // 38: chat.GetGroupMessagesReply.result:type_name -> chat.Result
-	115, // 39: chat.GetGroupMessagesReply.messages:type_name -> chat.GroupMessage
+	119, // 39: chat.GetGroupMessagesReply.messages:type_name -> chat.GroupMessage
 	0,   // 40: chat.SendGroupMessageRequest.msgType:type_name -> chat.MsgType
 	5,   // 41: chat.SendGroupMessageReply.result:type_name -> chat.Result
-	115, // 42: chat.SendGroupMessageReply.message:type_name -> chat.GroupMessage
+	119, // 42: chat.SendGroupMessageReply.message:type_name -> chat.GroupMessage
 	5,   // 43: chat.SetGroupAvatarReply.result:type_name -> chat.Result
 	5,   // 44: chat.SetGroupNameReply.result:type_name -> chat.Result
 	5,   // 45: chat.SetGroupNoticeReply.result:type_name -> chat.Result
 	5,   // 46: chat.InviteJoinGroupReply.result:type_name -> chat.Result
 	5,   // 47: chat.GetGroupMembersReply.result:type_name -> chat.Result
-	114, // 48: chat.GetGroupMembersReply.members:type_name -> chat.GroupMember
+	118, // 48: chat.GetGroupMembersReply.members:type_name -> chat.GroupMember
 	5,   // 49: chat.RemoveGroupMemberReply.result:type_name -> chat.Result
 	5,   // 50: chat.SetGroupAutoJoinReply.result:type_name -> chat.Result
 	5,   // 51: chat.SetGroupDepositAddressReply.result:type_name -> chat.Result
@@ -8016,135 +8263,141 @@ var file_bind_grpc_proto_chat_proto_depIdxs = []int32{
 	5,   // 54: chat.DeleteGroupReply.result:type_name -> chat.Result
 	5,   // 55: chat.DisbandGroupReply.result:type_name -> chat.Result
 	5,   // 56: chat.GetSessionsReply.result:type_name -> chat.Result
-	116, // 57: chat.GetSessionsReply.sessions:type_name -> chat.Session
+	120, // 57: chat.GetSessionsReply.sessions:type_name -> chat.Session
 	5,   // 58: chat.GetSystemMessagesReply.result:type_name -> chat.Result
-	117, // 59: chat.GetSystemMessagesReply.messages:type_name -> chat.SystemMessage
-	5,   // 60: chat.ClearSystemMessageReply.result:type_name -> chat.Result
+	121, // 59: chat.GetSystemMessagesReply.messages:type_name -> chat.SystemMessage
+	5,   // 60: chat.DeleteSystemMessageReply.result:type_name -> chat.Result
 	5,   // 61: chat.ApplyAddContactReply.result:type_name -> chat.Result
 	5,   // 62: chat.AgreeAddContactReply.result:type_name -> chat.Result
 	5,   // 63: chat.RejectAddContactReply.result:type_name -> chat.Result
-	5,   // 64: chat.GetConfigReply.result:type_name -> chat.Result
-	106, // 65: chat.GetConfigReply.config:type_name -> chat.Config
-	5,   // 66: chat.SetBootstrapsReply.result:type_name -> chat.Result
-	5,   // 67: chat.SetPeeringPeersReply.result:type_name -> chat.Result
-	5,   // 68: chat.SetEnableMDNSReply.result:type_name -> chat.Result
-	5,   // 69: chat.SetEnableDepositServiceReply.result:type_name -> chat.Result
-	5,   // 70: chat.SetDownloadDirReply.result:type_name -> chat.Result
-	118, // 71: chat.SubscribeCommonEventReply.event:type_name -> chat.CommonEvent
-	1,   // 72: chat.Contact.onlineState:type_name -> chat.ConnState
-	109, // 73: chat.ContactMessage.fromContact:type_name -> chat.Contact
-	0,   // 74: chat.ContactMessage.msgType:type_name -> chat.MsgType
-	1,   // 75: chat.GroupMember.onlineState:type_name -> chat.ConnState
-	108, // 76: chat.GroupMessage.sender:type_name -> chat.Peer
-	0,   // 77: chat.GroupMessage.msgType:type_name -> chat.MsgType
-	2,   // 78: chat.Session.type:type_name -> chat.Session.SessionType
-	1,   // 79: chat.Session.onlineState:type_name -> chat.ConnState
-	3,   // 80: chat.SystemMessage.systemType:type_name -> chat.SystemMessage.SystemType
-	108, // 81: chat.SystemMessage.fromPeer:type_name -> chat.Peer
-	4,   // 82: chat.CommonEvent.type:type_name -> chat.CommonEvent.EventType
-	6,   // 83: chat.AccountSvc.CreateAccount:input_type -> chat.CreateAccountRequest
-	8,   // 84: chat.AccountSvc.GetAccount:input_type -> chat.GetAccountRequest
-	12,  // 85: chat.AccountSvc.SetAccountName:input_type -> chat.SetAccountNameRequest
-	10,  // 86: chat.AccountSvc.SetAccountAvatar:input_type -> chat.SetAccountAvatarRequest
-	14,  // 87: chat.AccountSvc.SetAutoAddContact:input_type -> chat.SetAutoAddContactRequest
-	16,  // 88: chat.AccountSvc.SetAutoJoinGroup:input_type -> chat.SetAutoJoinGroupRequest
-	18,  // 89: chat.AccountSvc.SetAutoDepositMessage:input_type -> chat.SetAutoDepositMessageRequest
-	20,  // 90: chat.AccountSvc.SetAccountDepositAddress:input_type -> chat.SetAccountDepositAddressRequest
-	22,  // 91: chat.ContactSvc.GetContact:input_type -> chat.GetContactRequest
-	24,  // 92: chat.ContactSvc.GetContacts:input_type -> chat.GetContactsRequest
-	26,  // 93: chat.ContactSvc.GetSpecifiedContacts:input_type -> chat.GetSpecifiedContactsRequest
-	28,  // 94: chat.ContactSvc.GetNearbyPeers:input_type -> chat.GetNearbyPeersRequest
-	30,  // 95: chat.ContactSvc.GetContactMessage:input_type -> chat.GetContactMessageRequest
-	32,  // 96: chat.ContactSvc.GetContactMessages:input_type -> chat.GetContactMessagesRequest
-	34,  // 97: chat.ContactSvc.SendContactMessage:input_type -> chat.SendContactMessageRequest
-	38,  // 98: chat.ContactSvc.ClearContactMessage:input_type -> chat.ClearContactMessageRequest
-	36,  // 99: chat.ContactSvc.SetContactName:input_type -> chat.SetContactNameRequest
-	40,  // 100: chat.ContactSvc.DeleteContact:input_type -> chat.DeleteContactRequest
-	86,  // 101: chat.ContactSvc.ApplyAddContact:input_type -> chat.ApplyAddContactRequest
-	42,  // 102: chat.GroupSvc.CreateGroup:input_type -> chat.CreateGroupRequest
-	44,  // 103: chat.GroupSvc.GetGroup:input_type -> chat.GetGroupRequest
-	46,  // 104: chat.GroupSvc.GetGroupDetail:input_type -> chat.GetGroupDetailRequest
-	48,  // 105: chat.GroupSvc.GetGroups:input_type -> chat.GetGroupsRequest
-	58,  // 106: chat.GroupSvc.SetGroupName:input_type -> chat.SetGroupNameRequest
-	56,  // 107: chat.GroupSvc.SetGroupAvatar:input_type -> chat.SetGroupAvatarRequest
-	60,  // 108: chat.GroupSvc.SetGroupNotice:input_type -> chat.SetGroupNoticeRequest
-	68,  // 109: chat.GroupSvc.SetGroupAutoJoin:input_type -> chat.SetGroupAutoJoinRequest
-	70,  // 110: chat.GroupSvc.SetGroupDepositAddress:input_type -> chat.SetGroupDepositAddressRequest
-	74,  // 111: chat.GroupSvc.ExitGroup:input_type -> chat.ExitGroupRequest
-	76,  // 112: chat.GroupSvc.DeleteGroup:input_type -> chat.DeleteGroupRequest
-	78,  // 113: chat.GroupSvc.DisbandGroup:input_type -> chat.DisbandGroupRequest
-	64,  // 114: chat.GroupSvc.GetGroupMembers:input_type -> chat.GetGroupMembersRequest
-	66,  // 115: chat.GroupSvc.RemoveGroupMember:input_type -> chat.RemoveGroupMemberRequest
-	54,  // 116: chat.GroupSvc.SendGroupMessage:input_type -> chat.SendGroupMessageRequest
-	50,  // 117: chat.GroupSvc.GetGroupMessage:input_type -> chat.GetGroupMessageRequest
-	52,  // 118: chat.GroupSvc.GetGroupMessages:input_type -> chat.GetGroupMessagesRequest
-	72,  // 119: chat.GroupSvc.ClearGroupMessage:input_type -> chat.ClearGroupMessageRequest
-	80,  // 120: chat.SessionSvc.GetSessions:input_type -> chat.GetSessionsRequest
-	82,  // 121: chat.SystemSvc.GetSystemMessages:input_type -> chat.GetSystemMessagesRequest
-	88,  // 122: chat.SystemSvc.AgreeAddContact:input_type -> chat.AgreeAddContactRequest
-	90,  // 123: chat.SystemSvc.RejectAddContact:input_type -> chat.RejectAddContactRequest
-	84,  // 124: chat.SystemSvc.ClearSystemMessage:input_type -> chat.ClearSystemMessageRequest
-	92,  // 125: chat.ConfigSvc.GetConfig:input_type -> chat.GetConfigRequest
-	94,  // 126: chat.ConfigSvc.SetBootstraps:input_type -> chat.SetBootstrapsRequest
-	96,  // 127: chat.ConfigSvc.SetPeeringPeers:input_type -> chat.SetPeeringPeersRequest
-	98,  // 128: chat.ConfigSvc.SetEnableMDNS:input_type -> chat.SetEnableMDNSRequest
-	100, // 129: chat.ConfigSvc.SetEnableDepositService:input_type -> chat.SetEnableDepositServiceRequest
-	102, // 130: chat.ConfigSvc.SetDownloadDir:input_type -> chat.SetDownloadDirRequest
-	104, // 131: chat.SubscribeSvc.SubscribeCommonEvent:input_type -> chat.SubscribeCommonEventRequest
-	7,   // 132: chat.AccountSvc.CreateAccount:output_type -> chat.CreateAccountReply
-	9,   // 133: chat.AccountSvc.GetAccount:output_type -> chat.GetAccountReply
-	13,  // 134: chat.AccountSvc.SetAccountName:output_type -> chat.SetAccountNameReply
-	11,  // 135: chat.AccountSvc.SetAccountAvatar:output_type -> chat.SetAccountAvatarReply
-	15,  // 136: chat.AccountSvc.SetAutoAddContact:output_type -> chat.SetAutoAddContactReply
-	17,  // 137: chat.AccountSvc.SetAutoJoinGroup:output_type -> chat.SetAutoJoinGroupReply
-	19,  // 138: chat.AccountSvc.SetAutoDepositMessage:output_type -> chat.SetAutoDepositMessageReply
-	21,  // 139: chat.AccountSvc.SetAccountDepositAddress:output_type -> chat.SetAccountDepositAddressReply
-	23,  // 140: chat.ContactSvc.GetContact:output_type -> chat.GetContactReply
-	25,  // 141: chat.ContactSvc.GetContacts:output_type -> chat.GetContactsReply
-	27,  // 142: chat.ContactSvc.GetSpecifiedContacts:output_type -> chat.GetSpecifiedContactsReply
-	29,  // 143: chat.ContactSvc.GetNearbyPeers:output_type -> chat.GetNearbyPeersStreamReply
-	31,  // 144: chat.ContactSvc.GetContactMessage:output_type -> chat.GetContactMessageReply
-	33,  // 145: chat.ContactSvc.GetContactMessages:output_type -> chat.GetContactMessagesReply
-	35,  // 146: chat.ContactSvc.SendContactMessage:output_type -> chat.SendContactMessageReply
-	39,  // 147: chat.ContactSvc.ClearContactMessage:output_type -> chat.ClearContactMessageReply
-	37,  // 148: chat.ContactSvc.SetContactName:output_type -> chat.SetContactNameReply
-	41,  // 149: chat.ContactSvc.DeleteContact:output_type -> chat.DeleteContactReply
-	87,  // 150: chat.ContactSvc.ApplyAddContact:output_type -> chat.ApplyAddContactReply
-	43,  // 151: chat.GroupSvc.CreateGroup:output_type -> chat.CreateGroupReply
-	45,  // 152: chat.GroupSvc.GetGroup:output_type -> chat.GetGroupReply
-	47,  // 153: chat.GroupSvc.GetGroupDetail:output_type -> chat.GetGroupDetailReply
-	49,  // 154: chat.GroupSvc.GetGroups:output_type -> chat.GetGroupsReply
-	59,  // 155: chat.GroupSvc.SetGroupName:output_type -> chat.SetGroupNameReply
-	57,  // 156: chat.GroupSvc.SetGroupAvatar:output_type -> chat.SetGroupAvatarReply
-	61,  // 157: chat.GroupSvc.SetGroupNotice:output_type -> chat.SetGroupNoticeReply
-	69,  // 158: chat.GroupSvc.SetGroupAutoJoin:output_type -> chat.SetGroupAutoJoinReply
-	71,  // 159: chat.GroupSvc.SetGroupDepositAddress:output_type -> chat.SetGroupDepositAddressReply
-	75,  // 160: chat.GroupSvc.ExitGroup:output_type -> chat.ExitGroupReply
-	77,  // 161: chat.GroupSvc.DeleteGroup:output_type -> chat.DeleteGroupReply
-	79,  // 162: chat.GroupSvc.DisbandGroup:output_type -> chat.DisbandGroupReply
-	65,  // 163: chat.GroupSvc.GetGroupMembers:output_type -> chat.GetGroupMembersReply
-	67,  // 164: chat.GroupSvc.RemoveGroupMember:output_type -> chat.RemoveGroupMemberReply
-	55,  // 165: chat.GroupSvc.SendGroupMessage:output_type -> chat.SendGroupMessageReply
-	51,  // 166: chat.GroupSvc.GetGroupMessage:output_type -> chat.GetGroupMessageReply
-	53,  // 167: chat.GroupSvc.GetGroupMessages:output_type -> chat.GetGroupMessagesReply
-	73,  // 168: chat.GroupSvc.ClearGroupMessage:output_type -> chat.ClearGroupMessageReply
-	81,  // 169: chat.SessionSvc.GetSessions:output_type -> chat.GetSessionsReply
-	83,  // 170: chat.SystemSvc.GetSystemMessages:output_type -> chat.GetSystemMessagesReply
-	89,  // 171: chat.SystemSvc.AgreeAddContact:output_type -> chat.AgreeAddContactReply
-	91,  // 172: chat.SystemSvc.RejectAddContact:output_type -> chat.RejectAddContactReply
-	85,  // 173: chat.SystemSvc.ClearSystemMessage:output_type -> chat.ClearSystemMessageReply
-	93,  // 174: chat.ConfigSvc.GetConfig:output_type -> chat.GetConfigReply
-	95,  // 175: chat.ConfigSvc.SetBootstraps:output_type -> chat.SetBootstrapsReply
-	97,  // 176: chat.ConfigSvc.SetPeeringPeers:output_type -> chat.SetPeeringPeersReply
-	99,  // 177: chat.ConfigSvc.SetEnableMDNS:output_type -> chat.SetEnableMDNSReply
-	101, // 178: chat.ConfigSvc.SetEnableDepositService:output_type -> chat.SetEnableDepositServiceReply
-	103, // 179: chat.ConfigSvc.SetDownloadDir:output_type -> chat.SetDownloadDirReply
-	105, // 180: chat.SubscribeSvc.SubscribeCommonEvent:output_type -> chat.SubscribeCommonEventReply
-	132, // [132:181] is the sub-list for method output_type
-	83,  // [83:132] is the sub-list for method input_type
-	83,  // [83:83] is the sub-list for extension type_name
-	83,  // [83:83] is the sub-list for extension extendee
-	0,   // [0:83] is the sub-list for field type_name
+	5,   // 64: chat.AgreeJoinGroupReply.result:type_name -> chat.Result
+	5,   // 65: chat.RejectJoinGroupReply.result:type_name -> chat.Result
+	5,   // 66: chat.GetConfigReply.result:type_name -> chat.Result
+	110, // 67: chat.GetConfigReply.config:type_name -> chat.Config
+	5,   // 68: chat.SetBootstrapsReply.result:type_name -> chat.Result
+	5,   // 69: chat.SetPeeringPeersReply.result:type_name -> chat.Result
+	5,   // 70: chat.SetEnableMDNSReply.result:type_name -> chat.Result
+	5,   // 71: chat.SetEnableDepositServiceReply.result:type_name -> chat.Result
+	5,   // 72: chat.SetDownloadDirReply.result:type_name -> chat.Result
+	122, // 73: chat.SubscribeCommonEventReply.event:type_name -> chat.CommonEvent
+	1,   // 74: chat.Contact.onlineState:type_name -> chat.ConnState
+	113, // 75: chat.ContactMessage.fromContact:type_name -> chat.Contact
+	0,   // 76: chat.ContactMessage.msgType:type_name -> chat.MsgType
+	1,   // 77: chat.GroupMember.onlineState:type_name -> chat.ConnState
+	112, // 78: chat.GroupMessage.sender:type_name -> chat.Peer
+	0,   // 79: chat.GroupMessage.msgType:type_name -> chat.MsgType
+	2,   // 80: chat.Session.type:type_name -> chat.Session.SessionType
+	1,   // 81: chat.Session.onlineState:type_name -> chat.ConnState
+	3,   // 82: chat.SystemMessage.systemType:type_name -> chat.SystemMessage.SystemType
+	112, // 83: chat.SystemMessage.fromPeer:type_name -> chat.Peer
+	4,   // 84: chat.CommonEvent.type:type_name -> chat.CommonEvent.EventType
+	6,   // 85: chat.AccountSvc.CreateAccount:input_type -> chat.CreateAccountRequest
+	8,   // 86: chat.AccountSvc.GetAccount:input_type -> chat.GetAccountRequest
+	12,  // 87: chat.AccountSvc.SetAccountName:input_type -> chat.SetAccountNameRequest
+	10,  // 88: chat.AccountSvc.SetAccountAvatar:input_type -> chat.SetAccountAvatarRequest
+	14,  // 89: chat.AccountSvc.SetAutoAddContact:input_type -> chat.SetAutoAddContactRequest
+	16,  // 90: chat.AccountSvc.SetAutoJoinGroup:input_type -> chat.SetAutoJoinGroupRequest
+	18,  // 91: chat.AccountSvc.SetAutoDepositMessage:input_type -> chat.SetAutoDepositMessageRequest
+	20,  // 92: chat.AccountSvc.SetAccountDepositAddress:input_type -> chat.SetAccountDepositAddressRequest
+	22,  // 93: chat.ContactSvc.GetContact:input_type -> chat.GetContactRequest
+	24,  // 94: chat.ContactSvc.GetContacts:input_type -> chat.GetContactsRequest
+	26,  // 95: chat.ContactSvc.GetSpecifiedContacts:input_type -> chat.GetSpecifiedContactsRequest
+	28,  // 96: chat.ContactSvc.GetNearbyPeers:input_type -> chat.GetNearbyPeersRequest
+	30,  // 97: chat.ContactSvc.GetContactMessage:input_type -> chat.GetContactMessageRequest
+	32,  // 98: chat.ContactSvc.GetContactMessages:input_type -> chat.GetContactMessagesRequest
+	34,  // 99: chat.ContactSvc.SendContactMessage:input_type -> chat.SendContactMessageRequest
+	38,  // 100: chat.ContactSvc.ClearContactMessage:input_type -> chat.ClearContactMessageRequest
+	36,  // 101: chat.ContactSvc.SetContactName:input_type -> chat.SetContactNameRequest
+	40,  // 102: chat.ContactSvc.DeleteContact:input_type -> chat.DeleteContactRequest
+	86,  // 103: chat.ContactSvc.ApplyAddContact:input_type -> chat.ApplyAddContactRequest
+	42,  // 104: chat.GroupSvc.CreateGroup:input_type -> chat.CreateGroupRequest
+	44,  // 105: chat.GroupSvc.GetGroup:input_type -> chat.GetGroupRequest
+	46,  // 106: chat.GroupSvc.GetGroupDetail:input_type -> chat.GetGroupDetailRequest
+	48,  // 107: chat.GroupSvc.GetGroups:input_type -> chat.GetGroupsRequest
+	58,  // 108: chat.GroupSvc.SetGroupName:input_type -> chat.SetGroupNameRequest
+	56,  // 109: chat.GroupSvc.SetGroupAvatar:input_type -> chat.SetGroupAvatarRequest
+	60,  // 110: chat.GroupSvc.SetGroupNotice:input_type -> chat.SetGroupNoticeRequest
+	68,  // 111: chat.GroupSvc.SetGroupAutoJoin:input_type -> chat.SetGroupAutoJoinRequest
+	70,  // 112: chat.GroupSvc.SetGroupDepositAddress:input_type -> chat.SetGroupDepositAddressRequest
+	74,  // 113: chat.GroupSvc.ExitGroup:input_type -> chat.ExitGroupRequest
+	76,  // 114: chat.GroupSvc.DeleteGroup:input_type -> chat.DeleteGroupRequest
+	78,  // 115: chat.GroupSvc.DisbandGroup:input_type -> chat.DisbandGroupRequest
+	64,  // 116: chat.GroupSvc.GetGroupMembers:input_type -> chat.GetGroupMembersRequest
+	66,  // 117: chat.GroupSvc.RemoveGroupMember:input_type -> chat.RemoveGroupMemberRequest
+	54,  // 118: chat.GroupSvc.SendGroupMessage:input_type -> chat.SendGroupMessageRequest
+	50,  // 119: chat.GroupSvc.GetGroupMessage:input_type -> chat.GetGroupMessageRequest
+	52,  // 120: chat.GroupSvc.GetGroupMessages:input_type -> chat.GetGroupMessagesRequest
+	72,  // 121: chat.GroupSvc.ClearGroupMessage:input_type -> chat.ClearGroupMessageRequest
+	80,  // 122: chat.SessionSvc.GetSessions:input_type -> chat.GetSessionsRequest
+	82,  // 123: chat.SystemSvc.GetSystemMessages:input_type -> chat.GetSystemMessagesRequest
+	88,  // 124: chat.SystemSvc.AgreeAddContact:input_type -> chat.AgreeAddContactRequest
+	90,  // 125: chat.SystemSvc.RejectAddContact:input_type -> chat.RejectAddContactRequest
+	92,  // 126: chat.SystemSvc.AgreeJoinGroup:input_type -> chat.AgreeJoinGroupRequest
+	94,  // 127: chat.SystemSvc.RejectJoinGroup:input_type -> chat.RejectJoinGroupRequest
+	84,  // 128: chat.SystemSvc.DeleteSystemMessage:input_type -> chat.DeleteSystemMessageRequest
+	96,  // 129: chat.ConfigSvc.GetConfig:input_type -> chat.GetConfigRequest
+	98,  // 130: chat.ConfigSvc.SetBootstraps:input_type -> chat.SetBootstrapsRequest
+	100, // 131: chat.ConfigSvc.SetPeeringPeers:input_type -> chat.SetPeeringPeersRequest
+	102, // 132: chat.ConfigSvc.SetEnableMDNS:input_type -> chat.SetEnableMDNSRequest
+	104, // 133: chat.ConfigSvc.SetEnableDepositService:input_type -> chat.SetEnableDepositServiceRequest
+	106, // 134: chat.ConfigSvc.SetDownloadDir:input_type -> chat.SetDownloadDirRequest
+	108, // 135: chat.SubscribeSvc.SubscribeCommonEvent:input_type -> chat.SubscribeCommonEventRequest
+	7,   // 136: chat.AccountSvc.CreateAccount:output_type -> chat.CreateAccountReply
+	9,   // 137: chat.AccountSvc.GetAccount:output_type -> chat.GetAccountReply
+	13,  // 138: chat.AccountSvc.SetAccountName:output_type -> chat.SetAccountNameReply
+	11,  // 139: chat.AccountSvc.SetAccountAvatar:output_type -> chat.SetAccountAvatarReply
+	15,  // 140: chat.AccountSvc.SetAutoAddContact:output_type -> chat.SetAutoAddContactReply
+	17,  // 141: chat.AccountSvc.SetAutoJoinGroup:output_type -> chat.SetAutoJoinGroupReply
+	19,  // 142: chat.AccountSvc.SetAutoDepositMessage:output_type -> chat.SetAutoDepositMessageReply
+	21,  // 143: chat.AccountSvc.SetAccountDepositAddress:output_type -> chat.SetAccountDepositAddressReply
+	23,  // 144: chat.ContactSvc.GetContact:output_type -> chat.GetContactReply
+	25,  // 145: chat.ContactSvc.GetContacts:output_type -> chat.GetContactsReply
+	27,  // 146: chat.ContactSvc.GetSpecifiedContacts:output_type -> chat.GetSpecifiedContactsReply
+	29,  // 147: chat.ContactSvc.GetNearbyPeers:output_type -> chat.GetNearbyPeersStreamReply
+	31,  // 148: chat.ContactSvc.GetContactMessage:output_type -> chat.GetContactMessageReply
+	33,  // 149: chat.ContactSvc.GetContactMessages:output_type -> chat.GetContactMessagesReply
+	35,  // 150: chat.ContactSvc.SendContactMessage:output_type -> chat.SendContactMessageReply
+	39,  // 151: chat.ContactSvc.ClearContactMessage:output_type -> chat.ClearContactMessageReply
+	37,  // 152: chat.ContactSvc.SetContactName:output_type -> chat.SetContactNameReply
+	41,  // 153: chat.ContactSvc.DeleteContact:output_type -> chat.DeleteContactReply
+	87,  // 154: chat.ContactSvc.ApplyAddContact:output_type -> chat.ApplyAddContactReply
+	43,  // 155: chat.GroupSvc.CreateGroup:output_type -> chat.CreateGroupReply
+	45,  // 156: chat.GroupSvc.GetGroup:output_type -> chat.GetGroupReply
+	47,  // 157: chat.GroupSvc.GetGroupDetail:output_type -> chat.GetGroupDetailReply
+	49,  // 158: chat.GroupSvc.GetGroups:output_type -> chat.GetGroupsReply
+	59,  // 159: chat.GroupSvc.SetGroupName:output_type -> chat.SetGroupNameReply
+	57,  // 160: chat.GroupSvc.SetGroupAvatar:output_type -> chat.SetGroupAvatarReply
+	61,  // 161: chat.GroupSvc.SetGroupNotice:output_type -> chat.SetGroupNoticeReply
+	69,  // 162: chat.GroupSvc.SetGroupAutoJoin:output_type -> chat.SetGroupAutoJoinReply
+	71,  // 163: chat.GroupSvc.SetGroupDepositAddress:output_type -> chat.SetGroupDepositAddressReply
+	75,  // 164: chat.GroupSvc.ExitGroup:output_type -> chat.ExitGroupReply
+	77,  // 165: chat.GroupSvc.DeleteGroup:output_type -> chat.DeleteGroupReply
+	79,  // 166: chat.GroupSvc.DisbandGroup:output_type -> chat.DisbandGroupReply
+	65,  // 167: chat.GroupSvc.GetGroupMembers:output_type -> chat.GetGroupMembersReply
+	67,  // 168: chat.GroupSvc.RemoveGroupMember:output_type -> chat.RemoveGroupMemberReply
+	55,  // 169: chat.GroupSvc.SendGroupMessage:output_type -> chat.SendGroupMessageReply
+	51,  // 170: chat.GroupSvc.GetGroupMessage:output_type -> chat.GetGroupMessageReply
+	53,  // 171: chat.GroupSvc.GetGroupMessages:output_type -> chat.GetGroupMessagesReply
+	73,  // 172: chat.GroupSvc.ClearGroupMessage:output_type -> chat.ClearGroupMessageReply
+	81,  // 173: chat.SessionSvc.GetSessions:output_type -> chat.GetSessionsReply
+	83,  // 174: chat.SystemSvc.GetSystemMessages:output_type -> chat.GetSystemMessagesReply
+	89,  // 175: chat.SystemSvc.AgreeAddContact:output_type -> chat.AgreeAddContactReply
+	91,  // 176: chat.SystemSvc.RejectAddContact:output_type -> chat.RejectAddContactReply
+	93,  // 177: chat.SystemSvc.AgreeJoinGroup:output_type -> chat.AgreeJoinGroupReply
+	95,  // 178: chat.SystemSvc.RejectJoinGroup:output_type -> chat.RejectJoinGroupReply
+	85,  // 179: chat.SystemSvc.DeleteSystemMessage:output_type -> chat.DeleteSystemMessageReply
+	97,  // 180: chat.ConfigSvc.GetConfig:output_type -> chat.GetConfigReply
+	99,  // 181: chat.ConfigSvc.SetBootstraps:output_type -> chat.SetBootstrapsReply
+	101, // 182: chat.ConfigSvc.SetPeeringPeers:output_type -> chat.SetPeeringPeersReply
+	103, // 183: chat.ConfigSvc.SetEnableMDNS:output_type -> chat.SetEnableMDNSReply
+	105, // 184: chat.ConfigSvc.SetEnableDepositService:output_type -> chat.SetEnableDepositServiceReply
+	107, // 185: chat.ConfigSvc.SetDownloadDir:output_type -> chat.SetDownloadDirReply
+	109, // 186: chat.SubscribeSvc.SubscribeCommonEvent:output_type -> chat.SubscribeCommonEventReply
+	136, // [136:187] is the sub-list for method output_type
+	85,  // [85:136] is the sub-list for method input_type
+	85,  // [85:85] is the sub-list for extension type_name
+	85,  // [85:85] is the sub-list for extension extendee
+	0,   // [0:85] is the sub-list for field type_name
 }
 
 func init() { file_bind_grpc_proto_chat_proto_init() }
@@ -9102,7 +9355,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[79].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClearSystemMessageRequest); i {
+			switch v := v.(*DeleteSystemMessageRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9114,7 +9367,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[80].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ClearSystemMessageReply); i {
+			switch v := v.(*DeleteSystemMessageReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9198,7 +9451,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[87].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetConfigRequest); i {
+			switch v := v.(*AgreeJoinGroupRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9210,7 +9463,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[88].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetConfigReply); i {
+			switch v := v.(*AgreeJoinGroupReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9222,7 +9475,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[89].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetBootstrapsRequest); i {
+			switch v := v.(*RejectJoinGroupRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9234,7 +9487,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[90].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetBootstrapsReply); i {
+			switch v := v.(*RejectJoinGroupReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9246,7 +9499,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[91].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetPeeringPeersRequest); i {
+			switch v := v.(*GetConfigRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9258,7 +9511,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[92].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetPeeringPeersReply); i {
+			switch v := v.(*GetConfigReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9270,7 +9523,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[93].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetEnableMDNSRequest); i {
+			switch v := v.(*SetBootstrapsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9282,7 +9535,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[94].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetEnableMDNSReply); i {
+			switch v := v.(*SetBootstrapsReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9294,7 +9547,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[95].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetEnableDepositServiceRequest); i {
+			switch v := v.(*SetPeeringPeersRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9306,7 +9559,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[96].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetEnableDepositServiceReply); i {
+			switch v := v.(*SetPeeringPeersReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9318,7 +9571,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[97].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetDownloadDirRequest); i {
+			switch v := v.(*SetEnableMDNSRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9330,7 +9583,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[98].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetDownloadDirReply); i {
+			switch v := v.(*SetEnableMDNSReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9342,7 +9595,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[99].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeCommonEventRequest); i {
+			switch v := v.(*SetEnableDepositServiceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9354,7 +9607,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[100].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeCommonEventReply); i {
+			switch v := v.(*SetEnableDepositServiceReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9366,7 +9619,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[101].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Config); i {
+			switch v := v.(*SetDownloadDirRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9378,7 +9631,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[102].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Account); i {
+			switch v := v.(*SetDownloadDirReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9390,7 +9643,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[103].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Peer); i {
+			switch v := v.(*SubscribeCommonEventRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9402,7 +9655,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[104].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Contact); i {
+			switch v := v.(*SubscribeCommonEventReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9414,7 +9667,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[105].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ContactMessage); i {
+			switch v := v.(*Config); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9426,7 +9679,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[106].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Group); i {
+			switch v := v.(*Account); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9438,7 +9691,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[107].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupSession); i {
+			switch v := v.(*Peer); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9450,7 +9703,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[108].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupDetail); i {
+			switch v := v.(*Contact); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9462,7 +9715,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[109].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupMember); i {
+			switch v := v.(*ContactMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9474,7 +9727,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[110].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GroupMessage); i {
+			switch v := v.(*Group); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9486,7 +9739,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[111].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Session); i {
+			switch v := v.(*GroupSession); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9498,7 +9751,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[112].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SystemMessage); i {
+			switch v := v.(*GroupDetail); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9510,7 +9763,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[113].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CommonEvent); i {
+			switch v := v.(*GroupMember); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9522,7 +9775,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[114].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CommonEvent_PayloadPeerMessage); i {
+			switch v := v.(*GroupMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9534,7 +9787,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[115].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CommonEvent_PayloadGroupMessage); i {
+			switch v := v.(*Session); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -9546,6 +9799,54 @@ func file_bind_grpc_proto_chat_proto_init() {
 			}
 		}
 		file_bind_grpc_proto_chat_proto_msgTypes[116].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SystemMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_bind_grpc_proto_chat_proto_msgTypes[117].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommonEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_bind_grpc_proto_chat_proto_msgTypes[118].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommonEvent_PayloadPeerMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_bind_grpc_proto_chat_proto_msgTypes[119].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CommonEvent_PayloadGroupMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_bind_grpc_proto_chat_proto_msgTypes[120].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CommonEvent_PayloadOnlineState); i {
 			case 0:
 				return &v.state
@@ -9564,7 +9865,7 @@ func file_bind_grpc_proto_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_bind_grpc_proto_chat_proto_rawDesc,
 			NumEnums:      5,
-			NumMessages:   117,
+			NumMessages:   121,
 			NumExtensions: 0,
 			NumServices:   7,
 		},

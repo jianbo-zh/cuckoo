@@ -93,6 +93,10 @@ func (s *SystemProto) UpdateMessageState(ctx context.Context, msgID string, stat
 	return nil
 }
 
+func (s *SystemProto) DeleteSystemMessage(ctx context.Context, msgIDs []string) error {
+	return s.data.DeleteSystemMessage(ctx, msgIDs)
+}
+
 func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMsg) error {
 
 	fmt.Println("host.NewStream start")

@@ -1739,10 +1739,12 @@ var SessionSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	SystemSvc_GetSystemMessages_FullMethodName  = "/chat.SystemSvc/GetSystemMessages"
-	SystemSvc_AgreeAddContact_FullMethodName    = "/chat.SystemSvc/AgreeAddContact"
-	SystemSvc_RejectAddContact_FullMethodName   = "/chat.SystemSvc/RejectAddContact"
-	SystemSvc_ClearSystemMessage_FullMethodName = "/chat.SystemSvc/ClearSystemMessage"
+	SystemSvc_GetSystemMessages_FullMethodName   = "/chat.SystemSvc/GetSystemMessages"
+	SystemSvc_AgreeAddContact_FullMethodName     = "/chat.SystemSvc/AgreeAddContact"
+	SystemSvc_RejectAddContact_FullMethodName    = "/chat.SystemSvc/RejectAddContact"
+	SystemSvc_AgreeJoinGroup_FullMethodName      = "/chat.SystemSvc/AgreeJoinGroup"
+	SystemSvc_RejectJoinGroup_FullMethodName     = "/chat.SystemSvc/RejectJoinGroup"
+	SystemSvc_DeleteSystemMessage_FullMethodName = "/chat.SystemSvc/DeleteSystemMessage"
 )
 
 // SystemSvcClient is the client API for SystemSvc service.
@@ -1752,7 +1754,9 @@ type SystemSvcClient interface {
 	GetSystemMessages(ctx context.Context, in *GetSystemMessagesRequest, opts ...grpc.CallOption) (*GetSystemMessagesReply, error)
 	AgreeAddContact(ctx context.Context, in *AgreeAddContactRequest, opts ...grpc.CallOption) (*AgreeAddContactReply, error)
 	RejectAddContact(ctx context.Context, in *RejectAddContactRequest, opts ...grpc.CallOption) (*RejectAddContactReply, error)
-	ClearSystemMessage(ctx context.Context, in *ClearSystemMessageRequest, opts ...grpc.CallOption) (*ClearSystemMessageReply, error)
+	AgreeJoinGroup(ctx context.Context, in *AgreeJoinGroupRequest, opts ...grpc.CallOption) (*AgreeJoinGroupReply, error)
+	RejectJoinGroup(ctx context.Context, in *RejectJoinGroupRequest, opts ...grpc.CallOption) (*RejectJoinGroupReply, error)
+	DeleteSystemMessage(ctx context.Context, in *DeleteSystemMessageRequest, opts ...grpc.CallOption) (*DeleteSystemMessageReply, error)
 }
 
 type systemSvcClient struct {
@@ -1790,9 +1794,27 @@ func (c *systemSvcClient) RejectAddContact(ctx context.Context, in *RejectAddCon
 	return out, nil
 }
 
-func (c *systemSvcClient) ClearSystemMessage(ctx context.Context, in *ClearSystemMessageRequest, opts ...grpc.CallOption) (*ClearSystemMessageReply, error) {
-	out := new(ClearSystemMessageReply)
-	err := c.cc.Invoke(ctx, SystemSvc_ClearSystemMessage_FullMethodName, in, out, opts...)
+func (c *systemSvcClient) AgreeJoinGroup(ctx context.Context, in *AgreeJoinGroupRequest, opts ...grpc.CallOption) (*AgreeJoinGroupReply, error) {
+	out := new(AgreeJoinGroupReply)
+	err := c.cc.Invoke(ctx, SystemSvc_AgreeJoinGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *systemSvcClient) RejectJoinGroup(ctx context.Context, in *RejectJoinGroupRequest, opts ...grpc.CallOption) (*RejectJoinGroupReply, error) {
+	out := new(RejectJoinGroupReply)
+	err := c.cc.Invoke(ctx, SystemSvc_RejectJoinGroup_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *systemSvcClient) DeleteSystemMessage(ctx context.Context, in *DeleteSystemMessageRequest, opts ...grpc.CallOption) (*DeleteSystemMessageReply, error) {
+	out := new(DeleteSystemMessageReply)
+	err := c.cc.Invoke(ctx, SystemSvc_DeleteSystemMessage_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1806,7 +1828,9 @@ type SystemSvcServer interface {
 	GetSystemMessages(context.Context, *GetSystemMessagesRequest) (*GetSystemMessagesReply, error)
 	AgreeAddContact(context.Context, *AgreeAddContactRequest) (*AgreeAddContactReply, error)
 	RejectAddContact(context.Context, *RejectAddContactRequest) (*RejectAddContactReply, error)
-	ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error)
+	AgreeJoinGroup(context.Context, *AgreeJoinGroupRequest) (*AgreeJoinGroupReply, error)
+	RejectJoinGroup(context.Context, *RejectJoinGroupRequest) (*RejectJoinGroupReply, error)
+	DeleteSystemMessage(context.Context, *DeleteSystemMessageRequest) (*DeleteSystemMessageReply, error)
 	mustEmbedUnimplementedSystemSvcServer()
 }
 
@@ -1823,8 +1847,14 @@ func (UnimplementedSystemSvcServer) AgreeAddContact(context.Context, *AgreeAddCo
 func (UnimplementedSystemSvcServer) RejectAddContact(context.Context, *RejectAddContactRequest) (*RejectAddContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RejectAddContact not implemented")
 }
-func (UnimplementedSystemSvcServer) ClearSystemMessage(context.Context, *ClearSystemMessageRequest) (*ClearSystemMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClearSystemMessage not implemented")
+func (UnimplementedSystemSvcServer) AgreeJoinGroup(context.Context, *AgreeJoinGroupRequest) (*AgreeJoinGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AgreeJoinGroup not implemented")
+}
+func (UnimplementedSystemSvcServer) RejectJoinGroup(context.Context, *RejectJoinGroupRequest) (*RejectJoinGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RejectJoinGroup not implemented")
+}
+func (UnimplementedSystemSvcServer) DeleteSystemMessage(context.Context, *DeleteSystemMessageRequest) (*DeleteSystemMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSystemMessage not implemented")
 }
 func (UnimplementedSystemSvcServer) mustEmbedUnimplementedSystemSvcServer() {}
 
@@ -1893,20 +1923,56 @@ func _SystemSvc_RejectAddContact_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SystemSvc_ClearSystemMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ClearSystemMessageRequest)
+func _SystemSvc_AgreeJoinGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AgreeJoinGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SystemSvcServer).ClearSystemMessage(ctx, in)
+		return srv.(SystemSvcServer).AgreeJoinGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SystemSvc_ClearSystemMessage_FullMethodName,
+		FullMethod: SystemSvc_AgreeJoinGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SystemSvcServer).ClearSystemMessage(ctx, req.(*ClearSystemMessageRequest))
+		return srv.(SystemSvcServer).AgreeJoinGroup(ctx, req.(*AgreeJoinGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SystemSvc_RejectJoinGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectJoinGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemSvcServer).RejectJoinGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemSvc_RejectJoinGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemSvcServer).RejectJoinGroup(ctx, req.(*RejectJoinGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SystemSvc_DeleteSystemMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSystemMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemSvcServer).DeleteSystemMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemSvc_DeleteSystemMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemSvcServer).DeleteSystemMessage(ctx, req.(*DeleteSystemMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1931,8 +1997,16 @@ var SystemSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SystemSvc_RejectAddContact_Handler,
 		},
 		{
-			MethodName: "ClearSystemMessage",
-			Handler:    _SystemSvc_ClearSystemMessage_Handler,
+			MethodName: "AgreeJoinGroup",
+			Handler:    _SystemSvc_AgreeJoinGroup_Handler,
+		},
+		{
+			MethodName: "RejectJoinGroup",
+			Handler:    _SystemSvc_RejectJoinGroup_Handler,
+		},
+		{
+			MethodName: "DeleteSystemMessage",
+			Handler:    _SystemSvc_DeleteSystemMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
