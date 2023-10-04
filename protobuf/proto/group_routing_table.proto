@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package network.pb;
+
+message GroupRoutingTable {
+    string  groupId = 1;
+    bytes   payload = 2;
+}

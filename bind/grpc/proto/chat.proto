@@ -470,9 +470,6 @@ message DisbandGroupReply {
 // -------------------- 分隔符 --------------------
 
 message GetSessionsRequest {
-  string sessionId = 1;
-  int32 offset = 2;
-  int32 limit = 3;
   string keywords = 4;
 }
 
@@ -756,19 +753,17 @@ message Session {
   // 会话类型
   SessionType type = 1;
   // 会话id（群组id或者PeerId）
-  string sessionId = 2;
+  string id = 2;
   // 名称
   string name = 3;
   // 头像 SHA1
   string avatar = 4;
   // 在线状态
-  ConnState onlineState = 5;
+  ConnState state = 5;
   // 最新消息
-  string lastMessage = 6;
-  // 最新消息时间
-  int64 lastMessageTime = 7;
+  string lastmsg = 6;
   // 有未读消息
-  bool haveUnreadMessage = 8;
+  int64 unreads = 8;
 }
 
 // 系统消息

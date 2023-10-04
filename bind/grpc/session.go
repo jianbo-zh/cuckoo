@@ -3,11 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -37,7 +36,6 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		}
 	}()
 
-	var sessions []*proto.Session
 	cuckoo, err := s.getter.GetCuckoo()
 	if err != nil {
 		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
@@ -48,73 +46,76 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 		return nil, fmt.Errorf("s.getGroupSvc error: %w", err)
 	}
 
-	groups, err := groupSvc.GetGroupSessions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("groupSvc.ListGroups error: %w", err)
-	}
-
-	for _, group := range groups {
-		sessions = append(sessions, &proto.Session{
-			Type:      proto.Session_GroupSession,
-			SessionId: group.ID,
-			Name:      group.Name,
-			Avatar:    group.Avatar,
-		})
-	}
-
 	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("s.getContactSvc error: %w", err)
 	}
 
-	contacts, err := contactSvc.GetContactSessions(ctx)
+	accountSvc, err := cuckoo.GetAccountSvc()
 	if err != nil {
-		return nil, fmt.Errorf("contactSvc.GetContact error: %w", err)
+		return nil, fmt.Errorf("get account svc error: %w", err)
 	}
 
-	if len(contacts) > 0 {
-		var peerIDs []peer.ID
-		for _, contact := range contacts {
-			peerIDs = append(peerIDs, contact.ID)
-		}
+	sessionSvc, err := cuckoo.GetSessionSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetSessionSvc error: %w", err)
+	}
 
-		accountSvc, err := cuckoo.GetAccountSvc()
-		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
-		}
+	sessions, err := sessionSvc.GetSessions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc get sessions error: %w", err)
+	}
 
-		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
-
-		for i, contact := range contacts {
-			if request.Keywords != "" && !strings.Contains(contact.Name, request.Keywords) {
-				continue
-			}
-
-			sessions = append(sessions, &proto.Session{
-				Type:              proto.Session_ContactSession,
-				SessionId:         contact.ID.String(),
-				Name:              contact.Name,
-				Avatar:            contact.Avatar,
-				OnlineState:       encodeOnlineState(onlineStateMap[contact.ID]),
-				LastMessage:       "",
-				LastMessageTime:   time.Now().Unix(),
-				HaveUnreadMessage: i%2 == 1,
-			})
+	var contactIDs []peer.ID
+	for _, session := range sessions {
+		switch session.ID.Type {
+		case mytype.ContactSession:
+			contactIDs = append(contactIDs, peer.ID(session.ID.Value))
+		default:
+			// nothing
 		}
 	}
+
+	onlineStateMap := accountSvc.GetOnlineState(contactIDs)
 
 	var sessionList []*proto.Session
-	if int(request.Offset) < len(sessions) {
+	for _, session := range sessions {
+		switch session.ID.Type {
+		case mytype.ContactSession:
+			contactID := peer.ID(session.ID.Value)
+			contact, err := contactSvc.GetContact(ctx, contactID)
+			if err != nil {
+				return nil, fmt.Errorf("svc get contact error: %w", err)
+			}
+			sessionList = append(sessionList, &proto.Session{
+				Type:    proto.Session_ContactSession,
+				Id:      contactID.String(), // 这里直接用联系人ID
+				Name:    contact.Name,
+				Avatar:  contact.Avatar,
+				State:   encodeOnlineState(onlineStateMap[contactID]),
+				Lastmsg: session.Content,
+				Unreads: int64(session.Unreads),
+			})
 
-		endOffset := request.Offset + request.Limit
-		if endOffset > int32(len(sessions)) {
-			endOffset = int32(len(sessions))
+		case mytype.GroupSession:
+			groupID := string(session.ID.Value)
+			group, err := groupSvc.GetGroup(ctx, groupID)
+			if err != nil {
+				return nil, fmt.Errorf("svc get group error: %w", err)
+			}
+			sessionList = append(sessionList, &proto.Session{
+				Type:    proto.Session_GroupSession,
+				Id:      groupID, // 这里直接用群组ID
+				Name:    group.Name,
+				Avatar:  group.Avatar,
+				State:   proto.ConnState_UnknownState,
+				Lastmsg: session.Username + ": " + session.Content,
+				Unreads: int64(session.Unreads),
+			})
+		default:
+			// nothing
+			return nil, fmt.Errorf("unknown session type")
 		}
-
-		sessionList = sessions[request.Offset:endOffset]
-
-	} else {
-		sessionList = make([]*proto.Session, 0)
 	}
 
 	reply = &proto.GetSessionsReply{

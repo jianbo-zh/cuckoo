@@ -13,11 +13,11 @@ type Contact struct {
 	DepositAddress peer.ID
 }
 
-type ContactSession struct {
-	ID     peer.ID
-	Name   string
-	Avatar string
-}
+// type ContactSession struct {
+// 	ID     peer.ID
+// 	Name   string
+// 	Avatar string
+// }
 
 type ContactMessage struct {
 	ID         string

@@ -9,11 +9,11 @@ import (
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
+	pb "github.com/jianbo-zh/dchat/protobuf/pb/systempb"
+	"github.com/jianbo-zh/dchat/protocol/systemproto"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
-	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto"
-	"github.com/jianbo-zh/dchat/service/systemsvc/protocol/systemproto/pb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -31,7 +31,7 @@ type SystemSvc struct {
 	contactSvc contactsvc.ContactServiceIface
 	groupSvc   groupsvc.GroupServiceIface
 
-	msgCh chan *pb.SystemMsg
+	msgCh chan *pb.SystemMessage
 }
 
 func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
@@ -41,7 +41,7 @@ func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchin
 
 	systemsvc := &SystemSvc{
 		host:       lhost,
-		msgCh:      make(chan *pb.SystemMsg, 5),
+		msgCh:      make(chan *pb.SystemMessage, 5),
 		accountSvc: accountSvc,
 		contactSvc: contactSvc,
 		groupSvc:   groupSvc,
@@ -84,11 +84,11 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 					continue
 				}
 
-				msg := pb.SystemMsg{
+				msg := pb.SystemMessage{
 					Id:         GenMsgID(account.ID),
 					SystemType: mytype.SystemTypeApplyAddContact,
 					Group:      nil,
-					FromPeer: &pb.SystemMsg_Peer{
+					FromPeer: &pb.SystemMessage_Peer{
 						PeerId: []byte(account.ID),
 						Name:   account.Name,
 						Avatar: account.Avatar,
@@ -113,16 +113,16 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 				}
 
 				for _, peerID := range evt.PeerIDs {
-					msg := pb.SystemMsg{
+					msg := pb.SystemMessage{
 						Id:         GenMsgID(account.ID),
 						SystemType: mytype.SystemTypeInviteJoinGroup,
-						Group: &pb.SystemMsg_Group{
+						Group: &pb.SystemMessage_Group{
 							Id:       evt.GroupID,
 							Name:     evt.GroupName,
 							Avatar:   evt.GroupAvatar,
 							Lamptime: evt.GroupLamptime,
 						},
-						FromPeer: &pb.SystemMsg_Peer{
+						FromPeer: &pb.SystemMessage_Peer{
 							PeerId: []byte(account.ID),
 							Name:   account.Name,
 							Avatar: account.Avatar,

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package file.pb;
+
+message FileQuery {
+    string  hashAlgo = 1;
+    string  hashValue = 2;
+}
+
+message FileQueryResult {
+    string  hashAlgo = 1;
+    string  hashValue = 2;
+    bool    isExists = 3;
+}
+
+message FileDownloadChunk {
+    string  hashAlgo = 1;
+    string  hashValue = 2;
+    int64   chunkIndex = 3;
+    int64   chunkSize = 4;
+}
+
+message FileChunkInfo {
+    string  chunkHash = 1;
+    int64   chunkSize = 2;
+}
+
+message File {
+    string  hashAlgo = 1;
+    string  hashValue = 2;
+    string  filePath = 3;
+    int64   fileSize = 4;
+}

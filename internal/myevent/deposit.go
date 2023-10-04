@@ -1,6 +1,10 @@
 package myevent
 
-import "github.com/libp2p/go-libp2p/core/peer"
+import (
+	"context"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+)
 
 type EvtPushDepositContactMessage struct {
 	DepositAddress peer.ID
@@ -22,7 +26,7 @@ type EvtPushDepositGroupMessage struct {
 
 type EvtPullDepositContactMessage struct {
 	DepositAddress peer.ID
-	MessageHandler func(fromPeerID peer.ID, msgID string, msgData []byte) error
+	MessageHandler func(ctx context.Context, fromPeerID peer.ID, msgID string, msgData []byte) error
 }
 
 type EvtPullDepositGroupMessage struct {

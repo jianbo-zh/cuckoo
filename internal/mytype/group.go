@@ -29,11 +29,11 @@ type GroupDetail struct {
 	UpdateTime     int64
 }
 
-type GroupSession struct {
-	ID     string
-	Name   string
-	Avatar string
-}
+// type GroupSession struct {
+// 	ID     string
+// 	Name   string
+// 	Avatar string
+// }
 
 type GroupMember struct {
 	ID     peer.ID

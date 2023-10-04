@@ -14,7 +14,6 @@ type GroupServiceIface interface {
 	ExitGroup(ctx context.Context, groupID string) error                                                             // 退出群
 	DeleteGroup(ctx context.Context, groupID string) error                                                           // 删除群
 	GetGroups(ctx context.Context) ([]mytype.Group, error)                                                           // 群列表
-	GetGroupSessions(ctx context.Context) ([]mytype.GroupSession, error)                                             // 群会话列表
 
 	GetGroup(ctx context.Context, groupID string) (*mytype.Group, error)             // 获取群组
 	GetGroupDetail(ctx context.Context, groupID string) (*mytype.GroupDetail, error) // 获取群组

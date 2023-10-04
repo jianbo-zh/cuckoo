@@ -10,6 +10,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/myerror"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
@@ -717,9 +718,27 @@ func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupM
 		}
 	}()
 
-	groupSvc, err := g.getGroupSvc()
+	cuckoo, err := g.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	sessionSvc, err := cuckoo.GetSessionSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetSessionSvc error: %s", err.Error())
+	}
+
+	sessionID := mytype.GroupSessionID(request.GroupId)
+	if err = sessionSvc.ResetUnreads(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc reset unreads error: %w", err)
+	}
+	if err = sessionSvc.UpdateSessionTime(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc update session time error: %w", err)
 	}
 
 	msg, err := groupSvc.GetGroupMessage(ctx, request.GroupId, request.MsgId)
@@ -762,9 +781,27 @@ func (g *GroupSvc) GetGroupMessages(ctx context.Context, request *proto.GetGroup
 		}
 	}()
 
-	groupSvc, err := g.getGroupSvc()
+	cuckoo, err := g.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	sessionSvc, err := cuckoo.GetSessionSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetSessionSvc error: %s", err.Error())
+	}
+
+	sessionID := mytype.GroupSessionID(request.GroupId)
+	if err = sessionSvc.ResetUnreads(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc reset unreads error: %w", err)
+	}
+	if err = sessionSvc.UpdateSessionTime(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc update session time error: %w", err)
 	}
 
 	msgs, err := groupSvc.GetGroupMessages(ctx, request.GroupId, int(request.Offset), int(request.Limit))

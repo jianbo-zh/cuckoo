@@ -383,19 +383,37 @@ func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetCo
 		}
 	}()
 
-	contactSvc, err := c.getContactSvc()
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get contact svc error: %w", err)
 	}
 
-	accountSvc, err := c.getAccountSvc()
+	accountSvc, err := cuckoo.GetAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
+	sessionSvc, err := cuckoo.GetSessionSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get session svc error: %w", err)
 	}
 
 	peerID, err := peer.Decode(request.ContactId)
 	if err != nil {
 		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(peerID)
+	if err = sessionSvc.ResetUnreads(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc reset unreads error: %w", err)
+	}
+	if err = sessionSvc.UpdateSessionTime(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc update session time error: %w", err)
 	}
 
 	contact, err := contactSvc.GetContact(ctx, peerID)
@@ -465,19 +483,37 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 		}
 	}()
 
-	contactSvc, err := c.getContactSvc()
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get contact service error: %w", err)
 	}
 
-	accountSvc, err := c.getAccountSvc()
+	accountSvc, err := cuckoo.GetAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get account service error: %w", err)
+	}
+
+	sessionSvc, err := cuckoo.GetSessionSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get session svc error: %w", err)
 	}
 
 	peerID, err := peer.Decode(request.ContactId)
 	if err != nil {
 		return nil, fmt.Errorf("peer decode error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(peerID)
+	if err = sessionSvc.ResetUnreads(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc reset unreads error: %w", err)
+	}
+	if err = sessionSvc.UpdateSessionTime(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("svc update session time error: %w", err)
 	}
 
 	contact, err := contactSvc.GetContact(ctx, peerID)

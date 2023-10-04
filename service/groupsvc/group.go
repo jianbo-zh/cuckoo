@@ -8,11 +8,12 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
+	"github.com/jianbo-zh/dchat/protocol/groupadminproto"
+	"github.com/jianbo-zh/dchat/protocol/groupmsgproto"
+	"github.com/jianbo-zh/dchat/protocol/groupnetworkproto"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
-	admin "github.com/jianbo-zh/dchat/service/groupsvc/protocol/adminproto"
-	message "github.com/jianbo-zh/dchat/service/groupsvc/protocol/messageproto"
-	network "github.com/jianbo-zh/dchat/service/groupsvc/protocol/networkproto"
+	"github.com/jianbo-zh/dchat/service/sessionsvc"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -22,9 +23,9 @@ import (
 var log = logging.Logger("group-service")
 
 type GroupService struct {
-	networkProto *network.NetworkProto
-	adminProto   *admin.AdminProto
-	messageProto *message.MessageProto
+	networkProto *groupnetworkproto.NetworkProto
+	adminProto   *groupadminproto.AdminProto
+	messageProto *groupmsgproto.MessageProto
 
 	accountSvc accountsvc.AccountServiceIface
 	contactSvc contactsvc.ContactServiceIface
@@ -35,26 +36,27 @@ type GroupService struct {
 }
 
 func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
-	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface) (*GroupService, error) {
+	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface,
+	contactSvc contactsvc.ContactServiceIface, sessionSvc sessionsvc.SessionServiceIface) (*GroupService, error) {
 
 	var err error
 
-	groupsvc = &GroupService{
+	groupsvc := &GroupService{
 		accountSvc: accountSvc,
 		contactSvc: contactSvc,
 	}
 
-	groupsvc.adminProto, err = admin.NewAdminProto(lhost, ids, ebus)
+	groupsvc.adminProto, err = groupadminproto.NewAdminProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("admin.NewAdminService %s", err.Error())
 	}
 
-	groupsvc.networkProto, err = network.NewNetworkProto(lhost, rdiscvry, ids, ebus)
+	groupsvc.networkProto, err = groupnetworkproto.NewNetworkProto(lhost, rdiscvry, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("network.NewNetworkService %s", err.Error())
 	}
 
-	groupsvc.messageProto, err = message.NewMessageProto(lhost, ids, ebus)
+	groupsvc.messageProto, err = groupmsgproto.NewMessageProto(lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("network.NewNetworkService %s", err.Error())
 	}
@@ -77,14 +79,6 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 	return groupsvc, nil
 }
 
-func Get() GroupServiceIface {
-	if groupsvc == nil {
-		panic("group must init before use")
-	}
-
-	return groupsvc
-}
-
 // 关闭服务
 func (g *GroupService) Close() {}
 
@@ -100,7 +94,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 			switch evt := e.(type) {
 			case myevent.EvtHostBootComplete:
 				if evt.IsSucc {
-					groupIDs, err := g.adminProto.GetSessionIDs(ctx)
+					groupIDs, err := g.adminProto.GetGroupIDs(ctx)
 					if err != nil {
 						log.Errorf("get group ids error: %v", err)
 						return
@@ -123,7 +117,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 						})
 					}
 
-					err = groupsvc.emitters.evtGroupsInit.Emit(myevent.EvtGroupsInit{
+					err = g.emitters.evtGroupsInit.Emit(myevent.EvtGroupsInit{
 						Groups: groups,
 					})
 					if err != nil {
@@ -230,25 +224,6 @@ func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 // 群列表
 func (g *GroupService) GetGroups(ctx context.Context) ([]mytype.Group, error) {
 	return g.adminProto.GetSessions(ctx)
-}
-
-// 群列表
-func (g *GroupService) GetGroupSessions(ctx context.Context) ([]mytype.GroupSession, error) {
-	grps, err := g.adminProto.GetSessions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("proto get groups error: %w", err)
-	}
-
-	var groups []mytype.GroupSession
-	for _, group := range grps {
-		groups = append(groups, mytype.GroupSession{
-			ID:     group.ID,
-			Name:   group.Name,
-			Avatar: group.Avatar,
-		})
-	}
-
-	return groups, nil
 }
 
 // 设置群名称

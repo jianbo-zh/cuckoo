@@ -16,6 +16,7 @@ import (
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/filesvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
+	"github.com/jianbo-zh/dchat/service/sessionsvc"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -34,6 +35,7 @@ type Cuckoo struct {
 	ddht *dual.DHT
 	ebus event.Bus
 
+	sessionSvc sessionsvc.SessionServiceIface
 	configSvc  configsvc.ConfigServiceIface
 	accountSvc accountsvc.AccountServiceIface
 	contactSvc contactsvc.ContactServiceIface
@@ -84,6 +86,16 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 		return nil, fmt.Errorf("config svc new config service error: %w", err)
 	}
 
+	cuckoo.fileSvc, err = filesvc.NewFileService(ctx, conf.FileService, cuckoo.host, ds, ebus)
+	if err != nil {
+		return nil, fmt.Errorf("deposit.NewFileService error: %s", err.Error())
+	}
+
+	cuckoo.sessionSvc, err = sessionsvc.NewSessionService(ctx, cuckoo.host, ds, ebus)
+	if err != nil {
+		return nil, fmt.Errorf("deposit.NewSessionService error: %s", err.Error())
+	}
+
 	cuckoo.accountSvc, err = accountsvc.NewAccountService(ctx, "avatardir", cuckoo.host, ds, ebus, routingDiscovery)
 	if err != nil {
 		return nil, fmt.Errorf("accountsvc.NewAccountService error: %s", err.Error())
@@ -94,7 +106,7 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 		return nil, fmt.Errorf("contactsvc.NewContactService error: %s", err.Error())
 	}
 
-	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc, cuckoo.contactSvc)
+	cuckoo.groupSvc, err = groupsvc.NewGroupService(ctx, cuckoo.host, ds, ebus, routingDiscovery, cuckoo.accountSvc, cuckoo.contactSvc, cuckoo.sessionSvc)
 	if err != nil {
 		return nil, fmt.Errorf("group.NewGroupService error: %s", err.Error())
 	}
@@ -102,11 +114,6 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	cuckoo.depositSvc, err = depositsvc.NewDepositService(ctx, conf.DepositService, cuckoo.host, ds, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("deposit.NewDepositService error: %s", err.Error())
-	}
-
-	cuckoo.fileSvc, err = filesvc.NewFileService(ctx, conf.FileService, cuckoo.host, ds, ebus)
-	if err != nil {
-		return nil, fmt.Errorf("deposit.NewFileService error: %s", err.Error())
 	}
 
 	cuckoo.systemSvc, err = systemsvc.NewSystemService(ctx, cuckoo.host, ds, ebus, cuckoo.accountSvc, cuckoo.contactSvc, cuckoo.groupSvc)
@@ -171,6 +178,13 @@ func (c *Cuckoo) GetFileSvc() (filesvc.FileServiceIface, error) {
 		return nil, fmt.Errorf("config service not start")
 	}
 	return c.fileSvc, nil
+}
+
+func (c *Cuckoo) GetSessionSvc() (sessionsvc.SessionServiceIface, error) {
+	if c.sessionSvc == nil {
+		return nil, fmt.Errorf("session service not start")
+	}
+	return c.sessionSvc, nil
 }
 
 func (c *Cuckoo) GetLanPeerIDs() ([]peer.ID, error) {

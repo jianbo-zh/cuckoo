@@ -12,7 +12,6 @@ type ContactServiceIface interface {
 	AgreeAddContact(ctx context.Context, peer0 *mytype.Peer) error
 	GetContact(ctx context.Context, peerID peer.ID) (*mytype.Contact, error)
 	GetContacts(ctx context.Context) ([]mytype.Contact, error)
-	GetContactSessions(ctx context.Context) ([]mytype.ContactSession, error)
 	GetContactsByPeerIDs(ctx context.Context, peerIDs []peer.ID) ([]mytype.Contact, error)
 	DeleteContact(ctx context.Context, peerID peer.ID) error
 	SetContactName(ctx context.Context, peerID peer.ID, name string) error

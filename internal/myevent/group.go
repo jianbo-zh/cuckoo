@@ -10,6 +10,11 @@ type EvtGroupConnectChange struct {
 	IsConnected bool
 }
 
+type EvtGroupNetworkSuccess struct {
+	GroupID string
+	PeerIDs []peer.ID
+}
+
 type Groups struct {
 	GroupID     string
 	PeerIDs     []peer.ID
