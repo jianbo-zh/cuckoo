@@ -16,37 +16,34 @@ import (
 var _ FileServiceIface = (*FileService)(nil)
 
 type FileService struct {
-	fileProto     *fileproto.FileProto
-	downloadProto *fileproto.DownloadProto
+	fileProto *fileproto.FileProto
 }
 
 func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*FileService, error) {
 
-	fileProto, err := fileproto.NewFileProto(ids)
-	if err != nil {
-		return nil, fmt.Errorf("new download client proto error: %w", err)
-	}
-
-	downloadProto, err := fileproto.NewDownloadProto(conf, lhost, ids, ebus)
+	fileProto, err := fileproto.NewFileProto(conf, lhost, ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("new download client proto error: %w", err)
 	}
 
 	dlsvc := FileService{
-		fileProto:     fileProto,
-		downloadProto: downloadProto,
+		fileProto: fileProto,
 	}
 
 	return &dlsvc, nil
 }
 
-// CalcFileHash 计算文件Hash并保存
-func (f *FileService) CalcFileHash(ctx context.Context, filePath string) (*mytype.FileHash, error) {
-	return f.fileProto.CalcFileHash(ctx, filePath)
+// CalcFileID 计算文件Hash并保存
+func (f *FileService) CalcFileID(ctx context.Context, filePath string) (*mytype.FileID, error) {
+	return f.fileProto.CalcFileID(ctx, filePath)
 }
 
-func (f *FileService) AvatarDownload(ctx context.Context, peerID peer.ID, avatar string) error {
-	return f.downloadProto.AvatarDownload(ctx, peerID, avatar)
+func (f *FileService) DownloadAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
+	return f.fileProto.DownloadResource(ctx, peerID, avatar)
+}
+
+func (f *FileService) SendPeerFile(ctx context.Context, peerID peer.ID, file string) error {
+	return f.fileProto.SendPeerFile(ctx, peerID, file)
 }
 
 func (f *FileService) Close() {}

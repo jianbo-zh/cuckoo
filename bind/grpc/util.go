@@ -7,14 +7,18 @@ import (
 
 func encodeMsgType(msgType string) proto.MsgType {
 	switch msgType {
-	case mytype.MsgTypeText:
+	case mytype.TextMsgType:
 		return proto.MsgType_Text
-	case mytype.MsgTypeImage:
+	case mytype.ImageMsgType:
 		return proto.MsgType_Image
-	case mytype.MsgTypeAudio:
+	case mytype.VoiceMsgType:
+		return proto.MsgType_Voice
+	case mytype.AudioMsgType:
 		return proto.MsgType_Audio
-	case mytype.MsgTypeVideo:
+	case mytype.VideoMsgType:
 		return proto.MsgType_Video
+	case mytype.FileMsgType:
+		return proto.MsgType_File
 	default:
 		return proto.MsgType_Unknown
 	}
@@ -23,15 +27,19 @@ func encodeMsgType(msgType string) proto.MsgType {
 func decodeMsgType(msgType proto.MsgType) string {
 	switch msgType {
 	case proto.MsgType_Text:
-		return mytype.MsgTypeText
+		return mytype.TextMsgType
 	case proto.MsgType_Image:
-		return mytype.MsgTypeImage
+		return mytype.ImageMsgType
+	case proto.MsgType_Voice:
+		return mytype.VoiceMsgType
 	case proto.MsgType_Audio:
-		return mytype.MsgTypeAudio
+		return mytype.AudioMsgType
 	case proto.MsgType_Video:
-		return mytype.MsgTypeVideo
+		return mytype.VideoMsgType
+	case proto.MsgType_File:
+		return mytype.FileMsgType
 	default:
-		return mytype.MsgTypeUnknown
+		return ""
 	}
 }
 

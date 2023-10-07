@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ DownloadIface = (*FileDataStore)(nil)
+var _ FileIface = (*FileDataStore)(nil)
 
 var fileDsKey = &datastore.FileDsKey{}
 

@@ -10,7 +10,7 @@ import (
 	ds "github.com/jianbo-zh/dchat/datastore/ds/groupnetworkds"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/protocol"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -25,8 +25,8 @@ import (
 var log = logging.Logger("group-network")
 
 const (
-	CONN_ID    = protocol.GroupConnID_v100
-	ROUTING_ID = protocol.GroupRoutingID_100
+	CONN_ID    = myprotocol.GroupConnID_v100
+	ROUTING_ID = myprotocol.GroupRoutingID_100
 
 	ServiceName = "group.connect"
 	maxMsgSize  = 4 * 1024 // 4K

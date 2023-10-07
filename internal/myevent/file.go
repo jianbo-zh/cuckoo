@@ -2,7 +2,7 @@ package myevent
 
 import "github.com/libp2p/go-libp2p/core/peer"
 
-type EvtDownloadRequest struct {
+type EvtDownloadFile struct {
 	FromPeerIDs []peer.ID
 	FileName    string
 	FileSize    int64
@@ -22,7 +22,21 @@ type EvtDownloadResult struct {
 
 type EvtDownloadProcess struct {
 	FileName     string
-	FileHash     string
+	FileID       string
 	FileSize     int64
 	DownloadSize int64
+}
+
+type EvtUploadResource struct {
+	ToPeerID peer.ID
+	GroupID  string
+	FileID   string
+	Result   chan<- error
+}
+
+type EvtDownloadResource struct {
+	PeerID  peer.ID
+	GroupID string
+	FileID  string
+	Result  chan<- error
 }

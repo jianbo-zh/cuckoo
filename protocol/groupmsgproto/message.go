@@ -12,8 +12,8 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/internal/protocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
 	"github.com/jianbo-zh/dchat/protobuf/pb/sessionpb"
 	logging "github.com/jianbo-zh/go-log"
@@ -30,8 +30,8 @@ var log = logging.Logger("group-message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = protocol.GroupMessageID_v100
-	SYNC_ID = protocol.GroupMessageSyncID_v100
+	ID      = myprotocol.GroupMessageID_v100
+	SYNC_ID = myprotocol.GroupMessageSyncID_v100
 
 	ServiceName = "group.message"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -390,14 +390,18 @@ func (m *MessageProto) saveMessage(ctx context.Context, groupID string, msg *pb.
 
 		var content string
 		switch msg.MsgType {
-		case mytype.MsgTypeText:
+		case mytype.TextMsgType:
 			content = string(msg.Payload)
-		case mytype.MsgTypeImage:
+		case mytype.ImageMsgType:
 			content = string("[image]")
-		case mytype.MsgTypeAudio:
+		case mytype.VoiceMsgType:
+			content = string("[voice]")
+		case mytype.AudioMsgType:
 			content = string("[audio]")
-		case mytype.MsgTypeVideo:
+		case mytype.VideoMsgType:
 			content = string("[video]")
+		case mytype.FileMsgType:
+			content = string("[file]")
 		default:
 			content = string("[unknown]")
 		}

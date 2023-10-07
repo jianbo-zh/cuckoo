@@ -1,9 +1,10 @@
 package mytype
 
 const (
-	MsgTypeText    string = "text"
-	MsgTypeImage   string = "image"
-	MsgTypeAudio   string = "audio"
-	MsgTypeVideo   string = "video"
-	MsgTypeUnknown string = "unknown"
+	TextMsgType  string = "text"
+	ImageMsgType string = "image"
+	VoiceMsgType string = "voice"
+	AudioMsgType string = "audio"
+	VideoMsgType string = "video"
+	FileMsgType  string = "file"
 )

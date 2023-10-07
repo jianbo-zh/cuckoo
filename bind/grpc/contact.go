@@ -14,6 +14,7 @@ import (
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
+	goproto "google.golang.org/protobuf/proto"
 )
 
 var _ proto.ContactSvcServer = (*ContactSvc)(nil)
@@ -342,7 +343,7 @@ func (c *ContactSvc) GetNearbyPeers(request *proto.GetNearbyPeersRequest, server
 				return fmt.Errorf("get account svc error: %w", err)
 			}
 
-			err = fileSvc.AvatarDownload(ctx, peerID, peerAccount.Avatar)
+			err = fileSvc.DownloadAvatar(ctx, peerID, peerAccount.Avatar)
 			if err != nil {
 				log.Errorf("svc download peer avatar error: %s", err.Error())
 				continue
@@ -575,31 +576,233 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 	return reply, nil
 }
 
-// todo: 客户端和后端借口不一致，需要调整下
-func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.SendContactMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+func (c *ContactSvc) SendContactTextMessage(ctx context.Context, request *proto.SendContactTextMessageRequest) (reply *proto.SendContactMessageReply, err error) {
 
-	log.Infoln("SendContactMessage request: ", request.String())
+	log.Infoln("SendContactTextMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("SendContactMessage panic: ", e)
+			log.Panicln("SendContactTextMessage panic: ", e)
 		} else if err != nil {
-			log.Errorln("SendContactMessage error: ", err.Error())
+			log.Errorln("SendContactTextMessage error: ", err.Error())
 		} else {
-			log.Infoln("SendContactMessage reply: ", reply.String())
+			log.Infoln("SendContactTextMessage reply: ", reply.String())
 		}
 	}()
 
-	contactSvc, err := c.getContactSvc()
+	pbmsg, err := c.sendContactMessage(ctx, mytype.TextMsgType, request.ContactId, "text/plain", []byte(request.Content), nil)
 	if err != nil {
-		return nil, fmt.Errorf("get contact service error: %w", err)
+		return nil, fmt.Errorf("send contact message error: %w", err)
 	}
 
-	accountSvc, err := c.getAccountSvc()
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+func (c *ContactSvc) SendContactImageMessage(ctx context.Context, request *proto.SendContactImageMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactImageMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactImageMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactImageMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactImageMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.ImageMessagePayload{
+		ThumbnailId: request.ThumbnailId,
+		ImageId:     request.ImageId,
+		Name:        request.Name,
+		Size:        request.Size,
+		Width:       request.Width,
+		Height:      request.Height,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	attachments := []string{request.ThumbnailId}
+	pbmsg, err := c.sendContactMessage(ctx, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, attachments)
+	if err != nil {
+		return nil, fmt.Errorf("send contact message error: %w", err)
+	}
+
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+func (c *ContactSvc) SendContactVoiceMessage(ctx context.Context, request *proto.SendContactVoiceMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactVoiceMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactVoiceMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactVoiceMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactVoiceMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.VoiceMessagePayload{
+		VoiceId:  request.VoiceId,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	attachments := []string{request.VoiceId}
+	pbmsg, err := c.sendContactMessage(ctx, mytype.VoiceMsgType, request.ContactId, request.MimeType, payload, attachments)
+	if err != nil {
+		return nil, fmt.Errorf("send contact message error: %w", err)
+	}
+
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+func (c *ContactSvc) SendContactAudioMessage(ctx context.Context, request *proto.SendContactAudioMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactAudioMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactAudioMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactAudioMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactAudioMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.AudioMessagePayload{
+		AudioId:  request.AudioId,
+		Name:     request.Name,
+		Size:     request.Size,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := c.sendContactMessage(ctx, mytype.AudioMsgType, request.ContactId, request.MimeType, payload, nil)
+	if err != nil {
+		return nil, fmt.Errorf("send contact message error: %w", err)
+	}
+
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+func (c *ContactSvc) SendContactVideoMessage(ctx context.Context, request *proto.SendContactVideoMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactVideoMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactVideoMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactVideoMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactVideoMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.VideoMessagePayload{
+		VideoId:  request.VideoId,
+		Name:     request.Name,
+		Size:     request.Size,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := c.sendContactMessage(ctx, mytype.VideoMsgType, request.ContactId, request.MimeType, payload, nil)
+	if err != nil {
+		return nil, fmt.Errorf("send contact message error: %w", err)
+	}
+
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+
+func (c *ContactSvc) SendContactFileMessage(ctx context.Context, request *proto.SendContactFileMessageRequest) (reply *proto.SendContactMessageReply, err error) {
+
+	log.Infoln("SendContactFileMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendContactFileMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendContactFileMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendContactFileMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.FileMessagePayload{
+		FileId: request.FileId,
+		Name:   request.Name,
+		Size:   request.Size,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := c.sendContactMessage(ctx, mytype.FileMsgType, request.ContactId, request.MimeType, payload, nil)
+	if err != nil {
+		return nil, fmt.Errorf("send contact message error: %w", err)
+	}
+
+	return &proto.SendContactMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}, nil
+}
+
+func (c *ContactSvc) sendContactMessage(ctx context.Context, msgType string, contactID string, mimeType string, payload []byte, attachments []string) (*proto.ContactMessage, error) {
+
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	contactSvc, err := cuckoo.GetContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	accountSvc, err := cuckoo.GetAccountSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get account service error: %w", err)
 	}
 
-	peerID, err := peer.Decode(request.ContactId)
+	peerID, err := peer.Decode(contactID)
 	if err != nil {
 		return nil, fmt.Errorf("peer decode error: %w", err)
 	}
@@ -615,8 +818,9 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 	}
 
 	var sendErr error
-	msgID, err := contactSvc.SendMessage(ctx, peerID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
+	msgID, err := contactSvc.SendMessage(ctx, peerID, msgType, mimeType, payload, attachments)
 	if err != nil {
+		fmt.Println("svc send message error: %w", err)
 		if msgID != "" && errors.As(err, &myerror.StreamErr{}) && account.AutoDepositMessage && contact.DepositAddress.Validate() == nil {
 			// 尝试寄存消息
 			depositSvc, err := c.getDepositSvc()
@@ -641,6 +845,7 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 	}
 
 	if sendErr != nil {
+		fmt.Println("sendErr: ", sendErr.Error())
 		if msgID != "" {
 			if err = contactSvc.DeleteMessage(ctx, peerID, msgID); err != nil {
 				return nil, fmt.Errorf("svc delete msg error: %w", err)
@@ -649,27 +854,22 @@ func (c *ContactSvc) SendContactMessage(ctx context.Context, request *proto.Send
 		return nil, sendErr
 	}
 
-	reply = &proto.SendContactMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
+	fmt.Println("sendSucc: ")
+
+	return &proto.ContactMessage{
+		Id: msgID,
+		FromContact: &proto.Contact{
+			Id:     account.ID.String(),
+			Name:   account.Name,
+			Avatar: account.Avatar,
 		},
-		Message: &proto.ContactMessage{
-			Id: msgID,
-			FromContact: &proto.Contact{
-				Id:     account.ID.String(),
-				Name:   account.Name,
-				Avatar: account.Avatar,
-			},
-			ToContactId: contact.ID.String(),
-			MsgType:     request.MsgType,
-			MimeType:    request.MimeType,
-			Payload:     request.Payload,
-			State:       "sending",
-			CreateTime:  time.Now().Unix(),
-		},
-	}
-	return reply, nil
+		ToContactId: contact.ID.String(),
+		MsgType:     encodeMsgType(msgType),
+		MimeType:    mimeType,
+		Payload:     payload,
+		State:       "sending",
+		CreateTime:  time.Now().Unix(),
+	}, nil
 }
 
 func (c *ContactSvc) ClearContactMessage(ctx context.Context, request *proto.ClearContactMessageRequest) (reply *proto.ClearContactMessageReply, err error) {

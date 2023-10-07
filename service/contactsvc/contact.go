@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/protocol/contactmsgproto"
@@ -18,25 +19,31 @@ var _ ContactServiceIface = (*ContactSvc)(nil)
 type ContactSvc struct {
 	msgProto     *contactmsgproto.PeerMessageProto
 	contactProto *contactproto.ContactProto
+
+	emitters struct {
+		evtUploadResource event.Emitter
+	}
 }
 
 func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus, accountGetter mytype.AccountGetter) (*ContactSvc, error) {
 
 	var err error
 
-	contactsvc := &ContactSvc{}
+	svc := &ContactSvc{}
 
-	contactsvc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus, accountGetter)
-	if err != nil {
-		return nil, fmt.Errorf("contactproto.NewPeerSvc error: %s", err.Error())
+	if svc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus, accountGetter); err != nil {
+		return nil, fmt.Errorf("contactproto.NewContactProto error: %w", err)
 	}
 
-	contactsvc.msgProto, err = contactmsgproto.NewMessageSvc(lhost, ids, ebus)
-	if err != nil {
-		return nil, fmt.Errorf("message.NewMessageSvc error: %s", err.Error())
+	if svc.msgProto, err = contactmsgproto.NewMessageSvc(lhost, ids, ebus); err != nil {
+		return nil, fmt.Errorf("contactmsgproto.NewMessageSvc error: %w", err)
 	}
 
-	return contactsvc, nil
+	if svc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtUploadResource{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %v", err)
+	}
+
+	return svc, nil
 }
 
 func (c *ContactSvc) Close() {}

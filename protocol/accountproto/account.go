@@ -11,8 +11,8 @@ import (
 	ds "github.com/jianbo-zh/dchat/datastore/ds/accountds"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/internal/protocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/accountpb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -26,8 +26,8 @@ var log = logging.Logger("account-protocol")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID         = protocol.AccountID_v100
-	ONLINE_ID  = protocol.AccountOnlineID_v100
+	ID         = myprotocol.AccountID_v100
+	ONLINE_ID  = myprotocol.AccountOnlineID_v100
 	maxMsgSize = 4 * 1024 // 4K
 )
 

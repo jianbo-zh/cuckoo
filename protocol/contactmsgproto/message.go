@@ -10,8 +10,8 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/internal/protocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/contactpb"
 	"github.com/jianbo-zh/dchat/protobuf/pb/sessionpb"
 	logging "github.com/jianbo-zh/go-log"
@@ -31,8 +31,8 @@ var log = logging.Logger("contact-message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = protocol.ContactMessageID_v100
-	SYNC_ID = protocol.ContactMessageSyncID_v100
+	ID      = myprotocol.ContactMessageID_v100
+	SYNC_ID = myprotocol.ContactMessageSyncID_v100
 
 	ServiceName = "peer.message"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -134,14 +134,12 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 	defer rd.Close()
 
 	stream.SetDeadline(time.Now().Add(StreamTimeout))
-
 	var msg pb.ContactMessage
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
 		stream.Reset()
 		return
 	}
-
 	stream.SetReadDeadline(time.Time{})
 
 	remotePeerID := stream.Conn().RemotePeer()
@@ -290,14 +288,18 @@ func (p *PeerMessageProto) saveMessage(ctx context.Context, contactID peer.ID, m
 		// 更新session最新消息
 		var content string
 		switch msg.MsgType {
-		case mytype.MsgTypeText:
+		case mytype.TextMsgType:
 			content = string(msg.Payload)
-		case mytype.MsgTypeImage:
+		case mytype.ImageMsgType:
 			content = string("[image]")
-		case mytype.MsgTypeAudio:
+		case mytype.VoiceMsgType:
+			content = string("[voice]")
+		case mytype.AudioMsgType:
 			content = string("[audio]")
-		case mytype.MsgTypeVideo:
+		case mytype.VideoMsgType:
 			content = string("[video]")
+		case mytype.FileMsgType:
+			content = string("[file]")
 		default:
 			content = string("[unknown]")
 		}

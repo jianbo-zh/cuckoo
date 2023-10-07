@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -63,8 +64,41 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	return peerMsgs, nil
 }
 
-func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (string, error) {
-	return c.msgProto.SendMessage(ctx, peerID, msgType, mimeType, payload)
+func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, attachments []string) (string, error) {
+
+	if len(attachments) > 0 {
+		fmt.Println("attachments: ", len(attachments))
+		for _, fileID := range attachments {
+			fmt.Println("attachment: ", fileID)
+			resultCh := make(chan error, 1)
+
+			if err := c.emitters.evtUploadResource.Emit(myevent.EvtUploadResource{
+				ToPeerID: peerID,
+				GroupID:  "",
+				FileID:   fileID,
+				Result:   resultCh,
+			}); err != nil {
+				return "", fmt.Errorf("emit evtUploadResource error: %w", err)
+			}
+
+			if err := <-resultCh; err != nil {
+				close(resultCh)
+				return "", fmt.Errorf("send attahment %s, error: %w", fileID, err)
+			}
+			close(resultCh)
+		}
+		fmt.Println("attachment send finish")
+	}
+
+	msgID, err := c.msgProto.SendMessage(ctx, peerID, msgType, mimeType, payload)
+	if err != nil {
+		fmt.Println("proto.SendMessage error: %w", err)
+		return "", fmt.Errorf("msgProto.SendMessage error: %w", err)
+	}
+
+	fmt.Println("sendMessage succ: ", msgID)
+
+	return msgID, nil
 }
 
 func (c *ContactSvc) ClearMessage(ctx context.Context, peerID peer.ID) error {

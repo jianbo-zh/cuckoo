@@ -42,8 +42,6 @@ service ContactSvc {
   rpc GetContactMessage(GetContactMessageRequest) returns (GetContactMessageReply) {}
   // 获取聊天记录
   rpc GetContactMessages(GetContactMessagesRequest) returns (GetContactMessagesReply) {}
-  // 发送消息
-  rpc SendContactMessage(SendContactMessageRequest) returns (SendContactMessageReply) {}
   // 清空聊天记录
   rpc ClearContactMessage(ClearContactMessageRequest) returns (ClearContactMessageReply) {}
   // 设置联系人别名
@@ -52,6 +50,19 @@ service ContactSvc {
   rpc DeleteContact(DeleteContactRequest) returns (DeleteContactReply) {}
   // 申请添加联系人
   rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
+
+  // 发送文本消息
+  rpc SendContactTextMessage(SendContactTextMessageRequest) returns (SendContactMessageReply) {}
+  // 发送图片消息
+  rpc SendContactImageMessage(SendContactImageMessageRequest) returns (SendContactMessageReply) {}
+  // 发送语音消息
+  rpc SendContactVoiceMessage(SendContactVoiceMessageRequest) returns (SendContactMessageReply) {}
+  // 发送音频消息
+  rpc SendContactAudioMessage(SendContactAudioMessageRequest) returns (SendContactMessageReply) {}
+  // 发送视频消息
+  rpc SendContactVideoMessage(SendContactVideoMessageRequest) returns (SendContactMessageReply) {}
+  // 发送文件消息
+  rpc SendContactFileMessage(SendContactFileMessageRequest) returns (SendContactMessageReply) {}
 }
 
 // 群服务
@@ -84,14 +95,25 @@ service GroupSvc {
   rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
   // 移除群成员
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
-  // 发送消息
-  rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageReply) {}
   // 获取聊天记录
   rpc GetGroupMessage(GetGroupMessageRequest) returns (GetGroupMessageReply) {}
   // 获取聊天记录
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 清空聊天记录
   rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
+
+  // 发送消息
+  rpc SendGroupTextMessage(SendGroupTextMessageRequest) returns (SendGroupMessageReply) {}
+  // 发送图片消息
+  rpc SendGroupImageMessage(SendGroupImageMessageRequest) returns (SendGroupMessageReply) {}
+  // 发送语音消息
+  rpc SendGroupVoiceMessage(SendGroupVoiceMessageRequest) returns (SendGroupMessageReply) {}
+  // 发送音频消息
+  rpc SendGroupAudioMessage(SendGroupAudioMessageRequest) returns (SendGroupMessageReply) {}
+  // 发送视频消息
+  rpc SendGroupVideoMessage(SendGroupVideoMessageRequest) returns (SendGroupMessageReply) {}
+  // 发送文件消息
+  rpc SendGroupFileMessage(SendGroupFileMessageRequest) returns (SendGroupMessageReply) {}
 }
 
 // 会话服务
@@ -131,11 +153,13 @@ service SubscribeSvc {
 
 // -------------------- 分隔符 --------------------
 enum MsgType {
-  Text = 0;
-  Image = 1;
-  Audio = 2;
-  Video = 3;
-  Unknown = 4;
+  Unknown = 0;
+  Text = 1;
+  Image = 2;
+  Voice = 3;
+  Audio = 4;
+  Video = 5;
+  File = 6;
 }
 
 enum ConnState {
@@ -264,11 +288,49 @@ message GetContactMessagesReply {
   repeated ContactMessage messages = 2;
 }
 
-message SendContactMessageRequest {
+message SendContactTextMessageRequest {
   string contactId = 1;
-  MsgType msgType = 2;
-  string mimeType = 3;
-  bytes payload = 4;
+  string content = 4;
+}
+message SendContactImageMessageRequest {
+  string  contactId = 1;
+  string  mimeType = 2;
+  string  thumbnailId = 3;
+  string  imageId = 4;
+  string  name = 5;
+  int64   size = 6;
+  int32   width = 7;
+  int32   height = 8;
+}
+message SendContactVoiceMessageRequest {
+  string  contactId = 1;
+  string  mimeType = 2;
+  string  voiceId = 3;
+  int64   size = 4;
+  int32   duration = 5;
+}
+message SendContactAudioMessageRequest {
+  string  contactId = 1;
+  string  mimeType = 2;
+  string  audioId = 3;
+  string  name = 4;
+  int64   size = 5;
+  int32   duration = 6;
+}
+message SendContactVideoMessageRequest {
+  string  contactId = 1;
+  string  mimeType = 2;
+  string  videoId = 3;
+  string  name = 4;
+  int64   size = 5;
+  int32   duration = 6;
+}
+message SendContactFileMessageRequest {
+  string  contactId = 1;
+  string  mimeType = 2;
+  string  fileId = 3;
+  string  name = 4;
+  int64   size = 5;
 }
 
 message SendContactMessageReply {
@@ -355,12 +417,51 @@ message GetGroupMessagesReply {
   repeated GroupMessage messages = 2;
 }
 
-message SendGroupMessageRequest {
+message SendGroupTextMessageRequest {
   string groupId = 1;
-  MsgType msgType = 2;
-  string mimeType = 3;
-  bytes payload = 4;
+  string content = 2;
 }
+message SendGroupImageMessageRequest {
+  string  groupId = 1;
+  string  mimeType = 2;
+  string  thumbnailId = 3;
+  string  imageId = 4;
+  string  name = 5;
+  int64   size = 6;
+  int32   width = 7;
+  int32   height = 8;
+}
+message SendGroupVoiceMessageRequest {
+  string  groupId = 1;
+  string  mimeType = 2;
+  string  voiceId = 3;
+  int64   size = 4;
+  int32   duration = 5;
+}
+message SendGroupAudioMessageRequest {
+  string  groupId = 1;
+  string  mimeType = 2;
+  string  audioId = 3;
+  string  name = 4;
+  int64   size = 5;
+  int32   duration = 6;
+}
+message SendGroupVideoMessageRequest {
+  string  groupId = 1;
+  string  mimeType = 2;
+  string  videoId = 3;
+  string  name = 4;
+  int64   size = 5;
+  int32   duration = 6;
+}
+message SendGroupFileMessageRequest {
+  string  groupId = 1;
+  string  mimeType = 2;
+  string  fileId = 3;
+  string  name = 4;
+  int64   size = 5;
+}
+
 message SendGroupMessageReply {
   Result result = 1;
   GroupMessage message = 2;
@@ -662,6 +763,40 @@ message ContactMessage {
   string state = 7;
   // 消息时间
   int64 createTime = 8;
+}
+
+message ImageMessagePayload {
+  string thumbnailId = 1;
+  string imageId = 2;
+  string name = 3;
+  int64  size = 4;
+  int32  width = 5;
+  int32  height = 6;
+}
+
+message VoiceMessagePayload {
+  string  voiceId = 1;
+  int32   duration = 2;
+}
+
+message AudioMessagePayload {
+  string audioId = 1;
+  string name = 2;
+  int64  size = 3;
+  int32  duration = 4;
+}
+
+message VideoMessagePayload {
+  string videoId = 1;
+  string name = 2;
+  int64  size = 3;
+  int32  duration = 4;
+}
+
+message FileMessagePayload {
+  string fileId = 2;
+  string name = 3;
+  int64  size = 4;
 }
 
 // 群

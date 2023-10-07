@@ -7,7 +7,7 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	ds "github.com/jianbo-zh/dchat/datastore/ds/depositds"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	"github.com/jianbo-zh/dchat/internal/protocol"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/depositpb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -19,10 +19,10 @@ var log = logging.Logger("deposit")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	CONTACT_SAVE_ID = protocol.DepositContactSaveID_v100
-	CONTACT_GET_ID  = protocol.DepositContactGetID_v100
-	GROUP_SAVE_ID   = protocol.DepositGroupSaveID_v100
-	GROUP_GET_ID    = protocol.DepositGroupGetID_v100
+	CONTACT_SAVE_ID = myprotocol.DepositContactSaveID_v100
+	CONTACT_GET_ID  = myprotocol.DepositContactGetID_v100
+	GROUP_SAVE_ID   = myprotocol.DepositGroupSaveID_v100
+	GROUP_GET_ID    = myprotocol.DepositGroupGetID_v100
 
 	ServiceName  = "deposit.peer"
 	maxMsgSize   = 4 * 1024  // 4K

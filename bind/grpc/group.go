@@ -15,6 +15,7 @@ import (
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
+	goproto "google.golang.org/protobuf/proto"
 )
 
 var _ proto.GroupSvcServer = (*GroupSvc)(nil)
@@ -607,18 +608,213 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 	return reply, nil
 }
 
-func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGroupMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
-
-	log.Infoln("SendGroupMessage request: ", request.String())
+func (g *GroupSvc) SendGroupTextMessage(ctx context.Context, request *proto.SendGroupTextMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupTextMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("SendGroupMessage panic: ", e)
+			log.Panicln("SendGroupTextMessage panic: ", e)
 		} else if err != nil {
-			log.Errorln("SendGroupMessage error: ", err.Error())
+			log.Errorln("SendGroupTextMessage error: ", err.Error())
 		} else {
-			log.Infoln("SendGroupMessage reply: ", reply.String())
+			log.Infoln("SendGroupTextMessage reply: ", reply.String())
 		}
 	}()
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.TextMsgType, request.GroupId, "text/plain", []byte(request.Content))
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+func (g *GroupSvc) SendGroupImageMessage(ctx context.Context, request *proto.SendGroupImageMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupImageMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendGroupImageMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendGroupImageMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendGroupImageMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.ImageMessagePayload{
+		ThumbnailId: request.ThumbnailId,
+		ImageId:     request.ImageId,
+		Name:        request.Name,
+		Size:        request.Size,
+		Width:       request.Width,
+		Height:      request.Height,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.ImageMsgType, request.GroupId, request.MimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+func (g *GroupSvc) SendGroupVoiceMessage(ctx context.Context, request *proto.SendGroupVoiceMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupVoiceMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendGroupVoiceMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendGroupVoiceMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendGroupVoiceMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.VoiceMessagePayload{
+		VoiceId:  request.VoiceId,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.VoiceMsgType, request.GroupId, request.MimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+func (g *GroupSvc) SendGroupAudioMessage(ctx context.Context, request *proto.SendGroupAudioMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupAudioMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendGroupAudioMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendGroupAudioMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendGroupAudioMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.AudioMessagePayload{
+		AudioId:  request.AudioId,
+		Name:     request.Name,
+		Size:     request.Size,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.AudioMsgType, request.GroupId, request.MimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+func (g *GroupSvc) SendGroupVideoMessage(ctx context.Context, request *proto.SendGroupVideoMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupVideoMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendGroupVideoMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendGroupVideoMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendGroupVideoMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.VideoMessagePayload{
+		VideoId:  request.VideoId,
+		Name:     request.Name,
+		Size:     request.Size,
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.VideoMsgType, request.GroupId, request.MimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+func (g *GroupSvc) SendGroupFileMessage(ctx context.Context, request *proto.SendGroupFileMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+	log.Infoln("SendGroupFileMessage request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SendGroupFileMessage panic: ", e)
+		} else if err != nil {
+			log.Errorln("SendGroupFileMessage error: ", err.Error())
+		} else {
+			log.Infoln("SendGroupFileMessage reply: ", reply.String())
+		}
+	}()
+
+	payload, err := goproto.Marshal(&proto.FileMessagePayload{
+		FileId: request.FileId,
+		Name:   request.Name,
+		Size:   request.Size,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	pbmsg, err := g.sendGroupMessage(ctx, mytype.FileMsgType, request.GroupId, request.MimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("send group msg error: %w", err)
+	}
+
+	reply = &proto.SendGroupMessageReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Message: pbmsg,
+	}
+	return reply, nil
+}
+
+func (g *GroupSvc) sendGroupMessage(ctx context.Context, msgType string, groupID string, mimeType string, payload []byte) (reply *proto.GroupMessage, err error) {
 
 	groupSvc, err := g.getGroupSvc()
 	if err != nil {
@@ -641,8 +837,7 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 	}
 
 	var sendErr error
-	groupID := request.GroupId
-	msgID, err := groupSvc.SendGroupMessage(ctx, groupID, decodeMsgType(request.MsgType), request.MimeType, request.Payload)
+	msgID, err := groupSvc.SendGroupMessage(ctx, groupID, msgType, mimeType, payload)
 	if err != nil {
 		if msgID != "" && errors.Is(err, myerror.ErrSendGroupMessageFailed) && account.AutoDepositMessage {
 			group, err2 := groupSvc.GetGroup(ctx, groupID)
@@ -681,7 +876,7 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 		return nil, sendErr
 	}
 
-	message := &proto.GroupMessage{
+	return &proto.GroupMessage{
 		Id:      msgID,
 		GroupId: groupID,
 		Sender: &proto.Peer{
@@ -689,20 +884,11 @@ func (g *GroupSvc) SendGroupMessage(ctx context.Context, request *proto.SendGrou
 			Name:   account.Name,
 			Avatar: account.Avatar,
 		},
-		MsgType:    request.MsgType,
-		MimeType:   request.MimeType,
-		Payload:    request.Payload,
+		MsgType:    encodeMsgType(msgType),
+		MimeType:   mimeType,
+		Payload:    payload,
 		CreateTime: time.Now().Unix(),
-	}
-
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: message,
-	}
-	return reply, nil
+	}, nil
 }
 
 func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupMessageRequest) (reply *proto.GetGroupMessageReply, err error) {

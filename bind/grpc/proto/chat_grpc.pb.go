@@ -384,17 +384,22 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ContactSvc_GetContact_FullMethodName           = "/chat.ContactSvc/GetContact"
-	ContactSvc_GetContacts_FullMethodName          = "/chat.ContactSvc/GetContacts"
-	ContactSvc_GetSpecifiedContacts_FullMethodName = "/chat.ContactSvc/GetSpecifiedContacts"
-	ContactSvc_GetNearbyPeers_FullMethodName       = "/chat.ContactSvc/GetNearbyPeers"
-	ContactSvc_GetContactMessage_FullMethodName    = "/chat.ContactSvc/GetContactMessage"
-	ContactSvc_GetContactMessages_FullMethodName   = "/chat.ContactSvc/GetContactMessages"
-	ContactSvc_SendContactMessage_FullMethodName   = "/chat.ContactSvc/SendContactMessage"
-	ContactSvc_ClearContactMessage_FullMethodName  = "/chat.ContactSvc/ClearContactMessage"
-	ContactSvc_SetContactName_FullMethodName       = "/chat.ContactSvc/SetContactName"
-	ContactSvc_DeleteContact_FullMethodName        = "/chat.ContactSvc/DeleteContact"
-	ContactSvc_ApplyAddContact_FullMethodName      = "/chat.ContactSvc/ApplyAddContact"
+	ContactSvc_GetContact_FullMethodName              = "/chat.ContactSvc/GetContact"
+	ContactSvc_GetContacts_FullMethodName             = "/chat.ContactSvc/GetContacts"
+	ContactSvc_GetSpecifiedContacts_FullMethodName    = "/chat.ContactSvc/GetSpecifiedContacts"
+	ContactSvc_GetNearbyPeers_FullMethodName          = "/chat.ContactSvc/GetNearbyPeers"
+	ContactSvc_GetContactMessage_FullMethodName       = "/chat.ContactSvc/GetContactMessage"
+	ContactSvc_GetContactMessages_FullMethodName      = "/chat.ContactSvc/GetContactMessages"
+	ContactSvc_ClearContactMessage_FullMethodName     = "/chat.ContactSvc/ClearContactMessage"
+	ContactSvc_SetContactName_FullMethodName          = "/chat.ContactSvc/SetContactName"
+	ContactSvc_DeleteContact_FullMethodName           = "/chat.ContactSvc/DeleteContact"
+	ContactSvc_ApplyAddContact_FullMethodName         = "/chat.ContactSvc/ApplyAddContact"
+	ContactSvc_SendContactTextMessage_FullMethodName  = "/chat.ContactSvc/SendContactTextMessage"
+	ContactSvc_SendContactImageMessage_FullMethodName = "/chat.ContactSvc/SendContactImageMessage"
+	ContactSvc_SendContactVoiceMessage_FullMethodName = "/chat.ContactSvc/SendContactVoiceMessage"
+	ContactSvc_SendContactAudioMessage_FullMethodName = "/chat.ContactSvc/SendContactAudioMessage"
+	ContactSvc_SendContactVideoMessage_FullMethodName = "/chat.ContactSvc/SendContactVideoMessage"
+	ContactSvc_SendContactFileMessage_FullMethodName  = "/chat.ContactSvc/SendContactFileMessage"
 )
 
 // ContactSvcClient is the client API for ContactSvc service.
@@ -413,8 +418,6 @@ type ContactSvcClient interface {
 	GetContactMessage(ctx context.Context, in *GetContactMessageRequest, opts ...grpc.CallOption) (*GetContactMessageReply, error)
 	// 获取聊天记录
 	GetContactMessages(ctx context.Context, in *GetContactMessagesRequest, opts ...grpc.CallOption) (*GetContactMessagesReply, error)
-	// 发送消息
-	SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
 	// 清空聊天记录
 	ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error)
 	// 设置联系人别名
@@ -423,6 +426,18 @@ type ContactSvcClient interface {
 	DeleteContact(ctx context.Context, in *DeleteContactRequest, opts ...grpc.CallOption) (*DeleteContactReply, error)
 	// 申请添加联系人
 	ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error)
+	// 发送文本消息
+	SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	// 发送图片消息
+	SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	// 发送语音消息
+	SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	// 发送音频消息
+	SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	// 发送视频消息
+	SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	// 发送文件消息
+	SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
 }
 
 type contactSvcClient struct {
@@ -510,15 +525,6 @@ func (c *contactSvcClient) GetContactMessages(ctx context.Context, in *GetContac
 	return out, nil
 }
 
-func (c *contactSvcClient) SendContactMessage(ctx context.Context, in *SendContactMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *contactSvcClient) ClearContactMessage(ctx context.Context, in *ClearContactMessageRequest, opts ...grpc.CallOption) (*ClearContactMessageReply, error) {
 	out := new(ClearContactMessageReply)
 	err := c.cc.Invoke(ctx, ContactSvc_ClearContactMessage_FullMethodName, in, out, opts...)
@@ -555,6 +561,60 @@ func (c *contactSvcClient) ApplyAddContact(ctx context.Context, in *ApplyAddCont
 	return out, nil
 }
 
+func (c *contactSvcClient) SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactTextMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactImageMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactVoiceMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactAudioMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactVideoMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
+	out := new(SendContactMessageReply)
+	err := c.cc.Invoke(ctx, ContactSvc_SendContactFileMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContactSvcServer is the server API for ContactSvc service.
 // All implementations must embed UnimplementedContactSvcServer
 // for forward compatibility
@@ -571,8 +631,6 @@ type ContactSvcServer interface {
 	GetContactMessage(context.Context, *GetContactMessageRequest) (*GetContactMessageReply, error)
 	// 获取聊天记录
 	GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesReply, error)
-	// 发送消息
-	SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error)
 	// 清空聊天记录
 	ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error)
 	// 设置联系人别名
@@ -581,6 +639,18 @@ type ContactSvcServer interface {
 	DeleteContact(context.Context, *DeleteContactRequest) (*DeleteContactReply, error)
 	// 申请添加联系人
 	ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error)
+	// 发送文本消息
+	SendContactTextMessage(context.Context, *SendContactTextMessageRequest) (*SendContactMessageReply, error)
+	// 发送图片消息
+	SendContactImageMessage(context.Context, *SendContactImageMessageRequest) (*SendContactMessageReply, error)
+	// 发送语音消息
+	SendContactVoiceMessage(context.Context, *SendContactVoiceMessageRequest) (*SendContactMessageReply, error)
+	// 发送音频消息
+	SendContactAudioMessage(context.Context, *SendContactAudioMessageRequest) (*SendContactMessageReply, error)
+	// 发送视频消息
+	SendContactVideoMessage(context.Context, *SendContactVideoMessageRequest) (*SendContactMessageReply, error)
+	// 发送文件消息
+	SendContactFileMessage(context.Context, *SendContactFileMessageRequest) (*SendContactMessageReply, error)
 	mustEmbedUnimplementedContactSvcServer()
 }
 
@@ -606,9 +676,6 @@ func (UnimplementedContactSvcServer) GetContactMessage(context.Context, *GetCont
 func (UnimplementedContactSvcServer) GetContactMessages(context.Context, *GetContactMessagesRequest) (*GetContactMessagesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContactMessages not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactMessage(context.Context, *SendContactMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactMessage not implemented")
-}
 func (UnimplementedContactSvcServer) ClearContactMessage(context.Context, *ClearContactMessageRequest) (*ClearContactMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearContactMessage not implemented")
 }
@@ -620,6 +687,24 @@ func (UnimplementedContactSvcServer) DeleteContact(context.Context, *DeleteConta
 }
 func (UnimplementedContactSvcServer) ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApplyAddContact not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactTextMessage(context.Context, *SendContactTextMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactTextMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactImageMessage(context.Context, *SendContactImageMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactImageMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactVoiceMessage(context.Context, *SendContactVoiceMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactVoiceMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactAudioMessage(context.Context, *SendContactAudioMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactAudioMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactVideoMessage(context.Context, *SendContactVideoMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactVideoMessage not implemented")
+}
+func (UnimplementedContactSvcServer) SendContactFileMessage(context.Context, *SendContactFileMessageRequest) (*SendContactMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContactFileMessage not implemented")
 }
 func (UnimplementedContactSvcServer) mustEmbedUnimplementedContactSvcServer() {}
 
@@ -745,24 +830,6 @@ func _ContactSvc_GetContactMessages_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContactSvc_SendContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactMessage(ctx, req.(*SendContactMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ContactSvc_ClearContactMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClearContactMessageRequest)
 	if err := dec(in); err != nil {
@@ -835,6 +902,114 @@ func _ContactSvc_ApplyAddContact_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContactSvc_SendContactTextMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactTextMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactTextMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactTextMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactTextMessage(ctx, req.(*SendContactTextMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SendContactImageMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactImageMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactImageMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactImageMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactImageMessage(ctx, req.(*SendContactImageMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SendContactVoiceMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactVoiceMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactVoiceMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactVoiceMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactVoiceMessage(ctx, req.(*SendContactVoiceMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SendContactAudioMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactAudioMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactAudioMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactAudioMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactAudioMessage(ctx, req.(*SendContactAudioMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SendContactVideoMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactVideoMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactVideoMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactVideoMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactVideoMessage(ctx, req.(*SendContactVideoMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactSvc_SendContactFileMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContactFileMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).SendContactFileMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_SendContactFileMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).SendContactFileMessage(ctx, req.(*SendContactFileMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContactSvc_ServiceDesc is the grpc.ServiceDesc for ContactSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -863,10 +1038,6 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ContactSvc_GetContactMessages_Handler,
 		},
 		{
-			MethodName: "SendContactMessage",
-			Handler:    _ContactSvc_SendContactMessage_Handler,
-		},
-		{
 			MethodName: "ClearContactMessage",
 			Handler:    _ContactSvc_ClearContactMessage_Handler,
 		},
@@ -881,6 +1052,30 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApplyAddContact",
 			Handler:    _ContactSvc_ApplyAddContact_Handler,
+		},
+		{
+			MethodName: "SendContactTextMessage",
+			Handler:    _ContactSvc_SendContactTextMessage_Handler,
+		},
+		{
+			MethodName: "SendContactImageMessage",
+			Handler:    _ContactSvc_SendContactImageMessage_Handler,
+		},
+		{
+			MethodName: "SendContactVoiceMessage",
+			Handler:    _ContactSvc_SendContactVoiceMessage_Handler,
+		},
+		{
+			MethodName: "SendContactAudioMessage",
+			Handler:    _ContactSvc_SendContactAudioMessage_Handler,
+		},
+		{
+			MethodName: "SendContactVideoMessage",
+			Handler:    _ContactSvc_SendContactVideoMessage_Handler,
+		},
+		{
+			MethodName: "SendContactFileMessage",
+			Handler:    _ContactSvc_SendContactFileMessage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -908,10 +1103,15 @@ const (
 	GroupSvc_DisbandGroup_FullMethodName           = "/chat.GroupSvc/DisbandGroup"
 	GroupSvc_GetGroupMembers_FullMethodName        = "/chat.GroupSvc/GetGroupMembers"
 	GroupSvc_RemoveGroupMember_FullMethodName      = "/chat.GroupSvc/RemoveGroupMember"
-	GroupSvc_SendGroupMessage_FullMethodName       = "/chat.GroupSvc/SendGroupMessage"
 	GroupSvc_GetGroupMessage_FullMethodName        = "/chat.GroupSvc/GetGroupMessage"
 	GroupSvc_GetGroupMessages_FullMethodName       = "/chat.GroupSvc/GetGroupMessages"
 	GroupSvc_ClearGroupMessage_FullMethodName      = "/chat.GroupSvc/ClearGroupMessage"
+	GroupSvc_SendGroupTextMessage_FullMethodName   = "/chat.GroupSvc/SendGroupTextMessage"
+	GroupSvc_SendGroupImageMessage_FullMethodName  = "/chat.GroupSvc/SendGroupImageMessage"
+	GroupSvc_SendGroupVoiceMessage_FullMethodName  = "/chat.GroupSvc/SendGroupVoiceMessage"
+	GroupSvc_SendGroupAudioMessage_FullMethodName  = "/chat.GroupSvc/SendGroupAudioMessage"
+	GroupSvc_SendGroupVideoMessage_FullMethodName  = "/chat.GroupSvc/SendGroupVideoMessage"
+	GroupSvc_SendGroupFileMessage_FullMethodName   = "/chat.GroupSvc/SendGroupFileMessage"
 )
 
 // GroupSvcClient is the client API for GroupSvc service.
@@ -946,14 +1146,24 @@ type GroupSvcClient interface {
 	GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberReply, error)
-	// 发送消息
-	SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessage(ctx context.Context, in *GetGroupMessageRequest, opts ...grpc.CallOption) (*GetGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
 	ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error)
+	// 发送消息
+	SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 发送图片消息
+	SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 发送语音消息
+	SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 发送音频消息
+	SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 发送视频消息
+	SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	// 发送文件消息
+	SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
 }
 
 type groupSvcClient struct {
@@ -1090,15 +1300,6 @@ func (c *groupSvcClient) RemoveGroupMember(ctx context.Context, in *RemoveGroupM
 	return out, nil
 }
 
-func (c *groupSvcClient) SendGroupMessage(ctx context.Context, in *SendGroupMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *groupSvcClient) GetGroupMessage(ctx context.Context, in *GetGroupMessageRequest, opts ...grpc.CallOption) (*GetGroupMessageReply, error) {
 	out := new(GetGroupMessageReply)
 	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMessage_FullMethodName, in, out, opts...)
@@ -1120,6 +1321,60 @@ func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessa
 func (c *groupSvcClient) ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error) {
 	out := new(ClearGroupMessageReply)
 	err := c.cc.Invoke(ctx, GroupSvc_ClearGroupMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupTextMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupImageMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupVoiceMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupAudioMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupVideoMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
+	out := new(SendGroupMessageReply)
+	err := c.cc.Invoke(ctx, GroupSvc_SendGroupFileMessage_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1158,14 +1413,24 @@ type GroupSvcServer interface {
 	GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error)
 	// 移除群成员
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error)
-	// 发送消息
-	SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessage(context.Context, *GetGroupMessageRequest) (*GetGroupMessageReply, error)
 	// 获取聊天记录
 	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
 	ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error)
+	// 发送消息
+	SendGroupTextMessage(context.Context, *SendGroupTextMessageRequest) (*SendGroupMessageReply, error)
+	// 发送图片消息
+	SendGroupImageMessage(context.Context, *SendGroupImageMessageRequest) (*SendGroupMessageReply, error)
+	// 发送语音消息
+	SendGroupVoiceMessage(context.Context, *SendGroupVoiceMessageRequest) (*SendGroupMessageReply, error)
+	// 发送音频消息
+	SendGroupAudioMessage(context.Context, *SendGroupAudioMessageRequest) (*SendGroupMessageReply, error)
+	// 发送视频消息
+	SendGroupVideoMessage(context.Context, *SendGroupVideoMessageRequest) (*SendGroupMessageReply, error)
+	// 发送文件消息
+	SendGroupFileMessage(context.Context, *SendGroupFileMessageRequest) (*SendGroupMessageReply, error)
 	mustEmbedUnimplementedGroupSvcServer()
 }
 
@@ -1215,9 +1480,6 @@ func (UnimplementedGroupSvcServer) GetGroupMembers(context.Context, *GetGroupMem
 func (UnimplementedGroupSvcServer) RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMember not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupMessage(context.Context, *SendGroupMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupMessage not implemented")
-}
 func (UnimplementedGroupSvcServer) GetGroupMessage(context.Context, *GetGroupMessageRequest) (*GetGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMessage not implemented")
 }
@@ -1226,6 +1488,24 @@ func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMe
 }
 func (UnimplementedGroupSvcServer) ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearGroupMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupTextMessage(context.Context, *SendGroupTextMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupTextMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupImageMessage(context.Context, *SendGroupImageMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupImageMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupVoiceMessage(context.Context, *SendGroupVoiceMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupVoiceMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupAudioMessage(context.Context, *SendGroupAudioMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupAudioMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupVideoMessage(context.Context, *SendGroupVideoMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupVideoMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) SendGroupFileMessage(context.Context, *SendGroupFileMessageRequest) (*SendGroupMessageReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendGroupFileMessage not implemented")
 }
 func (UnimplementedGroupSvcServer) mustEmbedUnimplementedGroupSvcServer() {}
 
@@ -1492,24 +1772,6 @@ func _GroupSvc_RemoveGroupMember_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_SendGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupMessage(ctx, req.(*SendGroupMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _GroupSvc_GetGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetGroupMessageRequest)
 	if err := dec(in); err != nil {
@@ -1560,6 +1822,114 @@ func _GroupSvc_ClearGroupMessage_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GroupSvcServer).ClearGroupMessage(ctx, req.(*ClearGroupMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupTextMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupTextMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupTextMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupTextMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupTextMessage(ctx, req.(*SendGroupTextMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupImageMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupImageMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupImageMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupImageMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupImageMessage(ctx, req.(*SendGroupImageMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupVoiceMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupVoiceMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupVoiceMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupVoiceMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupVoiceMessage(ctx, req.(*SendGroupVoiceMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupAudioMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupAudioMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupAudioMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupAudioMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupAudioMessage(ctx, req.(*SendGroupAudioMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupVideoMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupVideoMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupVideoMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupVideoMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupVideoMessage(ctx, req.(*SendGroupVideoMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_SendGroupFileMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGroupFileMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).SendGroupFileMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_SendGroupFileMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).SendGroupFileMessage(ctx, req.(*SendGroupFileMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1628,10 +1998,6 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_RemoveGroupMember_Handler,
 		},
 		{
-			MethodName: "SendGroupMessage",
-			Handler:    _GroupSvc_SendGroupMessage_Handler,
-		},
-		{
 			MethodName: "GetGroupMessage",
 			Handler:    _GroupSvc_GetGroupMessage_Handler,
 		},
@@ -1642,6 +2008,30 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClearGroupMessage",
 			Handler:    _GroupSvc_ClearGroupMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupTextMessage",
+			Handler:    _GroupSvc_SendGroupTextMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupImageMessage",
+			Handler:    _GroupSvc_SendGroupImageMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupVoiceMessage",
+			Handler:    _GroupSvc_SendGroupVoiceMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupAudioMessage",
+			Handler:    _GroupSvc_SendGroupAudioMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupVideoMessage",
+			Handler:    _GroupSvc_SendGroupVideoMessage_Handler,
+		},
+		{
+			MethodName: "SendGroupFileMessage",
+			Handler:    _GroupSvc_SendGroupFileMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

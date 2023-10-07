@@ -10,8 +10,8 @@ import (
 	"github.com/jianbo-zh/dchat/datastore/ds/sessionds"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/internal/protocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/contactpb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -25,8 +25,8 @@ var log = logging.Logger("contact")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID       = protocol.ContactID_v100
-	CHECK_ID = protocol.ContactCheckID_v100
+	ID       = myprotocol.ContactID_v100
+	CHECK_ID = myprotocol.ContactCheckID_v100
 
 	ServiceName = "peer.contact"
 	maxMsgSize  = 4 * 1024 // 4K

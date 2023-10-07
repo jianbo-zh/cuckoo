@@ -1,4 +1,4 @@
-package protocol
+package myprotocol
 
 const (
 	AccountID_v100       = "/dchat/account/1.0.0"
@@ -35,7 +35,9 @@ const (
 )
 
 const (
-	FileQueryID_v100      = "/dchat/file/query/1.0.0"
-	FileDownloadID_v100   = "/dchat/file/download/1.0.0"
-	AvatarDownloadID_v100 = "/dchat/file/avatar/1.0.0"
+	FileQueryID_v100    = "/dchat/file/query/1.0.0"
+	FileDownloadID_v100 = "/dchat/file/download/1.0.0"
+
+	ResourceUploadID_v100   = "/dchat/file/resource/upload/1.0.0"
+	ResourceDownloadID_v100 = "/dchat/file/resource/download/1.0.0"
 )

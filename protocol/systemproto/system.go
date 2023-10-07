@@ -8,8 +8,8 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	ds "github.com/jianbo-zh/dchat/datastore/ds/systemds"
 	"github.com/jianbo-zh/dchat/internal/myhost"
+	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/internal/protocol"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/systempb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -22,7 +22,7 @@ var log = logging.Logger("system")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID         = protocol.SystemMessageID_v100
+	ID         = myprotocol.SystemMessageID_v100
 	maxMsgSize = 4 * 1024 // 4K
 )
 

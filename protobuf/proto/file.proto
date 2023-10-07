@@ -31,3 +31,27 @@ message File {
     string  filePath = 3;
     int64   fileSize = 4;
 }
+
+message FileUploadRequest {
+    string groupId = 1;
+    string fileId = 2;
+    int64  fileSize = 3;
+}
+
+message FileUploadReply {
+    bool exists = 1;
+}
+
+message FileUploadResult {
+    string fileId = 1;
+    int64  fileSize = 2;
+    string errMsg = 3;
+}
+
+message DownloadResourceRequest {
+    string fileId = 1;
+}
+
+message DownloadResourceReply {
+    string error = 1;
+}
