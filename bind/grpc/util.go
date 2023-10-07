@@ -53,3 +53,14 @@ func encodeOnlineState(state mytype.OnlineState) proto.ConnState {
 		return proto.ConnState_UnknownState
 	}
 }
+
+func encodeMessageState(state mytype.MessageState) proto.MsgState {
+	switch state {
+	case mytype.MessageStateSuccess:
+		return proto.MsgState_SendSucc
+	case mytype.MessageStateFail:
+		return proto.MsgState_SendFail
+	default:
+		return proto.MsgState_Sending
+	}
+}

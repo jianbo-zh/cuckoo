@@ -51,14 +51,20 @@ func (f *FileProto) handleDownloadFile(ctx context.Context, evt myevent.EvtDownl
 }
 
 func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtCheckAvatar) {
+	fmt.Printf("handle check avatar event %v", evt)
+
 	if evt.Avatar != "" && len(evt.PeerIDs) > 0 {
 		_, err := os.Stat(filepath.Join(f.conf.ResourceDir, evt.Avatar))
 		if err != nil && os.IsNotExist(err) {
+			fmt.Println("for download resource")
 			for _, peerID := range evt.PeerIDs {
+				fmt.Println("download resource", peerID.String(), evt.Avatar)
 				if err = f.DownloadResource(ctx, peerID, evt.Avatar); err == nil {
 					break
 				}
 			}
+		} else {
+			fmt.Println("avatar is exists")
 		}
 	}
 }
@@ -73,6 +79,7 @@ func (f *FileProto) handleUploadResourceEvent(ctx context.Context, evt myevent.E
 		} else {
 			evt.Result <- resultErr
 		}
+		close(evt.Result)
 	}()
 
 	fmt.Println("handle send file event: ", evt)
@@ -179,4 +186,5 @@ func (f *FileProto) handleUploadResourceEvent(ctx context.Context, evt myevent.E
 // handleDownloadResourceEvent 处理下载资源事件
 func (f *FileProto) handleDownloadResourceEvent(ctx context.Context, evt myevent.EvtDownloadResource) {
 	evt.Result <- f.DownloadResource(ctx, evt.PeerID, evt.FileID)
+	close(evt.Result)
 }

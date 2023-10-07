@@ -127,6 +127,36 @@ func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string
 	return &msg, nil
 }
 
+func (m *MessageDS) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
+
+	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("m.Get error: %w", err)
+	}
+
+	var msg pb.ContactMessage
+	err = proto.Unmarshal(val, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+	}
+
+	if isSucc {
+		msg.State = pb.ContactMessage_Success
+	} else {
+		msg.State = pb.ContactMessage_Fail
+	}
+
+	bs, err := proto.Marshal(&msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto marshal error: %w", err)
+	}
+	if err := m.Put(ctx, contactDsKey.MsgLogKey(peerID, msgID), bs); err != nil {
+		return nil, fmt.Errorf("ds put key error: %w", err)
+	}
+
+	return &msg, nil
+}
+
 func (m *MessageDS) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
 	return m.Delete(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 }

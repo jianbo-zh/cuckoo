@@ -143,6 +143,8 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 	stream.SetReadDeadline(time.Time{})
 
 	remotePeerID := stream.Conn().RemotePeer()
+
+	msg.State = pb.ContactMessage_Success
 	err := p.saveMessage(context.Background(), remotePeerID, &msg)
 	if err != nil {
 		log.Errorf("store message error %v", err)
@@ -191,13 +193,13 @@ func (p *PeerMessageProto) SaveMessage(ctx context.Context, peerID peer.ID, msgI
 	return nil
 }
 
-func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (string, error) {
+func (p *PeerMessageProto) GenerateMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (*pb.ContactMessage, error) {
 
 	hostID := p.host.ID()
 
 	lamportTime, err := p.data.TickLamportTime(ctx, peerID)
 	if err != nil {
-		return "", fmt.Errorf("data tick lamptime error: %w", err)
+		return nil, fmt.Errorf("data tick lamptime error: %w", err)
 	}
 
 	msg := pb.ContactMessage{
@@ -207,42 +209,63 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgT
 		MsgType:    msgType,
 		MimeType:   mimeType,
 		Payload:    payload,
+		State:      pb.ContactMessage_Sending,
 		Timestamp:  time.Now().Unix(),
 		Lamportime: lamportTime,
 	}
 
 	err = p.saveMessage(ctx, peerID, &msg)
 	if err != nil {
-		return "", fmt.Errorf("data save msg error: %w", err)
+		return nil, fmt.Errorf("data save msg error: %w", err)
 	}
 
-	stream, err := p.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ID)
+	return &msg, nil
+}
+
+func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgID string) error {
+
+	hostID := p.host.ID()
+
+	msg, err := p.data.GetMessage(ctx, peerID, msgID)
 	if err != nil {
-		return msg.Id, myerror.WrapStreamError("host new stream error", err)
+		return fmt.Errorf("data.GetMessage error: %w", err)
+	}
+
+	if peer.ID(msg.FromPeerId) != hostID {
+		return fmt.Errorf("msg from peer id not equal host id")
+	}
+
+	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, ID)
+	if err != nil {
+		return myerror.WrapStreamError("host new stream error", err)
 	}
 
 	pw := pbio.NewDelimitedWriter(stream)
 	defer pw.Close()
 
-	if err = pw.WriteMsg(&msg); err != nil {
+	if err = pw.WriteMsg(msg); err != nil {
 		stream.Reset()
-		return msg.Id, myerror.WrapStreamError("pbio write msg error", err)
+		return myerror.WrapStreamError("pbio write msg error", err)
 	}
 
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	var msgAck pb.ContactMessageAck
 	if err = rd.ReadMsg(&msgAck); err != nil {
-		return msg.Id, myerror.WrapStreamError("pbio read ack msg error", err)
+		return myerror.WrapStreamError("pbio read ack msg error", err)
 
 	} else if msgAck.Id != msg.Id {
-		return msg.Id, myerror.WrapStreamError("msg ack id error", nil)
+		return myerror.WrapStreamError("msg ack id error", nil)
 	}
 
-	return msg.Id, nil
+	return nil
 }
 
 func (p *PeerMessageProto) GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.ContactMessage, error) {
 	return p.data.GetMessage(ctx, peerID, msgID)
+}
+
+func (p *PeerMessageProto) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
+	return p.data.UpdateMessageState(ctx, peerID, msgID, isSucc)
 }
 
 func (p *PeerMessageProto) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {

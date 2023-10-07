@@ -10,9 +10,12 @@ import (
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/protocol/contactmsgproto"
 	"github.com/jianbo-zh/dchat/protocol/contactproto"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+var log = logging.Logger("contact-svc")
 
 var _ ContactServiceIface = (*ContactSvc)(nil)
 

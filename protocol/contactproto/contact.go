@@ -104,6 +104,16 @@ func (c *ContactProto) handler(stream network.Stream) {
 		return
 	}
 
+	if contact.Avatar != msg.Avatar {
+		// 触发检查是否需要同步头像
+		if err = c.emitters.evtCheckAvatar.Emit(myevent.EvtCheckAvatar{
+			Avatar:  msg.Avatar,
+			PeerIDs: []peer.ID{remotePeerID},
+		}); err != nil {
+			log.Errorf("emit check avatar evt error: %w", err)
+		}
+	}
+
 	contact.Name = msg.Name
 	contact.Avatar = msg.Avatar
 	contact.DepositAddress = msg.DepositAddress

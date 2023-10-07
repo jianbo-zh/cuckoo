@@ -100,7 +100,7 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 		return
 	}
 
-	log.Debugln("receive file success %s", reqMsg.FileId)
+	log.Debugln("receive file success ", reqMsg.FileId)
 }
 
 // resourceDownloadIDHandler 资源下载处理器
@@ -109,6 +109,7 @@ func (f *FileProto) resourceDownloadIDHandler(stream network.Stream) {
 
 	defer stream.Close()
 
+	// 接收请求
 	var reqMsg pb.DownloadResourceRequest
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	if err := rd.ReadMsg(&reqMsg); err != nil {
@@ -124,13 +125,13 @@ func (f *FileProto) resourceDownloadIDHandler(stream network.Stream) {
 		return
 	}
 
-	// todo: 鉴权
-	wt := pbio.NewDelimitedWriter(stream)
-	if err := wt.WriteMsg(&pb.DownloadResourceReply{Error: ""}); err != nil {
-		log.Errorf("pbio write reply msg error: %w", err)
-		stream.Reset()
-		return
-	}
+	// // todo: 鉴权
+	// wt := pbio.NewDelimitedWriter(stream)
+	// if err := wt.WriteMsg(&pb.DownloadResourceReply{Error: ""}); err != nil {
+	// 	log.Errorf("pbio write reply msg error: %w", err)
+	// 	stream.Reset()
+	// 	return
+	// }
 
 	// 开始发送文件
 	osfile, err := os.Open(filePath)
@@ -142,14 +143,15 @@ func (f *FileProto) resourceDownloadIDHandler(stream network.Stream) {
 	defer osfile.Close()
 
 	bufStream := bufio.NewWriter(stream)
-	if _, err := bufStream.ReadFrom(osfile); err != nil {
+	size, err := bufStream.ReadFrom(osfile)
+	if err != nil {
 		log.Errorf("bufStream.ReadFrom error: %w", err)
 		stream.Reset()
 		return
 	}
 	bufStream.Flush()
 
-	log.Debugf("send file: %s success", reqMsg.FileId)
+	log.Debugf("send file: %s success, sendSize: %d", reqMsg.FileId, size)
 }
 
 // 文件下载处理

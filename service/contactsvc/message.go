@@ -15,16 +15,7 @@ func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID strin
 		return nil, fmt.Errorf("msgSvc.GetMessage error: %w", err)
 	}
 
-	return &mytype.ContactMessage{
-		ID:         msg.Id,
-		MsgType:    msg.MsgType,
-		MimeType:   msg.MimeType,
-		FromPeerID: peer.ID(msg.FromPeerId),
-		ToPeerID:   peer.ID(msg.ToPeerId),
-		Payload:    msg.Payload,
-		Timestamp:  msg.Timestamp,
-		Lamportime: msg.Lamportime,
-	}, nil
+	return convertMessage(msg), nil
 }
 
 func (c *ContactSvc) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
@@ -49,56 +40,85 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	}
 
 	for _, msg := range msgs {
-		peerMsgs = append(peerMsgs, mytype.ContactMessage{
-			ID:         msg.Id,
-			MsgType:    msg.MsgType,
-			MimeType:   msg.MimeType,
-			FromPeerID: peer.ID(msg.FromPeerId),
-			ToPeerID:   peer.ID(msg.ToPeerId),
-			Payload:    msg.Payload,
-			Timestamp:  msg.Timestamp,
-			Lamportime: msg.Lamportime,
-		})
+		peerMsgs = append(peerMsgs, *convertMessage(msg))
 	}
 
 	return peerMsgs, nil
 }
 
-func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, attachments []string) (string, error) {
+func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, resources []string) (<-chan mytype.ContactMessage, error) {
 
-	if len(attachments) > 0 {
-		fmt.Println("attachments: ", len(attachments))
-		for _, fileID := range attachments {
-			fmt.Println("attachment: ", fileID)
+	resultCh := make(chan mytype.ContactMessage, 1)
+
+	msg, err := c.msgProto.GenerateMessage(ctx, peerID, msgType, mimeType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("generate message error: %w", err)
+	}
+	fmt.Println("msg: ", msg.String())
+
+	resultCh <- *convertMessage(msg)
+
+	go func(msgID string) {
+		defer func() {
+			close(resultCh)
+		}()
+
+		isSucc := true
+		if err := c.sendMessage(ctx, peerID, msgID, resources); err != nil {
+			isSucc = false
+			// log error
+			log.Error("send message error: %w", err)
+		}
+
+		pbmsg, err := c.msgProto.UpdateMessageState(ctx, peerID, msgID, isSucc)
+		if err != nil {
+			// log error
+			log.Errorf("msgProto.UpdateMessageState error: %w", err)
+			return
+		}
+		resultCh <- *convertMessage(pbmsg)
+
+	}(msg.Id)
+
+	return resultCh, nil
+}
+
+func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string, resources []string) error {
+	if len(resources) > 0 {
+		for _, fileID := range resources {
 			resultCh := make(chan error, 1)
-
 			if err := c.emitters.evtUploadResource.Emit(myevent.EvtUploadResource{
 				ToPeerID: peerID,
 				GroupID:  "",
 				FileID:   fileID,
 				Result:   resultCh,
 			}); err != nil {
-				return "", fmt.Errorf("emit evtUploadResource error: %w", err)
+				return fmt.Errorf("emit evtUploadResource error: %w", err)
 			}
 
 			if err := <-resultCh; err != nil {
-				close(resultCh)
-				return "", fmt.Errorf("send attahment %s, error: %w", fileID, err)
+				return fmt.Errorf("send attahment %s, error: %w", fileID, err)
 			}
-			close(resultCh)
 		}
 		fmt.Println("attachment send finish")
 	}
 
-	msgID, err := c.msgProto.SendMessage(ctx, peerID, msgType, mimeType, payload)
-	if err != nil {
+	if err := c.msgProto.SendMessage(ctx, peerID, msgID); err != nil {
 		fmt.Println("proto.SendMessage error: %w", err)
-		return "", fmt.Errorf("msgProto.SendMessage error: %w", err)
+		return fmt.Errorf("msgProto.SendMessage error: %w", err)
 	}
 
 	fmt.Println("sendMessage succ: ", msgID)
+	return nil
+}
 
-	return msgID, nil
+func (c *ContactSvc) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*mytype.ContactMessage, error) {
+	msg, err := c.msgProto.UpdateMessageState(ctx, peerID, msgID, isSucc)
+	if err != nil {
+		return nil, fmt.Errorf("msgProto.UpdateMessageState error: %w", err)
+	}
+
+	return convertMessage(msg), nil
 }
 
 func (c *ContactSvc) ClearMessage(ctx context.Context, peerID peer.ID) error {

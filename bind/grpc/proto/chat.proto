@@ -52,17 +52,17 @@ service ContactSvc {
   rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
 
   // 发送文本消息
-  rpc SendContactTextMessage(SendContactTextMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactTextMessage(SendContactTextMessageRequest) returns (stream SendContactMessageReply) {}
   // 发送图片消息
-  rpc SendContactImageMessage(SendContactImageMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactImageMessage(SendContactImageMessageRequest) returns (stream SendContactMessageReply) {}
   // 发送语音消息
-  rpc SendContactVoiceMessage(SendContactVoiceMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactVoiceMessage(SendContactVoiceMessageRequest) returns (stream SendContactMessageReply) {}
   // 发送音频消息
-  rpc SendContactAudioMessage(SendContactAudioMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactAudioMessage(SendContactAudioMessageRequest) returns (stream SendContactMessageReply) {}
   // 发送视频消息
-  rpc SendContactVideoMessage(SendContactVideoMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactVideoMessage(SendContactVideoMessageRequest) returns (stream SendContactMessageReply) {}
   // 发送文件消息
-  rpc SendContactFileMessage(SendContactFileMessageRequest) returns (SendContactMessageReply) {}
+  rpc SendContactFileMessage(SendContactFileMessageRequest) returns (stream SendContactMessageReply) {}
 }
 
 // 群服务
@@ -160,6 +160,13 @@ enum MsgType {
   Audio = 4;
   Video = 5;
   File = 6;
+}
+
+// MsgState 消息发送状态
+enum MsgState {
+  Sending = 0;
+  SendSucc = 1;
+  SendFail = 2;
 }
 
 enum ConnState {
@@ -334,8 +341,9 @@ message SendContactFileMessageRequest {
 }
 
 message SendContactMessageReply {
-  Result result = 1;
-  ContactMessage message = 2;
+  Result  result = 1;
+  bool    isUpdated = 2;
+  ContactMessage message = 3;
 }
 
 message SetContactNameRequest {
@@ -760,7 +768,7 @@ message ContactMessage {
   // 消息内容
   bytes payload = 6;
   // 消息状态
-  string state = 7;
+  MsgState state = 7;
   // 消息时间
   int64 createTime = 8;
 }
@@ -911,15 +919,15 @@ message SystemMessage {
     InviteJoinGroup = 1;
   }
 
-  string id = 1;
-  SystemType systemType = 2;
-  string groupId = 3;
-  Peer fromPeer = 4;
-  string toPeerId = 5;
-  string content = 6;
-  string systemState = 7;
-  int64 createTime = 8;
-  int64 updateTime = 9;
+  string      id = 1;
+  SystemType  systemType = 2;
+  string      groupId = 3;
+  Peer        fromPeer = 4;
+  string      toPeerId = 5;
+  string      content = 6;
+  string      systemState = 7;
+  int64       createTime = 8;
+  int64       updateTime = 9;
 }
 
 // 外部(前端)订阅消息
@@ -942,10 +950,10 @@ message CommonEvent {
   }
 
   message PayloadOnlineState {
-    repeated string OnlinePeerIds = 1;
-    repeated string OfflinePeerIds = 2;
+    repeated string onlinePeerIds = 1;
+    repeated string offlinePeerIds = 2;
   }
 
   EventType type = 1;
-  bytes Payload = 2;
+  bytes     payload = 2;
 }

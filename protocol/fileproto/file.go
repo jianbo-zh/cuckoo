@@ -83,15 +83,19 @@ func (f *FileProto) SendPeerFile(ctx context.Context, peerID peer.ID, file strin
 
 // downloadResource  下载资源
 func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID string) error {
+	fmt.Println("download resource start", peerID.String(), fileID)
 
 	// 检查本地有没有
 	filePath := path.Join(f.conf.ResourceDir, fileID)
 	if _, err := os.Stat(filePath); err == nil { // exists
+		fmt.Println("file local exists")
 		return nil
 
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("os.Stat error: %w", err)
 	}
+
+	fmt.Println("2222")
 
 	// 发送下载请求
 	stream, err := f.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, RESOURCE_DOWNLOAD_ID)
@@ -99,6 +103,7 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 		return fmt.Errorf("host.NewStream error: %w", err)
 	}
 	defer stream.Close()
+	fmt.Println("333")
 
 	reqMsg := pb.DownloadResourceRequest{FileId: fileID}
 	wt := pbio.NewDelimitedWriter(stream)
@@ -106,18 +111,20 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 		stream.Reset()
 		return fmt.Errorf("pbio.WriteMsg error: %w", err)
 	}
+	fmt.Println("4444")
 
-	// 等待鉴权结果
-	var replyMsg pb.DownloadResourceReply
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
-	if err := rd.ReadMsg(&replyMsg); err != nil {
-		stream.Reset()
-		return fmt.Errorf("pbio.ReadMsg error: %w", err)
-	}
-	if replyMsg.Error != "" {
-		stream.Reset()
-		return fmt.Errorf("download reply: %s", replyMsg.Error)
-	}
+	// // 等待鉴权结果
+	// var replyMsg pb.DownloadResourceReply
+	// rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	// if err := rd.ReadMsg(&replyMsg); err != nil {
+	// 	stream.Reset()
+	// 	return fmt.Errorf("pbio.ReadMsg error: %w", err)
+	// }
+	// if replyMsg.Error != "" {
+	// 	stream.Reset()
+	// 	return fmt.Errorf("download reply: %s", replyMsg.Error)
+	// }
+	// fmt.Println("5555")
 
 	// 开始接收文件
 	tmpFilePath := path.Join(f.conf.ResourceDir, fmt.Sprintf("%s_%s", "tmp", fileID))
@@ -126,20 +133,25 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 		stream.Reset()
 		return fmt.Errorf("os.OpenFile error: %w", err)
 	}
+	fmt.Println("6666")
 
 	bufStream := bufio.NewReader(stream)
-	if _, err := bufStream.WriteTo(tmpFile); err != nil {
+	size, err := bufStream.WriteTo(tmpFile)
+	if err != nil {
 		tmpFile.Close()
 		stream.Reset()
 		return fmt.Errorf("bufStream.WriteTo tmp file error: %w", err)
 	}
 	tmpFile.Close()
 
+	fmt.Println("7777, writeSize: ", size)
+
 	// 重命名文件
 	if err := os.Rename(tmpFilePath, filePath); err != nil {
 		stream.Reset()
 		return fmt.Errorf("os.Rename error: %w", err)
 	}
+	fmt.Println("88888")
 
 	return nil
 }

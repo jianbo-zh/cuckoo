@@ -427,17 +427,17 @@ type ContactSvcClient interface {
 	// 申请添加联系人
 	ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error)
 	// 发送文本消息
-	SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactTextMessageClient, error)
 	// 发送图片消息
-	SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactImageMessageClient, error)
 	// 发送语音消息
-	SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactVoiceMessageClient, error)
 	// 发送音频消息
-	SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactAudioMessageClient, error)
 	// 发送视频消息
-	SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactVideoMessageClient, error)
 	// 发送文件消息
-	SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error)
+	SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactFileMessageClient, error)
 }
 
 type contactSvcClient struct {
@@ -561,58 +561,196 @@ func (c *contactSvcClient) ApplyAddContact(ctx context.Context, in *ApplyAddCont
 	return out, nil
 }
 
-func (c *contactSvcClient) SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactTextMessage_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactTextMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[1], ContactSvc_SendContactTextMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &contactSvcSendContactTextMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *contactSvcClient) SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactImageMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+type ContactSvc_SendContactTextMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
 }
 
-func (c *contactSvcClient) SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactVoiceMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+type contactSvcSendContactTextMessageClient struct {
+	grpc.ClientStream
 }
 
-func (c *contactSvcClient) SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactAudioMessage_FullMethodName, in, out, opts...)
-	if err != nil {
+func (x *contactSvcSendContactTextMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return m, nil
 }
 
-func (c *contactSvcClient) SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactVideoMessage_FullMethodName, in, out, opts...)
+func (c *contactSvcClient) SendContactImageMessage(ctx context.Context, in *SendContactImageMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactImageMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[2], ContactSvc_SendContactImageMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &contactSvcSendContactImageMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *contactSvcClient) SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (*SendContactMessageReply, error) {
-	out := new(SendContactMessageReply)
-	err := c.cc.Invoke(ctx, ContactSvc_SendContactFileMessage_FullMethodName, in, out, opts...)
+type ContactSvc_SendContactImageMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
+}
+
+type contactSvcSendContactImageMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *contactSvcSendContactImageMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *contactSvcClient) SendContactVoiceMessage(ctx context.Context, in *SendContactVoiceMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactVoiceMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[3], ContactSvc_SendContactVoiceMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &contactSvcSendContactVoiceMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ContactSvc_SendContactVoiceMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
+}
+
+type contactSvcSendContactVoiceMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *contactSvcSendContactVoiceMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *contactSvcClient) SendContactAudioMessage(ctx context.Context, in *SendContactAudioMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactAudioMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[4], ContactSvc_SendContactAudioMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &contactSvcSendContactAudioMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ContactSvc_SendContactAudioMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
+}
+
+type contactSvcSendContactAudioMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *contactSvcSendContactAudioMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *contactSvcClient) SendContactVideoMessage(ctx context.Context, in *SendContactVideoMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactVideoMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[5], ContactSvc_SendContactVideoMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &contactSvcSendContactVideoMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ContactSvc_SendContactVideoMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
+}
+
+type contactSvcSendContactVideoMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *contactSvcSendContactVideoMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *contactSvcClient) SendContactFileMessage(ctx context.Context, in *SendContactFileMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactFileMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ContactSvc_ServiceDesc.Streams[6], ContactSvc_SendContactFileMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &contactSvcSendContactFileMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ContactSvc_SendContactFileMessageClient interface {
+	Recv() (*SendContactMessageReply, error)
+	grpc.ClientStream
+}
+
+type contactSvcSendContactFileMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *contactSvcSendContactFileMessageClient) Recv() (*SendContactMessageReply, error) {
+	m := new(SendContactMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // ContactSvcServer is the server API for ContactSvc service.
@@ -640,17 +778,17 @@ type ContactSvcServer interface {
 	// 申请添加联系人
 	ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error)
 	// 发送文本消息
-	SendContactTextMessage(context.Context, *SendContactTextMessageRequest) (*SendContactMessageReply, error)
+	SendContactTextMessage(*SendContactTextMessageRequest, ContactSvc_SendContactTextMessageServer) error
 	// 发送图片消息
-	SendContactImageMessage(context.Context, *SendContactImageMessageRequest) (*SendContactMessageReply, error)
+	SendContactImageMessage(*SendContactImageMessageRequest, ContactSvc_SendContactImageMessageServer) error
 	// 发送语音消息
-	SendContactVoiceMessage(context.Context, *SendContactVoiceMessageRequest) (*SendContactMessageReply, error)
+	SendContactVoiceMessage(*SendContactVoiceMessageRequest, ContactSvc_SendContactVoiceMessageServer) error
 	// 发送音频消息
-	SendContactAudioMessage(context.Context, *SendContactAudioMessageRequest) (*SendContactMessageReply, error)
+	SendContactAudioMessage(*SendContactAudioMessageRequest, ContactSvc_SendContactAudioMessageServer) error
 	// 发送视频消息
-	SendContactVideoMessage(context.Context, *SendContactVideoMessageRequest) (*SendContactMessageReply, error)
+	SendContactVideoMessage(*SendContactVideoMessageRequest, ContactSvc_SendContactVideoMessageServer) error
 	// 发送文件消息
-	SendContactFileMessage(context.Context, *SendContactFileMessageRequest) (*SendContactMessageReply, error)
+	SendContactFileMessage(*SendContactFileMessageRequest, ContactSvc_SendContactFileMessageServer) error
 	mustEmbedUnimplementedContactSvcServer()
 }
 
@@ -688,23 +826,23 @@ func (UnimplementedContactSvcServer) DeleteContact(context.Context, *DeleteConta
 func (UnimplementedContactSvcServer) ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApplyAddContact not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactTextMessage(context.Context, *SendContactTextMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactTextMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactTextMessage(*SendContactTextMessageRequest, ContactSvc_SendContactTextMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactTextMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactImageMessage(context.Context, *SendContactImageMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactImageMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactImageMessage(*SendContactImageMessageRequest, ContactSvc_SendContactImageMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactImageMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactVoiceMessage(context.Context, *SendContactVoiceMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactVoiceMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactVoiceMessage(*SendContactVoiceMessageRequest, ContactSvc_SendContactVoiceMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactVoiceMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactAudioMessage(context.Context, *SendContactAudioMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactAudioMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactAudioMessage(*SendContactAudioMessageRequest, ContactSvc_SendContactAudioMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactAudioMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactVideoMessage(context.Context, *SendContactVideoMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactVideoMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactVideoMessage(*SendContactVideoMessageRequest, ContactSvc_SendContactVideoMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactVideoMessage not implemented")
 }
-func (UnimplementedContactSvcServer) SendContactFileMessage(context.Context, *SendContactFileMessageRequest) (*SendContactMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendContactFileMessage not implemented")
+func (UnimplementedContactSvcServer) SendContactFileMessage(*SendContactFileMessageRequest, ContactSvc_SendContactFileMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendContactFileMessage not implemented")
 }
 func (UnimplementedContactSvcServer) mustEmbedUnimplementedContactSvcServer() {}
 
@@ -902,112 +1040,130 @@ func _ContactSvc_ApplyAddContact_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContactSvc_SendContactTextMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactTextMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _ContactSvc_SendContactTextMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactTextMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactTextMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactTextMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactTextMessage(ctx, req.(*SendContactTextMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ContactSvcServer).SendContactTextMessage(m, &contactSvcSendContactTextMessageServer{stream})
 }
 
-func _ContactSvc_SendContactImageMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactImageMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactImageMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactImageMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactImageMessage(ctx, req.(*SendContactImageMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+type ContactSvc_SendContactTextMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
 }
 
-func _ContactSvc_SendContactVoiceMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactVoiceMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactVoiceMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactVoiceMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactVoiceMessage(ctx, req.(*SendContactVoiceMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+type contactSvcSendContactTextMessageServer struct {
+	grpc.ServerStream
 }
 
-func _ContactSvc_SendContactAudioMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactAudioMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactAudioMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactAudioMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactAudioMessage(ctx, req.(*SendContactAudioMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func (x *contactSvcSendContactTextMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
-func _ContactSvc_SendContactVideoMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactVideoMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _ContactSvc_SendContactImageMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactImageMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactVideoMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactVideoMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactVideoMessage(ctx, req.(*SendContactVideoMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ContactSvcServer).SendContactImageMessage(m, &contactSvcSendContactImageMessageServer{stream})
 }
 
-func _ContactSvc_SendContactFileMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendContactFileMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+type ContactSvc_SendContactImageMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
+}
+
+type contactSvcSendContactImageMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcSendContactImageMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ContactSvc_SendContactVoiceMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactVoiceMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ContactSvcServer).SendContactFileMessage(ctx, in)
+	return srv.(ContactSvcServer).SendContactVoiceMessage(m, &contactSvcSendContactVoiceMessageServer{stream})
+}
+
+type ContactSvc_SendContactVoiceMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
+}
+
+type contactSvcSendContactVoiceMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcSendContactVoiceMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ContactSvc_SendContactAudioMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactAudioMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ContactSvc_SendContactFileMessage_FullMethodName,
+	return srv.(ContactSvcServer).SendContactAudioMessage(m, &contactSvcSendContactAudioMessageServer{stream})
+}
+
+type ContactSvc_SendContactAudioMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
+}
+
+type contactSvcSendContactAudioMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcSendContactAudioMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ContactSvc_SendContactVideoMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactVideoMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactSvcServer).SendContactFileMessage(ctx, req.(*SendContactFileMessageRequest))
+	return srv.(ContactSvcServer).SendContactVideoMessage(m, &contactSvcSendContactVideoMessageServer{stream})
+}
+
+type ContactSvc_SendContactVideoMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
+}
+
+type contactSvcSendContactVideoMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcSendContactVideoMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ContactSvc_SendContactFileMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendContactFileMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ContactSvcServer).SendContactFileMessage(m, &contactSvcSendContactFileMessageServer{stream})
+}
+
+type ContactSvc_SendContactFileMessageServer interface {
+	Send(*SendContactMessageReply) error
+	grpc.ServerStream
+}
+
+type contactSvcSendContactFileMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *contactSvcSendContactFileMessageServer) Send(m *SendContactMessageReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // ContactSvc_ServiceDesc is the grpc.ServiceDesc for ContactSvc service.
@@ -1053,35 +1209,41 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ApplyAddContact",
 			Handler:    _ContactSvc_ApplyAddContact_Handler,
 		},
-		{
-			MethodName: "SendContactTextMessage",
-			Handler:    _ContactSvc_SendContactTextMessage_Handler,
-		},
-		{
-			MethodName: "SendContactImageMessage",
-			Handler:    _ContactSvc_SendContactImageMessage_Handler,
-		},
-		{
-			MethodName: "SendContactVoiceMessage",
-			Handler:    _ContactSvc_SendContactVoiceMessage_Handler,
-		},
-		{
-			MethodName: "SendContactAudioMessage",
-			Handler:    _ContactSvc_SendContactAudioMessage_Handler,
-		},
-		{
-			MethodName: "SendContactVideoMessage",
-			Handler:    _ContactSvc_SendContactVideoMessage_Handler,
-		},
-		{
-			MethodName: "SendContactFileMessage",
-			Handler:    _ContactSvc_SendContactFileMessage_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetNearbyPeers",
 			Handler:       _ContactSvc_GetNearbyPeers_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactTextMessage",
+			Handler:       _ContactSvc_SendContactTextMessage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactImageMessage",
+			Handler:       _ContactSvc_SendContactImageMessage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactVoiceMessage",
+			Handler:       _ContactSvc_SendContactVoiceMessage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactAudioMessage",
+			Handler:       _ContactSvc_SendContactAudioMessage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactVideoMessage",
+			Handler:       _ContactSvc_SendContactVideoMessage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SendContactFileMessage",
+			Handler:       _ContactSvc_SendContactFileMessage_Handler,
 			ServerStreams: true,
 		},
 	},

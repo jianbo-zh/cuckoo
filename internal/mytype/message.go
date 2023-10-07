@@ -8,3 +8,11 @@ const (
 	VideoMsgType string = "video"
 	FileMsgType  string = "file"
 )
+
+type MessageState string
+
+const (
+	MessageStateSending MessageState = "sending"
+	MessageStateSuccess MessageState = "success"
+	MessageStateFail    MessageState = "fail"
+)
