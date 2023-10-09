@@ -127,7 +127,25 @@ func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string
 	return &msg, nil
 }
 
-func (m *MessageDS) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
+func (m *MessageDS) GetCoreMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.ContactMessage_CoreMessage, error) {
+	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("m.Get error: %w", err)
+	}
+
+	var msg pb.ContactMessage
+	err = proto.Unmarshal(val, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+
+	} else if msg.CoreMessage == nil {
+		return nil, fmt.Errorf("msg.RawMessage nil")
+	}
+
+	return msg.CoreMessage, nil
+}
+
+func (m *MessageDS) UpdateMessageSendState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
 
 	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 	if err != nil {
@@ -141,9 +159,9 @@ func (m *MessageDS) UpdateMessageState(ctx context.Context, peerID peer.ID, msgI
 	}
 
 	if isSucc {
-		msg.State = pb.ContactMessage_Success
+		msg.SendState = pb.ContactMessage_SendSucc
 	} else {
-		msg.State = pb.ContactMessage_Fail
+		msg.SendState = pb.ContactMessage_SendFail
 	}
 
 	bs, err := proto.Marshal(&msg)

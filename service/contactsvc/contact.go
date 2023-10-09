@@ -24,7 +24,8 @@ type ContactSvc struct {
 	contactProto *contactproto.ContactProto
 
 	emitters struct {
-		evtUploadResource event.Emitter
+		evtUploadResource          event.Emitter
+		evtRecordSessionAttachment event.Emitter
 	}
 }
 
@@ -42,8 +43,12 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 		return nil, fmt.Errorf("contactmsgproto.NewMessageSvc error: %w", err)
 	}
 
-	if svc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtUploadResource{}); err != nil {
-		return nil, fmt.Errorf("set send resource request emitter error: %v", err)
+	if svc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtSendResource{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	}
+
+	if svc.emitters.evtRecordSessionAttachment, err = ebus.Emitter(&myevent.EvtRecordSessionAttachment{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
 	return svc, nil

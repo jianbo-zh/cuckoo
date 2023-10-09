@@ -2853,6 +2853,96 @@ var ConfigSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	FileSvc_ConvertFileToResource_FullMethodName = "/chat.FileSvc/ConvertFileToResource"
+)
+
+// FileSvcClient is the client API for FileSvc service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type FileSvcClient interface {
+	ConvertFileToResource(ctx context.Context, in *ConvertFileToResourceRequest, opts ...grpc.CallOption) (*ConvertFileToResourceReply, error)
+}
+
+type fileSvcClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewFileSvcClient(cc grpc.ClientConnInterface) FileSvcClient {
+	return &fileSvcClient{cc}
+}
+
+func (c *fileSvcClient) ConvertFileToResource(ctx context.Context, in *ConvertFileToResourceRequest, opts ...grpc.CallOption) (*ConvertFileToResourceReply, error) {
+	out := new(ConvertFileToResourceReply)
+	err := c.cc.Invoke(ctx, FileSvc_ConvertFileToResource_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FileSvcServer is the server API for FileSvc service.
+// All implementations must embed UnimplementedFileSvcServer
+// for forward compatibility
+type FileSvcServer interface {
+	ConvertFileToResource(context.Context, *ConvertFileToResourceRequest) (*ConvertFileToResourceReply, error)
+	mustEmbedUnimplementedFileSvcServer()
+}
+
+// UnimplementedFileSvcServer must be embedded to have forward compatible implementations.
+type UnimplementedFileSvcServer struct {
+}
+
+func (UnimplementedFileSvcServer) ConvertFileToResource(context.Context, *ConvertFileToResourceRequest) (*ConvertFileToResourceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConvertFileToResource not implemented")
+}
+func (UnimplementedFileSvcServer) mustEmbedUnimplementedFileSvcServer() {}
+
+// UnsafeFileSvcServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to FileSvcServer will
+// result in compilation errors.
+type UnsafeFileSvcServer interface {
+	mustEmbedUnimplementedFileSvcServer()
+}
+
+func RegisterFileSvcServer(s grpc.ServiceRegistrar, srv FileSvcServer) {
+	s.RegisterService(&FileSvc_ServiceDesc, srv)
+}
+
+func _FileSvc_ConvertFileToResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConvertFileToResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).ConvertFileToResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_ConvertFileToResource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).ConvertFileToResource(ctx, req.(*ConvertFileToResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// FileSvc_ServiceDesc is the grpc.ServiceDesc for FileSvc service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var FileSvc_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "chat.FileSvc",
+	HandlerType: (*FileSvcServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ConvertFileToResource",
+			Handler:    _FileSvc_ConvertFileToResource_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "bind/grpc/proto/chat.proto",
+}
+
+const (
 	SubscribeSvc_SubscribeCommonEvent_FullMethodName = "/chat.SubscribeSvc/SubscribeCommonEvent"
 )
 

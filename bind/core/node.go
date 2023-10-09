@@ -47,7 +47,7 @@ func StartNode(config *NodeConfig) error {
 		return fmt.Errorf("node is started")
 	}
 
-	cuckooConf, err := cuckoo.LoadConfig(config.dataDir, config.resourceDir)
+	cuckooConf, err := cuckoo.LoadConfig(config.dataDir, config.resourceDir, config.fileDir, config.tmpDir)
 	if err != nil {
 		return fmt.Errorf("cuckoo.LoadConfig: %s", err.Error())
 	}

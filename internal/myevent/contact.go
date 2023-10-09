@@ -5,6 +5,6 @@ import (
 )
 
 // 开启peer消息同步
-type EvtSyncPeerMessage struct {
+type EvtSyncContactMessage struct {
 	ContactID peer.ID
 }

@@ -3,21 +3,30 @@ syntax = "proto3";
 package peermsg.pb;
 
 message ContactMessage {
-    enum State {
+
+    enum SendState {
         Sending = 0;
-        Success = 1;
-        Fail = 2;
+        SendSucc = 1;
+        SendFail = 2;
     }
-    string  id = 1;
-    bytes   fromPeerId = 2;
-    bytes   toPeerId = 3;
-    string  msgType = 4;
-    string  mimeType = 5;
-    bytes   payload = 6;
-    State   state = 7;
-    int64   timestamp = 8;
-    uint64  lamportime = 9;
-    bytes   signature = 10;
+
+    message CoreMessage {
+        string  id = 1;
+        bytes   fromPeerId = 2;
+        bytes   toPeerId = 3;
+        string  msgType = 4;
+        string  mimeType = 5;
+        bytes   payload = 6;
+        uint64  lamportime = 7;
+        int64   timestamp = 8;
+        bytes   signature = 9;
+    }
+
+    string      id = 1;
+    CoreMessage coreMessage = 2;
+    SendState   sendState = 3;
+    int64       createTime = 4;
+    int64       updateTime = 5;
 }
 
 message ContactMessageAck { 

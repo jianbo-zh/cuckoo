@@ -66,7 +66,7 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtDownloadFile), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtUploadResource)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtRecordSessionAttachment), new(myevent.EvtDownloadFile), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
 	}
@@ -156,45 +156,57 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	return nil
 }
 
-func (f *FileProto) CalcFileID(ctx context.Context, filePath string) (*mytype.FileID, error) {
+func (d *FileProto) CopyFileToResource(ctx context.Context, srcFile string) (string, error) {
 	// 计算hash
-	ofile, err := os.Open(filePath)
+	oSrcFile, err := os.Open(srcFile)
 	if err != nil {
-		return nil, fmt.Errorf("os open file error: %w", err)
+		return "", fmt.Errorf("os open file error: %w", err)
 	}
-	defer ofile.Close()
+	defer oSrcFile.Close()
 
-	fi, err := ofile.Stat()
+	fi, err := oSrcFile.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("file state error: %w", err)
+		return "", fmt.Errorf("file state error: %w", err)
 
 	} else if fi.IsDir() {
-		return nil, fmt.Errorf("file is dir, need file")
+		return "", fmt.Errorf("file is dir, need file")
+	}
+
+	tmpFile := filepath.Join(d.conf.TmpDir, fmt.Sprintf("%d.tmp", time.Now().Unix()))
+
+	oTmpFile, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_RDWR, 0755)
+	if err != nil {
+		return "", fmt.Errorf("os.OpenFile error: %w", err)
 	}
 
 	hashSum := md5.New()
 
-	size, err := io.Copy(hashSum, ofile)
+	multiWriter := io.MultiWriter(oTmpFile, hashSum)
+
+	size, err := io.Copy(multiWriter, oSrcFile)
 	if err != nil {
-		return nil, fmt.Errorf("io copy calc file hash error: %w", err)
+		oTmpFile.Close()
+		os.Remove(tmpFile)
+		return "", fmt.Errorf("io copy calc file hash error: %w", err)
 	}
+	oTmpFile.Close()
 
 	if fi.Size() != size {
-		return nil, fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
+		os.Remove(tmpFile)
+		return "", fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
 	}
 
-	fileHash := mytype.FileID{
+	fileID := mytype.FileID{
 		HashAlgo:  "md5",
 		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
+		Extension: filepath.Ext(srcFile),
 	}
 
-	// 存储结果
-	err = f.data.SaveFile(ctx, filePath, fi.Size(), fileHash.HashAlgo, fileHash.HashValue)
-	if err != nil {
-		return nil, fmt.Errorf("data save file error: %w", err)
+	if err := os.Rename(tmpFile, filepath.Join(d.conf.ResourceDir, fileID.String())); err != nil {
+		return "", fmt.Errorf("os.Rename error: %w", err)
 	}
 
-	return &fileHash, nil
+	return fileID.String(), nil
 }
 
 func (d *FileProto) downloadFile(peerIDs []peer.ID, fName string, fSize int64, hashAlgo string, hashValue string) {
@@ -390,3 +402,44 @@ func (d *FileProto) downloadPart(wg *sync.WaitGroup, peerID peer.ID, hashAlgo st
 		ofile.Close()
 	}
 }
+
+// func (f *FileProto) CalcFileID(ctx context.Context, filePath string) (*mytype.FileID, error) {
+// 	// 计算hash
+// 	ofile, err := os.Open(filePath)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("os open file error: %w", err)
+// 	}
+// 	defer ofile.Close()
+
+// 	fi, err := ofile.Stat()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("file state error: %w", err)
+
+// 	} else if fi.IsDir() {
+// 		return nil, fmt.Errorf("file is dir, need file")
+// 	}
+
+// 	hashSum := md5.New()
+
+// 	size, err := io.Copy(hashSum, ofile)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("io copy calc file hash error: %w", err)
+// 	}
+
+// 	if fi.Size() != size {
+// 		return nil, fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
+// 	}
+
+// 	fileHash := mytype.FileID{
+// 		HashAlgo:  "md5",
+// 		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
+// 	}
+
+// 	// 存储结果
+// 	err = f.data.SaveFile(ctx, filePath, fi.Size(), fileHash.HashAlgo, fileHash.HashValue)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("data save file error: %w", err)
+// 	}
+
+// 	return &fileHash, nil
+// }

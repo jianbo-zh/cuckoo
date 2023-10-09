@@ -8,11 +8,11 @@ import (
 
 func convertMessage(msg *pb.ContactMessage) *mytype.ContactMessage {
 	msgState := mytype.MessageStateSending
-	switch msg.State {
-	case pb.ContactMessage_Success:
+	switch msg.SendState {
+	case pb.ContactMessage_SendSucc:
 		msgState = mytype.MessageStateSuccess
 
-	case pb.ContactMessage_Fail:
+	case pb.ContactMessage_SendFail:
 		msgState = mytype.MessageStateFail
 
 	default:
@@ -21,13 +21,12 @@ func convertMessage(msg *pb.ContactMessage) *mytype.ContactMessage {
 
 	return &mytype.ContactMessage{
 		ID:         msg.Id,
-		MsgType:    msg.MsgType,
-		MimeType:   msg.MimeType,
-		FromPeerID: peer.ID(msg.FromPeerId),
-		ToPeerID:   peer.ID(msg.ToPeerId),
-		Payload:    msg.Payload,
+		MsgType:    msg.CoreMessage.MsgType,
+		MimeType:   msg.CoreMessage.MimeType,
+		FromPeerID: peer.ID(msg.CoreMessage.FromPeerId),
+		ToPeerID:   peer.ID(msg.CoreMessage.ToPeerId),
+		Payload:    msg.CoreMessage.Payload,
 		State:      msgState,
-		Timestamp:  msg.Timestamp,
-		Lamportime: msg.Lamportime,
+		Timestamp:  msg.CreateTime,
 	}
 }

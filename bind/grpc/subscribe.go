@@ -43,7 +43,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 		return fmt.Errorf("cuckoo.GetEbus error: %w", err)
 	}
 
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtReceivePeerMessage), new(myevent.EvtReceiveGroupMessage), new(myevent.EvtOnlineStateDiscover)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtReceiveContactMessage), new(myevent.EvtReceiveGroupMessage), new(myevent.EvtOnlineStateDiscover)})
 	if err != nil {
 		return fmt.Errorf("ebus.Subscribe error: %w", err)
 	}
@@ -51,7 +51,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 
 	for e := range sub.Out() {
 		switch evt := e.(type) {
-		case myevent.EvtReceivePeerMessage:
+		case myevent.EvtReceiveContactMessage:
 			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadPeerMessage{
 				MsgId:      evt.MsgID,
 				FromPeerId: evt.FromPeerID.String(),

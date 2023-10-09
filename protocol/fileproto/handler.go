@@ -2,10 +2,12 @@ package fileproto
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path"
 
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/filepb"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-msgio/pbio"
@@ -19,6 +21,7 @@ func (f *FileProto) fileQueryHandler(stream network.Stream) {
 // resourceUploadIDHandler 资源上传处理器
 func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 	fmt.Println("resourceUploadIDHandler start")
+	remotePeerID := stream.Conn().RemotePeer()
 
 	defer stream.Close()
 
@@ -88,6 +91,14 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 		return
 	}
 	fmt.Println("rename file finish")
+
+	// 记录关联资源
+	sessionID := mytype.ContactSessionID(remotePeerID)
+	if err := f.data.SaveSessionResource(context.Background(), sessionID.String(), reqMsg.FileId); err != nil {
+		log.Errorf("data.SaveSessionResource error: %w", err)
+		stream.Reset()
+		return
+	}
 
 	// 回复接收成功
 	if err := wt.WriteMsg(&pb.FileUploadResult{

@@ -25,12 +25,12 @@ message FileChunkInfo {
     int64   chunkSize = 2;
 }
 
-message File {
-    string  hashAlgo = 1;
-    string  hashValue = 2;
-    string  filePath = 3;
-    int64   fileSize = 4;
-}
+// message File {
+//     string  hashAlgo = 1;
+//     string  hashValue = 2;
+//     string  filePath = 3;
+//     int64   fileSize = 4;
+// }
 
 message FileUploadRequest {
     string groupId = 1;
@@ -54,4 +54,44 @@ message DownloadResourceRequest {
 
 message DownloadResourceReply {
     string error = 1;
+}
+
+enum FileType {
+    Other = 0;
+    Text = 1;
+    Image = 2;
+    Voice = 3;
+    Audio = 4;
+    Video = 5;
+  }
+
+message FileInfo {
+    string      id = 1;
+    FileType    fileType = 2;
+    string      mimeType = 3;
+    string      fileName = 5;
+    int64       fileSize = 6;
+    string      filePath = 7;
+    bytes       metadata = 4;
+}
+
+message OtherFileMetadata {}
+
+message TextFileMetadata {}
+
+message ImageFileMetadata {
+    int32  width = 1;
+    int32  height = 2;
+}
+
+message VoiceFileMetadata {
+    int32   duration = 1;
+}
+
+message AudioFileMetadata {
+    int32  duration = 1;
+}
+
+message VideoFileMetadata {
+    int32  duration = 1;
 }

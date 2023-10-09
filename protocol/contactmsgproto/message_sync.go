@@ -15,11 +15,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (p *PeerMessageProto) goSync(contactID peer.ID) {
+func (p *PeerMessageProto) goSyncMessage(contactID peer.ID) {
 	log.Debugln("start sync contact: ", contactID.String())
 
 	ctx := context.Background()
-	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, SYNC_ID)
+	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, MSG_SYNC_ID)
 	if err != nil {
 		log.Errorf("host sync new stream error: %v", err)
 		return
@@ -56,7 +56,7 @@ func (p *PeerMessageProto) goSync(contactID peer.ID) {
 	log.Debugln("end sync contact: ", contactID.String())
 }
 
-func (p *PeerMessageProto) SyncHandler(stream network.Stream) {
+func (p *PeerMessageProto) syncIDHandler(stream network.Stream) {
 	log.Infoln("handle sync contact")
 
 	peerID := stream.Conn().RemotePeer()
@@ -321,13 +321,13 @@ func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.Contac
 	return nil
 }
 
-func (p *PeerMessageProto) handleSyncPushMsg(peerID peer.ID, syncmsg *pb.ContactSyncMessage) error {
-	var msg pb.ContactMessage
-	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
+func (p *PeerMessageProto) handleSyncPushMsg(contactID peer.ID, syncmsg *pb.ContactSyncMessage) error {
+	var coreMsg pb.ContactMessage_CoreMessage
+	if err := proto.Unmarshal(syncmsg.Payload, &coreMsg); err != nil {
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
-	if err := p.saveMessage(context.Background(), peerID, &msg); err != nil {
+	if err := p.saveCoreMessage(context.Background(), contactID, &coreMsg); err != nil {
 		return fmt.Errorf("data save msg error: %w", err)
 	}
 	return nil

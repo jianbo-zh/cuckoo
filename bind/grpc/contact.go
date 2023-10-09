@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
@@ -573,6 +574,7 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 	return reply, nil
 }
 
+// SendContactTextMessage 发送文本
 func (c *ContactSvc) SendContactTextMessage(request *proto.SendContactTextMessageRequest, server proto.ContactSvc_SendContactTextMessageServer) (err error) {
 
 	log.Infoln("SendContactTextMessage request: ", request.String())
@@ -585,9 +587,10 @@ func (c *ContactSvc) SendContactTextMessage(request *proto.SendContactTextMessag
 		}
 	}()
 
-	return c.sendContactMessage(context.Background(), server, mytype.TextMsgType, request.ContactId, "text/plain", []byte(request.Content), nil)
+	return c.sendContactMessage(context.Background(), server, mytype.TextMsgType, request.ContactId, "text/plain", []byte(request.Content), "", nil)
 }
 
+// SendContactImageMessage 发送图片
 func (c *ContactSvc) SendContactImageMessage(request *proto.SendContactImageMessageRequest, server proto.ContactSvc_SendContactImageMessageServer) (err error) {
 
 	log.Infoln("SendContactImageMessage request: ", request.String())
@@ -612,9 +615,27 @@ func (c *ContactSvc) SendContactImageMessage(request *proto.SendContactImageMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, []string{request.ThumbnailId})
+	metadata, err := json.Marshal(mytype.ImageFileMetadata{
+		Width:  request.Width,
+		Height: request.Height,
+	})
+	if err != nil {
+		return fmt.Errorf("json.Marshal error: %w", err)
+	}
+
+	file := mytype.FileInfo{
+		FileID:    request.ImageId,
+		FileName:  request.Name,
+		FileSize:  request.Size,
+		FileType:  mytype.ImageFile,
+		MimeType:  request.MimeType,
+		Extension: metadata,
+	}
+
+	return c.sendContactMessage(context.Background(), server, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, request.ThumbnailId, &file)
 }
 
+// SendContactVoiceMessage 发送语音
 func (c *ContactSvc) SendContactVoiceMessage(request *proto.SendContactVoiceMessageRequest, server proto.ContactSvc_SendContactVoiceMessageServer) (err error) {
 
 	log.Infoln("SendContactVoiceMessage request: ", request.String())
@@ -635,9 +656,10 @@ func (c *ContactSvc) SendContactVoiceMessage(request *proto.SendContactVoiceMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.VoiceMsgType, request.ContactId, request.MimeType, payload, []string{request.VoiceId})
+	return c.sendContactMessage(context.Background(), server, mytype.VoiceMsgType, request.ContactId, request.MimeType, payload, request.VoiceId, nil)
 }
 
+// SendContactAudioMessage 发送音频
 func (c *ContactSvc) SendContactAudioMessage(request *proto.SendContactAudioMessageRequest, server proto.ContactSvc_SendContactAudioMessageServer) (err error) {
 
 	log.Infoln("SendContactAudioMessage request: ", request.String())
@@ -659,9 +681,26 @@ func (c *ContactSvc) SendContactAudioMessage(request *proto.SendContactAudioMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.AudioMsgType, request.ContactId, request.MimeType, payload, nil)
+	metadata, err := json.Marshal(mytype.AudioFileMetadata{
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return fmt.Errorf("json.Marshal error: %w", err)
+	}
+
+	file := mytype.FileInfo{
+		FileID:    request.AudioId,
+		FileName:  request.Name,
+		FileSize:  request.Size,
+		FileType:  mytype.AudioFile,
+		MimeType:  request.MimeType,
+		Extension: metadata,
+	}
+
+	return c.sendContactMessage(context.Background(), server, mytype.AudioMsgType, request.ContactId, request.MimeType, payload, "", &file)
 }
 
+// SendContactVideoMessage 发送视频
 func (c *ContactSvc) SendContactVideoMessage(request *proto.SendContactVideoMessageRequest, server proto.ContactSvc_SendContactVideoMessageServer) (err error) {
 
 	log.Infoln("SendContactVideoMessage request: ", request.String())
@@ -683,9 +722,26 @@ func (c *ContactSvc) SendContactVideoMessage(request *proto.SendContactVideoMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.VideoMsgType, request.ContactId, request.MimeType, payload, nil)
+	metadata, err := json.Marshal(mytype.VideoFileMetadata{
+		Duration: request.Duration,
+	})
+	if err != nil {
+		return fmt.Errorf("json.Marshal error: %w", err)
+	}
+
+	file := mytype.FileInfo{
+		FileID:    request.VideoId,
+		FileName:  request.Name,
+		FileSize:  request.Size,
+		FileType:  mytype.VideoFile,
+		MimeType:  request.MimeType,
+		Extension: metadata,
+	}
+
+	return c.sendContactMessage(context.Background(), server, mytype.VideoMsgType, request.ContactId, request.MimeType, payload, "", &file)
 }
 
+// SendContactFileMessage 发送文件
 func (c *ContactSvc) SendContactFileMessage(request *proto.SendContactFileMessageRequest, server proto.ContactSvc_SendContactFileMessageServer) (err error) {
 
 	log.Infoln("SendContactFileMessage request: ", request.String())
@@ -706,10 +762,25 @@ func (c *ContactSvc) SendContactFileMessage(request *proto.SendContactFileMessag
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.FileMsgType, request.ContactId, request.MimeType, payload, nil)
+	metadata, err := json.Marshal(mytype.OtherFileMetadata{})
+	if err != nil {
+		return fmt.Errorf("json.Marshal error: %w", err)
+	}
+
+	file := mytype.FileInfo{
+		FileID:    request.FileId,
+		FileName:  request.Name,
+		FileSize:  request.Size,
+		FileType:  mytype.OtherFile,
+		MimeType:  request.MimeType,
+		Extension: metadata,
+	}
+
+	return c.sendContactMessage(context.Background(), server, mytype.FileMsgType, request.ContactId, request.MimeType, payload, "", &file)
 }
 
-func (c *ContactSvc) sendContactMessage(ctx context.Context, server proto.ContactSvc_SendContactTextMessageServer, msgType string, contactID string, mimeType string, payload []byte, attachments []string) error {
+func (c *ContactSvc) sendContactMessage(ctx context.Context, server proto.ContactSvc_SendContactTextMessageServer,
+	msgType string, contactID string, mimeType string, payload []byte, resourceID string, file *mytype.FileInfo) error {
 
 	cuckoo, err := c.getter.GetCuckoo()
 	if err != nil {
@@ -736,15 +807,13 @@ func (c *ContactSvc) sendContactMessage(ctx context.Context, server proto.Contac
 		return fmt.Errorf("get account error: %w", err)
 	}
 
-	resultCh, err := contactSvc.SendMessage(ctx, peerID, msgType, mimeType, payload, attachments)
+	resultCh, err := contactSvc.SendMessage(ctx, peerID, msgType, mimeType, payload, resourceID, file)
 	if err != nil {
 		return fmt.Errorf("svc.SendMessage error: %w", err)
 	}
 
 	i := 0
 	for msg := range resultCh {
-		fmt.Printf("msg111: %v", msg)
-		fmt.Println("msg222: ", encodeMessageState(msg.State).String())
 		i++
 		reply := proto.SendContactMessageReply{
 			Result: &proto.Result{

@@ -28,7 +28,6 @@ type ContactMessage struct {
 	Payload    []byte
 	State      MessageState
 	Timestamp  int64
-	Lamportime uint64
 }
 
 type ContactGetter interface {

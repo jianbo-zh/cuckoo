@@ -20,6 +20,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type FileType int32
+
+const (
+	FileType_Other FileType = 0
+	FileType_Text  FileType = 1
+	FileType_Image FileType = 2
+	FileType_Voice FileType = 3
+	FileType_Audio FileType = 4
+	FileType_Video FileType = 5
+)
+
+// Enum value maps for FileType.
+var (
+	FileType_name = map[int32]string{
+		0: "Other",
+		1: "Text",
+		2: "Image",
+		3: "Voice",
+		4: "Audio",
+		5: "Video",
+	}
+	FileType_value = map[string]int32{
+		"Other": 0,
+		"Text":  1,
+		"Image": 2,
+		"Voice": 3,
+		"Audio": 4,
+		"Video": 5,
+	}
+)
+
+func (x FileType) Enum() *FileType {
+	p := new(FileType)
+	*p = x
+	return p
+}
+
+func (x FileType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FileType) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_file_proto_enumTypes[0].Descriptor()
+}
+
+func (FileType) Type() protoreflect.EnumType {
+	return &file_proto_file_proto_enumTypes[0]
+}
+
+func (x FileType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FileType.Descriptor instead.
+func (FileType) EnumDescriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{0}
+}
+
 type FileQuery struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -264,77 +322,6 @@ func (x *FileChunkInfo) GetChunkSize() int64 {
 	return 0
 }
 
-type File struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	HashAlgo  string `protobuf:"bytes,1,opt,name=hashAlgo,proto3" json:"hashAlgo,omitempty"`
-	HashValue string `protobuf:"bytes,2,opt,name=hashValue,proto3" json:"hashValue,omitempty"`
-	FilePath  string `protobuf:"bytes,3,opt,name=filePath,proto3" json:"filePath,omitempty"`
-	FileSize  int64  `protobuf:"varint,4,opt,name=fileSize,proto3" json:"fileSize,omitempty"`
-}
-
-func (x *File) Reset() {
-	*x = File{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *File) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*File) ProtoMessage() {}
-
-func (x *File) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use File.ProtoReflect.Descriptor instead.
-func (*File) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *File) GetHashAlgo() string {
-	if x != nil {
-		return x.HashAlgo
-	}
-	return ""
-}
-
-func (x *File) GetHashValue() string {
-	if x != nil {
-		return x.HashValue
-	}
-	return ""
-}
-
-func (x *File) GetFilePath() string {
-	if x != nil {
-		return x.FilePath
-	}
-	return ""
-}
-
-func (x *File) GetFileSize() int64 {
-	if x != nil {
-		return x.FileSize
-	}
-	return 0
-}
-
 type FileUploadRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -348,7 +335,7 @@ type FileUploadRequest struct {
 func (x *FileUploadRequest) Reset() {
 	*x = FileUploadRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[5]
+		mi := &file_proto_file_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -361,7 +348,7 @@ func (x *FileUploadRequest) String() string {
 func (*FileUploadRequest) ProtoMessage() {}
 
 func (x *FileUploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[5]
+	mi := &file_proto_file_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +361,7 @@ func (x *FileUploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileUploadRequest.ProtoReflect.Descriptor instead.
 func (*FileUploadRequest) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{5}
+	return file_proto_file_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *FileUploadRequest) GetGroupId() string {
@@ -409,7 +396,7 @@ type FileUploadReply struct {
 func (x *FileUploadReply) Reset() {
 	*x = FileUploadReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[6]
+		mi := &file_proto_file_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -422,7 +409,7 @@ func (x *FileUploadReply) String() string {
 func (*FileUploadReply) ProtoMessage() {}
 
 func (x *FileUploadReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[6]
+	mi := &file_proto_file_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +422,7 @@ func (x *FileUploadReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileUploadReply.ProtoReflect.Descriptor instead.
 func (*FileUploadReply) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{6}
+	return file_proto_file_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FileUploadReply) GetExists() bool {
@@ -458,7 +445,7 @@ type FileUploadResult struct {
 func (x *FileUploadResult) Reset() {
 	*x = FileUploadResult{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[7]
+		mi := &file_proto_file_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -471,7 +458,7 @@ func (x *FileUploadResult) String() string {
 func (*FileUploadResult) ProtoMessage() {}
 
 func (x *FileUploadResult) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[7]
+	mi := &file_proto_file_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -484,7 +471,7 @@ func (x *FileUploadResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileUploadResult.ProtoReflect.Descriptor instead.
 func (*FileUploadResult) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{7}
+	return file_proto_file_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FileUploadResult) GetFileId() string {
@@ -519,7 +506,7 @@ type DownloadResourceRequest struct {
 func (x *DownloadResourceRequest) Reset() {
 	*x = DownloadResourceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[8]
+		mi := &file_proto_file_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -532,7 +519,7 @@ func (x *DownloadResourceRequest) String() string {
 func (*DownloadResourceRequest) ProtoMessage() {}
 
 func (x *DownloadResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[8]
+	mi := &file_proto_file_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -545,7 +532,7 @@ func (x *DownloadResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadResourceRequest.ProtoReflect.Descriptor instead.
 func (*DownloadResourceRequest) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{8}
+	return file_proto_file_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DownloadResourceRequest) GetFileId() string {
@@ -566,7 +553,7 @@ type DownloadResourceReply struct {
 func (x *DownloadResourceReply) Reset() {
 	*x = DownloadResourceReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_file_proto_msgTypes[9]
+		mi := &file_proto_file_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -579,7 +566,7 @@ func (x *DownloadResourceReply) String() string {
 func (*DownloadResourceReply) ProtoMessage() {}
 
 func (x *DownloadResourceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_file_proto_msgTypes[9]
+	mi := &file_proto_file_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +579,7 @@ func (x *DownloadResourceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadResourceReply.ProtoReflect.Descriptor instead.
 func (*DownloadResourceReply) Descriptor() ([]byte, []int) {
-	return file_proto_file_proto_rawDescGZIP(), []int{9}
+	return file_proto_file_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DownloadResourceReply) GetError() string {
@@ -600,6 +587,373 @@ func (x *DownloadResourceReply) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+type FileInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id       string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	FileType FileType `protobuf:"varint,2,opt,name=fileType,proto3,enum=file.pb.FileType" json:"fileType,omitempty"`
+	MimeType string   `protobuf:"bytes,3,opt,name=mimeType,proto3" json:"mimeType,omitempty"`
+	FileName string   `protobuf:"bytes,5,opt,name=fileName,proto3" json:"fileName,omitempty"`
+	FileSize int64    `protobuf:"varint,6,opt,name=fileSize,proto3" json:"fileSize,omitempty"`
+	FilePath string   `protobuf:"bytes,7,opt,name=filePath,proto3" json:"filePath,omitempty"`
+	Metadata []byte   `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
+}
+
+func (x *FileInfo) Reset() {
+	*x = FileInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *FileInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileInfo) ProtoMessage() {}
+
+func (x *FileInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileInfo.ProtoReflect.Descriptor instead.
+func (*FileInfo) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *FileInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *FileInfo) GetFileType() FileType {
+	if x != nil {
+		return x.FileType
+	}
+	return FileType_Other
+}
+
+func (x *FileInfo) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *FileInfo) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *FileInfo) GetFileSize() int64 {
+	if x != nil {
+		return x.FileSize
+	}
+	return 0
+}
+
+func (x *FileInfo) GetFilePath() string {
+	if x != nil {
+		return x.FilePath
+	}
+	return ""
+}
+
+func (x *FileInfo) GetMetadata() []byte {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+type OtherFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OtherFileMetadata) Reset() {
+	*x = OtherFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OtherFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OtherFileMetadata) ProtoMessage() {}
+
+func (x *OtherFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OtherFileMetadata.ProtoReflect.Descriptor instead.
+func (*OtherFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{10}
+}
+
+type TextFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *TextFileMetadata) Reset() {
+	*x = TextFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TextFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TextFileMetadata) ProtoMessage() {}
+
+func (x *TextFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TextFileMetadata.ProtoReflect.Descriptor instead.
+func (*TextFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{11}
+}
+
+type ImageFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Width  int32 `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
+	Height int32 `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (x *ImageFileMetadata) Reset() {
+	*x = ImageFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[12]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ImageFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageFileMetadata) ProtoMessage() {}
+
+func (x *ImageFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[12]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageFileMetadata.ProtoReflect.Descriptor instead.
+func (*ImageFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ImageFileMetadata) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *ImageFileMetadata) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+type VoiceFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Duration int32 `protobuf:"varint,1,opt,name=duration,proto3" json:"duration,omitempty"`
+}
+
+func (x *VoiceFileMetadata) Reset() {
+	*x = VoiceFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[13]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VoiceFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceFileMetadata) ProtoMessage() {}
+
+func (x *VoiceFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[13]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceFileMetadata.ProtoReflect.Descriptor instead.
+func (*VoiceFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *VoiceFileMetadata) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+type AudioFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Duration int32 `protobuf:"varint,1,opt,name=duration,proto3" json:"duration,omitempty"`
+}
+
+func (x *AudioFileMetadata) Reset() {
+	*x = AudioFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AudioFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AudioFileMetadata) ProtoMessage() {}
+
+func (x *AudioFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AudioFileMetadata.ProtoReflect.Descriptor instead.
+func (*AudioFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AudioFileMetadata) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+type VideoFileMetadata struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Duration int32 `protobuf:"varint,1,opt,name=duration,proto3" json:"duration,omitempty"`
+}
+
+func (x *VideoFileMetadata) Reset() {
+	*x = VideoFileMetadata{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_file_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VideoFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VideoFileMetadata) ProtoMessage() {}
+
+func (x *VideoFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_file_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VideoFileMetadata.ProtoReflect.Descriptor instead.
+func (*VideoFileMetadata) Descriptor() ([]byte, []int) {
+	return file_proto_file_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *VideoFileMetadata) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
 }
 
 var File_proto_file_proto protoreflect.FileDescriptor
@@ -631,36 +985,63 @@ var file_proto_file_proto_rawDesc = []byte{
 	0x75, 0x6e, 0x6b, 0x48, 0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63,
 	0x68, 0x75, 0x6e, 0x6b, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x68, 0x75, 0x6e,
 	0x6b, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x63, 0x68, 0x75,
-	0x6e, 0x6b, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x78, 0x0a, 0x04, 0x46, 0x69, 0x6c, 0x65, 0x12, 0x1a,
-	0x0a, 0x08, 0x68, 0x61, 0x73, 0x68, 0x41, 0x6c, 0x67, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x08, 0x68, 0x61, 0x73, 0x68, 0x41, 0x6c, 0x67, 0x6f, 0x12, 0x1c, 0x0a, 0x09, 0x68, 0x61,
-	0x73, 0x68, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x68,
-	0x61, 0x73, 0x68, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65,
-	0x50, 0x61, 0x74, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65,
-	0x50, 0x61, 0x74, 0x68, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65,
-	0x18, 0x04, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65,
-	0x22, 0x61, 0x0a, 0x11, 0x46, 0x69, 0x6c, 0x65, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x12,
-	0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53,
-	0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53,
-	0x69, 0x7a, 0x65, 0x22, 0x29, 0x0a, 0x0f, 0x46, 0x69, 0x6c, 0x65, 0x55, 0x70, 0x6c, 0x6f, 0x61,
-	0x64, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x78, 0x69, 0x73, 0x74, 0x73,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x65, 0x78, 0x69, 0x73, 0x74, 0x73, 0x22, 0x5e,
-	0x0a, 0x10, 0x46, 0x69, 0x6c, 0x65, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x73, 0x75,
-	0x6c, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69,
-	0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x66, 0x69,
-	0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x72, 0x72, 0x4d, 0x73, 0x67,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x72, 0x72, 0x4d, 0x73, 0x67, 0x22, 0x31,
-	0x0a, 0x17, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
-	0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c,
-	0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49,
-	0x64, 0x22, 0x2d, 0x0a, 0x15, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72,
-	0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x6b, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x61, 0x0a, 0x11, 0x46, 0x69, 0x6c, 0x65, 0x55, 0x70,
+	0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x67,
+	0x72, 0x6f, 0x75, 0x70, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x67, 0x72,
+	0x6f, 0x75, 0x70, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x1a, 0x0a,
+	0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x22, 0x29, 0x0a, 0x0f, 0x46, 0x69, 0x6c,
+	0x65, 0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x16, 0x0a, 0x06,
+	0x65, 0x78, 0x69, 0x73, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x65, 0x78,
+	0x69, 0x73, 0x74, 0x73, 0x22, 0x5e, 0x0a, 0x10, 0x46, 0x69, 0x6c, 0x65, 0x55, 0x70, 0x6c, 0x6f,
+	0x61, 0x64, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x65,
+	0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64,
+	0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x16, 0x0a, 0x06,
+	0x65, 0x72, 0x72, 0x4d, 0x73, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x72,
+	0x72, 0x4d, 0x73, 0x67, 0x22, 0x31, 0x0a, 0x17, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64,
+	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x16, 0x0a, 0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x06, 0x66, 0x69, 0x6c, 0x65, 0x49, 0x64, 0x22, 0x2d, 0x0a, 0x15, 0x44, 0x6f, 0x77, 0x6e, 0x6c,
+	0x6f, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x22, 0xd5, 0x01, 0x0a, 0x08, 0x46, 0x69, 0x6c, 0x65, 0x49,
+	0x6e, 0x66, 0x6f, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x02, 0x69, 0x64, 0x12, 0x2d, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x11, 0x2e, 0x66, 0x69, 0x6c, 0x65, 0x2e, 0x70, 0x62, 0x2e,
+	0x46, 0x69, 0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x6d, 0x69, 0x6d, 0x65, 0x54, 0x79, 0x70, 0x65, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6d, 0x69, 0x6d, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1a,
+	0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69,
+	0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x66, 0x69,
+	0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x50, 0x61,
+	0x74, 0x68, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x50, 0x61,
+	0x74, 0x68, 0x12, 0x1a, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0x13,
+	0x0a, 0x11, 0x4f, 0x74, 0x68, 0x65, 0x72, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64,
+	0x61, 0x74, 0x61, 0x22, 0x12, 0x0a, 0x10, 0x54, 0x65, 0x78, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x4d,
+	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0x41, 0x0a, 0x11, 0x49, 0x6d, 0x61, 0x67, 0x65,
+	0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x14, 0x0a, 0x05,
+	0x77, 0x69, 0x64, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x77, 0x69, 0x64,
+	0x74, 0x68, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x05, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x2f, 0x0a, 0x11, 0x56, 0x6f,
+	0x69, 0x63, 0x65, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12,
+	0x1a, 0x0a, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x05, 0x52, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x2f, 0x0a, 0x11, 0x41,
+	0x75, 0x64, 0x69, 0x6f, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x12, 0x1a, 0x0a, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x05, 0x52, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x2f, 0x0a, 0x11,
+	0x56, 0x69, 0x64, 0x65, 0x6f, 0x46, 0x69, 0x6c, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
+	0x61, 0x12, 0x1a, 0x0a, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x05, 0x52, 0x08, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2a, 0x4b, 0x0a,
+	0x08, 0x46, 0x69, 0x6c, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x4f, 0x74, 0x68,
+	0x65, 0x72, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x65, 0x78, 0x74, 0x10, 0x01, 0x12, 0x09,
+	0x0a, 0x05, 0x49, 0x6d, 0x61, 0x67, 0x65, 0x10, 0x02, 0x12, 0x09, 0x0a, 0x05, 0x56, 0x6f, 0x69,
+	0x63, 0x65, 0x10, 0x03, 0x12, 0x09, 0x0a, 0x05, 0x41, 0x75, 0x64, 0x69, 0x6f, 0x10, 0x04, 0x12,
+	0x09, 0x0a, 0x05, 0x56, 0x69, 0x64, 0x65, 0x6f, 0x10, 0x05, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -675,25 +1056,34 @@ func file_proto_file_proto_rawDescGZIP() []byte {
 	return file_proto_file_proto_rawDescData
 }
 
-var file_proto_file_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_proto_file_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_file_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_proto_file_proto_goTypes = []interface{}{
-	(*FileQuery)(nil),               // 0: file.pb.FileQuery
-	(*FileQueryResult)(nil),         // 1: file.pb.FileQueryResult
-	(*FileDownloadChunk)(nil),       // 2: file.pb.FileDownloadChunk
-	(*FileChunkInfo)(nil),           // 3: file.pb.FileChunkInfo
-	(*File)(nil),                    // 4: file.pb.File
+	(FileType)(0),                   // 0: file.pb.FileType
+	(*FileQuery)(nil),               // 1: file.pb.FileQuery
+	(*FileQueryResult)(nil),         // 2: file.pb.FileQueryResult
+	(*FileDownloadChunk)(nil),       // 3: file.pb.FileDownloadChunk
+	(*FileChunkInfo)(nil),           // 4: file.pb.FileChunkInfo
 	(*FileUploadRequest)(nil),       // 5: file.pb.FileUploadRequest
 	(*FileUploadReply)(nil),         // 6: file.pb.FileUploadReply
 	(*FileUploadResult)(nil),        // 7: file.pb.FileUploadResult
 	(*DownloadResourceRequest)(nil), // 8: file.pb.DownloadResourceRequest
 	(*DownloadResourceReply)(nil),   // 9: file.pb.DownloadResourceReply
+	(*FileInfo)(nil),                // 10: file.pb.FileInfo
+	(*OtherFileMetadata)(nil),       // 11: file.pb.OtherFileMetadata
+	(*TextFileMetadata)(nil),        // 12: file.pb.TextFileMetadata
+	(*ImageFileMetadata)(nil),       // 13: file.pb.ImageFileMetadata
+	(*VoiceFileMetadata)(nil),       // 14: file.pb.VoiceFileMetadata
+	(*AudioFileMetadata)(nil),       // 15: file.pb.AudioFileMetadata
+	(*VideoFileMetadata)(nil),       // 16: file.pb.VideoFileMetadata
 }
 var file_proto_file_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: file.pb.FileInfo.fileType:type_name -> file.pb.FileType
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_file_proto_init() }
@@ -751,18 +1141,6 @@ func file_proto_file_proto_init() {
 			}
 		}
 		file_proto_file_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*File); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_proto_file_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileUploadRequest); i {
 			case 0:
 				return &v.state
@@ -774,7 +1152,7 @@ func file_proto_file_proto_init() {
 				return nil
 			}
 		}
-		file_proto_file_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_proto_file_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileUploadReply); i {
 			case 0:
 				return &v.state
@@ -786,7 +1164,7 @@ func file_proto_file_proto_init() {
 				return nil
 			}
 		}
-		file_proto_file_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_proto_file_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FileUploadResult); i {
 			case 0:
 				return &v.state
@@ -798,7 +1176,7 @@ func file_proto_file_proto_init() {
 				return nil
 			}
 		}
-		file_proto_file_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_proto_file_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DownloadResourceRequest); i {
 			case 0:
 				return &v.state
@@ -810,8 +1188,92 @@ func file_proto_file_proto_init() {
 				return nil
 			}
 		}
-		file_proto_file_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_proto_file_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DownloadResourceReply); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*FileInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OtherFileMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TextFileMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ImageFileMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*VoiceFileMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AudioFileMetadata); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_file_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*VideoFileMetadata); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -828,13 +1290,14 @@ func file_proto_file_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_file_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   10,
+			NumEnums:      1,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_file_proto_goTypes,
 		DependencyIndexes: file_proto_file_proto_depIdxs,
+		EnumInfos:         file_proto_file_proto_enumTypes,
 		MessageInfos:      file_proto_file_proto_msgTypes,
 	}.Build()
 	File_proto_file_proto = out.File

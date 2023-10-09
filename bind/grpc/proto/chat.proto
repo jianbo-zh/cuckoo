@@ -146,6 +146,10 @@ service ConfigSvc {
   rpc SetDownloadDir(SetDownloadDirRequest) returns (SetDownloadDirReply) {}
 }
 
+// 文件服务
+service FileSvc {
+  rpc ConvertFileToResource(ConvertFileToResourceRequest) returns (ConvertFileToResourceReply) {}
+}
 // 消息订阅服务
 service SubscribeSvc {
   rpc SubscribeCommonEvent(SubscribeCommonEventRequest) returns (stream SubscribeCommonEventReply) {}
@@ -696,6 +700,16 @@ message SetDownloadDirRequest {
 message SetDownloadDirReply {
   Result result = 1;
   string downloadDir = 2;
+}
+
+// -------------------- 分隔符 --------------------
+message ConvertFileToResourceRequest {
+  string srcFile = 1;
+}
+
+message ConvertFileToResourceReply {
+  Result result = 1;
+  string resource = 2;
 }
 
 // -------------------- 分隔符 --------------------

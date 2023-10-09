@@ -2,7 +2,7 @@ package myevent
 
 import "github.com/libp2p/go-libp2p/core/peer"
 
-type EvtReceivePeerMessage struct {
+type EvtReceiveContactMessage struct {
 	MsgID      string
 	FromPeerID peer.ID
 	MsgType    string

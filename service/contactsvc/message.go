@@ -46,61 +46,76 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 	return peerMsgs, nil
 }
 
-func (c *ContactSvc) SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, resources []string) (<-chan mytype.ContactMessage, error) {
+func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType string, mimeType string, payload []byte,
+	resourceID string, file *mytype.FileInfo) (<-chan mytype.ContactMessage, error) {
 
-	resultCh := make(chan mytype.ContactMessage, 1)
+	// 处理资源文件
+	if resourceID != "" || file != nil {
+		resultCh := make(chan error)
+		sessionID := mytype.ContactSessionID(contactID)
+		if err := c.emitters.evtRecordSessionAttachment.Emit(myevent.EvtRecordSessionAttachment{
+			SessionID:  sessionID.String(),
+			ResourceID: resourceID,
+			File:       file,
+			Result:     resultCh,
+		}); err != nil {
+			return nil, fmt.Errorf("emit record session attachment error: %w", err)
+		}
+		if err := <-resultCh; err != nil {
+			return nil, fmt.Errorf("record session attachment error: %w", err)
+		}
+	}
 
-	msg, err := c.msgProto.GenerateMessage(ctx, peerID, msgType, mimeType, payload)
+	// 创建消息
+	msg, err := c.msgProto.CreateMessage(ctx, contactID, msgType, mimeType, payload)
 	if err != nil {
 		return nil, fmt.Errorf("generate message error: %w", err)
 	}
-	fmt.Println("msg: ", msg.String())
 
-	resultCh <- *convertMessage(msg)
+	// 发送消息
+	msgCh := make(chan mytype.ContactMessage, 1)
+	msgCh <- *convertMessage(msg)
 
 	go func(msgID string) {
 		defer func() {
-			close(resultCh)
+			close(msgCh)
 		}()
 
 		isSucc := true
-		if err := c.sendMessage(ctx, peerID, msgID, resources); err != nil {
+		if err := c.sendMessage(ctx, contactID, msgID, resourceID); err != nil {
 			isSucc = false
 			// log error
 			log.Error("send message error: %w", err)
 		}
 
-		pbmsg, err := c.msgProto.UpdateMessageState(ctx, peerID, msgID, isSucc)
+		msg, err := c.msgProto.UpdateMessageState(ctx, contactID, msgID, isSucc)
 		if err != nil {
 			// log error
 			log.Errorf("msgProto.UpdateMessageState error: %w", err)
 			return
 		}
-		resultCh <- *convertMessage(pbmsg)
+		msgCh <- *convertMessage(msg)
 
 	}(msg.Id)
 
-	return resultCh, nil
+	return msgCh, nil
 }
 
-func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string, resources []string) error {
-	if len(resources) > 0 {
-		for _, fileID := range resources {
-			resultCh := make(chan error, 1)
-			if err := c.emitters.evtUploadResource.Emit(myevent.EvtUploadResource{
-				ToPeerID: peerID,
-				GroupID:  "",
-				FileID:   fileID,
-				Result:   resultCh,
-			}); err != nil {
-				return fmt.Errorf("emit evtUploadResource error: %w", err)
-			}
-
-			if err := <-resultCh; err != nil {
-				return fmt.Errorf("send attahment %s, error: %w", fileID, err)
-			}
+func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string, resourceID string) error {
+	if resourceID != "" {
+		resultCh := make(chan error, 1)
+		if err := c.emitters.evtUploadResource.Emit(myevent.EvtSendResource{
+			ToPeerID: peerID,
+			GroupID:  "",
+			FileID:   resourceID,
+			Result:   resultCh,
+		}); err != nil {
+			return fmt.Errorf("emit evtUploadResource error: %w", err)
 		}
-		fmt.Println("attachment send finish")
+
+		if err := <-resultCh; err != nil {
+			return fmt.Errorf("send resource %s, error: %w", resourceID, err)
+		}
 	}
 
 	if err := c.msgProto.SendMessage(ctx, peerID, msgID); err != nil {

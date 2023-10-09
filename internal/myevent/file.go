@@ -1,6 +1,9 @@
 package myevent
 
-import "github.com/libp2p/go-libp2p/core/peer"
+import (
+	"github.com/jianbo-zh/dchat/internal/mytype"
+	"github.com/libp2p/go-libp2p/core/peer"
+)
 
 type EvtDownloadFile struct {
 	FromPeerIDs []peer.ID
@@ -27,7 +30,7 @@ type EvtDownloadProcess struct {
 	DownloadSize int64
 }
 
-type EvtUploadResource struct {
+type EvtSendResource struct {
 	ToPeerID peer.ID
 	GroupID  string
 	FileID   string
@@ -39,4 +42,11 @@ type EvtDownloadResource struct {
 	GroupID string
 	FileID  string
 	Result  chan<- error
+}
+
+type EvtRecordSessionAttachment struct {
+	SessionID  string
+	ResourceID string
+	File       *mytype.FileInfo
+	Result     chan<- error
 }

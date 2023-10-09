@@ -33,14 +33,46 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 			case myevent.EvtCheckAvatar:
 				go f.handleCheckAvatarEvent(ctx, evt)
 
-			case myevent.EvtUploadResource:
+			case myevent.EvtSendResource:
 				go f.handleUploadResourceEvent(ctx, evt)
 
 			case myevent.EvtDownloadResource:
 				go f.handleDownloadResourceEvent(ctx, evt)
+
+			case myevent.EvtRecordSessionAttachment:
+				go f.handleRecordSessionAttachmentEvent(ctx, evt)
 			}
 
 		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (f *FileProto) handleRecordSessionAttachmentEvent(ctx context.Context, evt myevent.EvtRecordSessionAttachment) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	if evt.ResourceID != "" {
+		if err := f.data.SaveSessionResource(ctx, evt.SessionID, evt.ResourceID); err != nil {
+			resultErr = fmt.Errorf("save session resource error: %w", err)
+			return
+		}
+	}
+
+	if evt.File != nil {
+		file, err := convertFile(evt.File)
+		if err != nil {
+			resultErr = fmt.Errorf("convert file error: %w", err)
+			return
+		}
+
+		if err := f.data.SaveSessionUploadFile(ctx, evt.SessionID, file); err != nil {
+			resultErr = fmt.Errorf("data.SaveSessionUploadFile error: %w", err)
 			return
 		}
 	}
@@ -70,7 +102,7 @@ func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtC
 }
 
 // handleUploadResourceEvent 处理上传资源事件
-func (f *FileProto) handleUploadResourceEvent(ctx context.Context, evt myevent.EvtUploadResource) {
+func (f *FileProto) handleUploadResourceEvent(ctx context.Context, evt myevent.EvtSendResource) {
 
 	var resultErr error
 	defer func() {

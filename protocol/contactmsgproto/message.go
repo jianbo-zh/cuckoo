@@ -31,8 +31,8 @@ var log = logging.Logger("contact-message")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = myprotocol.ContactMessageID_v100
-	SYNC_ID = myprotocol.ContactMessageSyncID_v100
+	MSG_ID      = myprotocol.ContactMessageID_v100
+	MSG_SYNC_ID = myprotocol.ContactMessageSyncID_v100
 
 	ServiceName = "peer.message"
 	maxMsgSize  = 4 * 1024 // 4K
@@ -58,8 +58,8 @@ func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 		sessionData: sessionds.SessionWrap(ids),
 	}
 
-	lhost.SetStreamHandler(ID, msgsvc.Handler)
-	lhost.SetStreamHandler(SYNC_ID, msgsvc.SyncHandler)
+	lhost.SetStreamHandler(MSG_ID, msgsvc.msgIDHandler)
+	lhost.SetStreamHandler(MSG_SYNC_ID, msgsvc.syncIDHandler)
 
 	// 触发器：发送离线消息
 	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&myevent.EvtPushDepositContactMessage{}); err != nil {
@@ -72,12 +72,12 @@ func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	}
 
 	// 触发器：接收到消息
-	if msgsvc.emitters.evtReceiveMessage, err = eventBus.Emitter(&myevent.EvtReceivePeerMessage{}); err != nil {
+	if msgsvc.emitters.evtReceiveMessage, err = eventBus.Emitter(&myevent.EvtReceiveContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set receive msg emitter error: %v", err)
 	}
 
 	// 订阅：同步Peer的消息，拉取离线消息事件
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncPeerMessage), new(event.EvtLocalAddressesUpdated)})
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncContactMessage), new(event.EvtLocalAddressesUpdated)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
 
@@ -100,9 +100,9 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 			}
 
 			switch evt := e.(type) {
-			case myevent.EvtSyncPeerMessage:
-				log.Debugln("event sync peer")
-				go p.goSync(evt.ContactID)
+			case myevent.EvtSyncContactMessage:
+				// todo: 同步功能暂时不开，所以功能可以暂时不测
+				// go p.goSyncMessage(evt.ContactID)
 
 			case event.EvtLocalAddressesUpdated:
 				if !evt.Diffs {
@@ -114,7 +114,7 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 					if isPublicAddr(curr.Address) {
 						p.emitters.evtPullOfflineMessage.Emit(myevent.EvtPullDepositContactMessage{
 							DepositAddress: peer.ID(""),
-							MessageHandler: p.SaveMessage,
+							MessageHandler: p.SaveCoreMessage,
 						})
 						break
 					}
@@ -127,15 +127,15 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 	}
 }
 
-func (p *PeerMessageProto) Handler(stream network.Stream) {
+func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 
 	// 开始处理流
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	defer rd.Close()
 
 	stream.SetDeadline(time.Now().Add(StreamTimeout))
-	var msg pb.ContactMessage
-	if err := rd.ReadMsg(&msg); err != nil {
+	var coreMsg pb.ContactMessage_CoreMessage
+	if err := rd.ReadMsg(&coreMsg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
 		stream.Reset()
 		return
@@ -144,98 +144,140 @@ func (p *PeerMessageProto) Handler(stream network.Stream) {
 
 	remotePeerID := stream.Conn().RemotePeer()
 
-	msg.State = pb.ContactMessage_Success
-	err := p.saveMessage(context.Background(), remotePeerID, &msg)
-	if err != nil {
+	if err := p.saveCoreMessage(context.Background(), remotePeerID, &coreMsg); err != nil {
 		log.Errorf("store message error %v", err)
 		stream.Reset()
 		return
 	}
 
 	wt := pbio.NewDelimitedWriter(stream)
-	if err = wt.WriteMsg(&pb.ContactMessageAck{Id: msg.Id}); err != nil {
+	if err := wt.WriteMsg(&pb.ContactMessageAck{Id: coreMsg.Id}); err != nil {
 		log.Errorf("ack msg error: %w", err)
 		stream.Reset()
 		return
 	}
 
-	err = p.data.MergeLamportTime(context.Background(), remotePeerID, msg.Lamportime)
-	if err != nil {
+	if err := p.data.MergeLamportTime(context.Background(), remotePeerID, coreMsg.Lamportime); err != nil {
 		log.Errorf("update lamport time error: %v", err)
 		stream.Reset()
 		return
 	}
 
-	p.emitters.evtReceiveMessage.Emit(myevent.EvtReceivePeerMessage{
-		MsgID:      msg.Id,
-		FromPeerID: peer.ID(msg.FromPeerId),
-		MsgType:    msg.MsgType,
-		MimeType:   msg.MimeType,
-		Payload:    msg.Payload,
-		Timestamp:  msg.Timestamp,
+	p.emitters.evtReceiveMessage.Emit(myevent.EvtReceiveContactMessage{
+		MsgID:      coreMsg.Id,
+		FromPeerID: peer.ID(coreMsg.FromPeerId),
+		MsgType:    coreMsg.MsgType,
+		MimeType:   coreMsg.MimeType,
+		Payload:    coreMsg.Payload,
+		Timestamp:  coreMsg.Timestamp,
 	})
-
 }
 
-func (p *PeerMessageProto) SaveMessage(ctx context.Context, peerID peer.ID, msgID string, msgData []byte) error {
-	var pmsg pb.ContactMessage
-	if err := proto.Unmarshal(msgData, &pmsg); err != nil {
+func (p *PeerMessageProto) SaveCoreMessage(ctx context.Context, peerID peer.ID, msgID string, coreMsgData []byte) error {
+	var coreMsg pb.ContactMessage_CoreMessage
+	if err := proto.Unmarshal(coreMsgData, &coreMsg); err != nil {
 		return err
 
-	} else if pmsg.Id != msgID {
+	} else if coreMsg.Id != msgID {
 		return fmt.Errorf("msg id not equal")
 	}
 
-	if err := p.saveMessage(ctx, peerID, &pmsg); err != nil {
-		return err
-	}
-
-	return nil
+	return p.saveCoreMessage(ctx, peerID, &coreMsg)
 }
 
-func (p *PeerMessageProto) GenerateMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte) (*pb.ContactMessage, error) {
+// CreateMessage 创建新消息
+func (p *PeerMessageProto) CreateMessage(ctx context.Context, contactID peer.ID, msgType string, mimeType string, payload []byte) (*pb.ContactMessage, error) {
 
 	hostID := p.host.ID()
 
-	lamportTime, err := p.data.TickLamportTime(ctx, peerID)
+	lamptime, err := p.data.TickLamportTime(ctx, contactID)
 	if err != nil {
 		return nil, fmt.Errorf("data tick lamptime error: %w", err)
 	}
 
+	id := msgID(lamptime, hostID)
+	nowtime := time.Now().Unix()
+
 	msg := pb.ContactMessage{
-		Id:         msgID(lamportTime, hostID),
-		FromPeerId: []byte(hostID),
-		ToPeerId:   []byte(peerID),
-		MsgType:    msgType,
-		MimeType:   mimeType,
-		Payload:    payload,
-		State:      pb.ContactMessage_Sending,
-		Timestamp:  time.Now().Unix(),
-		Lamportime: lamportTime,
+		Id: id,
+		CoreMessage: &pb.ContactMessage_CoreMessage{
+			Id:         id,
+			FromPeerId: []byte(hostID),
+			ToPeerId:   []byte(contactID),
+			MsgType:    msgType,
+			MimeType:   mimeType,
+			Payload:    payload,
+			Lamportime: lamptime,
+			Timestamp:  nowtime,
+			Signature:  []byte{},
+		},
+		SendState:  pb.ContactMessage_Sending,
+		CreateTime: nowtime,
+		UpdateTime: nowtime,
 	}
 
-	err = p.saveMessage(ctx, peerID, &msg)
+	isLatest, err := p.data.SaveMessage(ctx, contactID, &msg)
 	if err != nil {
-		return nil, fmt.Errorf("data save msg error: %w", err)
+		return nil, fmt.Errorf("data save message error: %w", err)
+	}
+
+	// 更新session时间
+	sessionID := mytype.ContactSessionID(contactID)
+	if err = p.sessionData.UpdateSessionTime(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("data.UpdateSessionTime error: %w", err)
+	}
+
+	// 重置session未读消息
+	if err = p.sessionData.ResetUnreads(ctx, sessionID.String()); err != nil {
+		return nil, fmt.Errorf("data.IncrUnreads error: %w", err)
+	}
+
+	if isLatest {
+		// 更新session最新消息
+		var content string
+		switch msg.CoreMessage.MsgType {
+		case mytype.TextMsgType:
+			content = string(msg.CoreMessage.Payload)
+		case mytype.ImageMsgType:
+			content = string("[image]")
+		case mytype.VoiceMsgType:
+			content = string("[voice]")
+		case mytype.AudioMsgType:
+			content = string("[audio]")
+		case mytype.VideoMsgType:
+			content = string("[video]")
+		case mytype.FileMsgType:
+			content = string("[file]")
+		default:
+			content = string("[unknown]")
+		}
+
+		if err = p.sessionData.SetLastMessage(ctx, sessionID.String(), &sessionpb.SessionLastMessage{
+			Username: "",
+			Content:  content,
+		}); err != nil {
+			return nil, fmt.Errorf("data.SetLastMessage error: %w", err)
+		}
 	}
 
 	return &msg, nil
 }
 
+// SendMessage 发送消息，实际发送的是核心消息
 func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgID string) error {
 
 	hostID := p.host.ID()
 
-	msg, err := p.data.GetMessage(ctx, peerID, msgID)
+	coreMsg, err := p.data.GetCoreMessage(ctx, peerID, msgID)
 	if err != nil {
 		return fmt.Errorf("data.GetMessage error: %w", err)
 	}
 
-	if peer.ID(msg.FromPeerId) != hostID {
+	if peer.ID(coreMsg.FromPeerId) != hostID {
 		return fmt.Errorf("msg from peer id not equal host id")
 	}
 
-	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, ID)
+	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("host new stream error", err)
 	}
@@ -243,7 +285,7 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgI
 	pw := pbio.NewDelimitedWriter(stream)
 	defer pw.Close()
 
-	if err = pw.WriteMsg(msg); err != nil {
+	if err = pw.WriteMsg(coreMsg); err != nil {
 		stream.Reset()
 		return myerror.WrapStreamError("pbio write msg error", err)
 	}
@@ -253,7 +295,7 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgI
 	if err = rd.ReadMsg(&msgAck); err != nil {
 		return myerror.WrapStreamError("pbio read ack msg error", err)
 
-	} else if msgAck.Id != msg.Id {
+	} else if msgAck.Id != coreMsg.Id {
 		return myerror.WrapStreamError("msg ack id error", nil)
 	}
 
@@ -265,7 +307,7 @@ func (p *PeerMessageProto) GetMessage(ctx context.Context, peerID peer.ID, msgID
 }
 
 func (p *PeerMessageProto) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
-	return p.data.UpdateMessageState(ctx, peerID, msgID, isSucc)
+	return p.data.UpdateMessageSendState(ctx, peerID, msgID, isSucc)
 }
 
 func (p *PeerMessageProto) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
@@ -284,8 +326,23 @@ func (p *PeerMessageProto) ClearMessage(ctx context.Context, peerID peer.ID) err
 	return p.data.ClearMessage(ctx, peerID)
 }
 
-func (p *PeerMessageProto) saveMessage(ctx context.Context, contactID peer.ID, msg *pb.ContactMessage) error {
-	isLatest, err := p.data.SaveMessage(context.Background(), contactID, msg)
+func (p *PeerMessageProto) saveCoreMessage(ctx context.Context, contactID peer.ID, coreMsg *pb.ContactMessage_CoreMessage) error {
+
+	exists, err := p.data.HasMessage(ctx, contactID, coreMsg.Id)
+	if err != nil {
+		return fmt.Errorf("data.HasMessage error: %w", err)
+
+	} else if exists {
+		return nil
+	}
+
+	isLatest, err := p.data.SaveMessage(ctx, contactID, &pb.ContactMessage{
+		Id:          coreMsg.Id,
+		CoreMessage: coreMsg,
+		SendState:   pb.ContactMessage_SendSucc,
+		CreateTime:  time.Now().Unix(),
+		UpdateTime:  time.Now().Unix(),
+	})
 	if err != nil {
 		return fmt.Errorf("data save message error: %w", err)
 	}
@@ -297,7 +354,7 @@ func (p *PeerMessageProto) saveMessage(ctx context.Context, contactID peer.ID, m
 	}
 
 	// 更新session未读消息
-	if peer.ID(msg.FromPeerId) == p.host.ID() {
+	if peer.ID(coreMsg.FromPeerId) == p.host.ID() {
 		if err = p.sessionData.ResetUnreads(ctx, sessionID.String()); err != nil {
 			return fmt.Errorf("data.IncrUnreads error: %w", err)
 		}
@@ -310,9 +367,9 @@ func (p *PeerMessageProto) saveMessage(ctx context.Context, contactID peer.ID, m
 	if isLatest {
 		// 更新session最新消息
 		var content string
-		switch msg.MsgType {
+		switch coreMsg.MsgType {
 		case mytype.TextMsgType:
-			content = string(msg.Payload)
+			content = string(coreMsg.Payload)
 		case mytype.ImageMsgType:
 			content = string("[image]")
 		case mytype.VoiceMsgType:

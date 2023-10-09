@@ -58,7 +58,7 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 	contactsvc.host.SetStreamHandler(ID, contactsvc.handler)
 	contactsvc.host.SetStreamHandler(CHECK_ID, contactsvc.checkApplyHandler)
 
-	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&myevent.EvtSyncPeerMessage{}); err != nil {
+	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&myevent.EvtSyncContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set sync peers emitter error: %w", err)
 	}
 
@@ -282,7 +282,7 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer mytype.AccountPeer,
 
 	if isBootSync {
 		// 启动时同步，还要触发同步消息事件
-		if err = c.emitters.evtSyncPeerMessage.Emit(myevent.EvtSyncPeerMessage{
+		if err = c.emitters.evtSyncPeerMessage.Emit(myevent.EvtSyncContactMessage{
 			ContactID: contactID,
 		}); err != nil {
 			log.Errorf("emit sync peer message error: %w", err)
