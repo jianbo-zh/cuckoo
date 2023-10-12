@@ -12,9 +12,8 @@ type FileIface interface {
 	SaveSessionResource(ctx context.Context, sessionID string, resourceID string) error
 	GetSessionResourceIDs(ctx context.Context, sessionID string) ([]string, error)
 
-	SaveSessionUploadFile(ctx context.Context, sessionID string, uploadFile *pb.FileInfo) error
-	GetSessionUploadFiles(ctx context.Context, sessionID string) ([]*pb.FileInfo, error)
+	SaveSessionFile(ctx context.Context, sessionID string, uploadFile *pb.FileInfo) error
+	GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error)
 
-	SaveSessionDownloadFile(ctx context.Context, sessionID string, downloadFile *pb.FileInfo) error
-	GetSessionDownloadFiles(ctx context.Context, sessionID string) ([]*pb.FileInfo, error)
+	RemoveSessionFile(ctx context.Context, sessionID string, fileID string) error
 }

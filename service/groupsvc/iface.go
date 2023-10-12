@@ -18,6 +18,8 @@ type GroupServiceIface interface {
 	GetGroup(ctx context.Context, groupID string) (*mytype.Group, error)             // 获取群组
 	GetGroupDetail(ctx context.Context, groupID string) (*mytype.GroupDetail, error) // 获取群组
 
+	GetGroupOnlineMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error) // 在线成员IDs
+
 	SetGroupName(ctx context.Context, groupID string, name string) error                     // 设置群名称
 	SetGroupAvatar(ctx context.Context, groupID string, avatar string) error                 // 设置群头像
 	SetGroupNotice(ctx context.Context, groupID string, notice string) error                 // 设置群公告

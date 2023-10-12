@@ -98,6 +98,25 @@ func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids
 	return networksvc, nil
 }
 
+func (n *NetworkProto) GetGroupOnlinePeers(groupID string) ([]peer.ID, error) {
+	rTable := n.getRoutingTable(groupID)
+
+	peerIDsMap := make(map[peer.ID]bool, 0)
+	for _, connPair := range rTable {
+		if connPair.State == StateConnected {
+			peerIDsMap[connPair.PeerID0] = true
+			peerIDsMap[connPair.PeerID1] = true
+		}
+	}
+
+	var peerIDs []peer.ID
+	for peerID := range peerIDsMap {
+		peerIDs = append(peerIDs, peerID)
+	}
+
+	return peerIDs, nil
+}
+
 // connectHandler 接收组网请求
 func (n *NetworkProto) connectHandler(stream network.Stream) {
 

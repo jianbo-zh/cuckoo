@@ -537,25 +537,27 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 	memberList := make([]*proto.GroupMember, len(members))
 
 	if len(members) > 0 {
-
-		var peerIDs []peer.ID
-		for _, member := range members {
-			peerIDs = append(peerIDs, member.ID)
-		}
-
-		accountSvc, err := cuckoo.GetAccountSvc()
+		onlineMemberIDs, err := groupSvc.GetGroupOnlineMemberIDs(ctx, request.GroupId)
 		if err != nil {
-			return nil, fmt.Errorf("get account svc error: %w", err)
+			return nil, fmt.Errorf("svc.GetGroupOnlineMemberIDs error: %w", err)
 		}
 
-		onlineStateMap := accountSvc.GetOnlineState(peerIDs)
+		onlineMemberIDsMap := make(map[peer.ID]struct{})
+		for _, onlineID := range onlineMemberIDs {
+			onlineMemberIDsMap[onlineID] = struct{}{}
+		}
 
 		for i, member := range members {
+			onlineState := proto.ConnState_OfflineState
+			if _, exists := onlineMemberIDsMap[member.ID]; exists {
+				onlineState = proto.ConnState_OnlineState
+			}
+
 			memberList[i] = &proto.GroupMember{
 				Id:          member.ID.String(),
 				Name:        member.Name,
 				Avatar:      member.Avatar,
-				OnlineState: encodeOnlineState(onlineStateMap[member.ID]),
+				OnlineState: onlineState,
 			}
 		}
 	}

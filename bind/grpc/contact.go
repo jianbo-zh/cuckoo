@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
@@ -615,21 +614,15 @@ func (c *ContactSvc) SendContactImageMessage(request *proto.SendContactImageMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	metadata, err := json.Marshal(mytype.ImageFileMetadata{
-		Width:  request.Width,
-		Height: request.Height,
-	})
-	if err != nil {
-		return fmt.Errorf("json.Marshal error: %w", err)
-	}
-
 	file := mytype.FileInfo{
-		FileID:    request.ImageId,
-		FileName:  request.Name,
-		FileSize:  request.Size,
-		FileType:  mytype.ImageFile,
-		MimeType:  request.MimeType,
-		Extension: metadata,
+		FileID:      request.ImageId,
+		FileName:    request.Name,
+		FileSize:    request.Size,
+		FileType:    mytype.ImageFile,
+		MimeType:    request.MimeType,
+		ThumbnailID: request.ThumbnailId,
+		Width:       request.Width,
+		Height:      request.Height,
 	}
 
 	return c.sendContactMessage(context.Background(), server, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, request.ThumbnailId, &file)
@@ -681,20 +674,13 @@ func (c *ContactSvc) SendContactAudioMessage(request *proto.SendContactAudioMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	metadata, err := json.Marshal(mytype.AudioFileMetadata{
-		Duration: request.Duration,
-	})
-	if err != nil {
-		return fmt.Errorf("json.Marshal error: %w", err)
-	}
-
 	file := mytype.FileInfo{
-		FileID:    request.AudioId,
-		FileName:  request.Name,
-		FileSize:  request.Size,
-		FileType:  mytype.AudioFile,
-		MimeType:  request.MimeType,
-		Extension: metadata,
+		FileID:   request.AudioId,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.AudioFile,
+		MimeType: request.MimeType,
+		Duration: request.Duration,
 	}
 
 	return c.sendContactMessage(context.Background(), server, mytype.AudioMsgType, request.ContactId, request.MimeType, payload, "", &file)
@@ -722,20 +708,13 @@ func (c *ContactSvc) SendContactVideoMessage(request *proto.SendContactVideoMess
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	metadata, err := json.Marshal(mytype.VideoFileMetadata{
-		Duration: request.Duration,
-	})
-	if err != nil {
-		return fmt.Errorf("json.Marshal error: %w", err)
-	}
-
 	file := mytype.FileInfo{
-		FileID:    request.VideoId,
-		FileName:  request.Name,
-		FileSize:  request.Size,
-		FileType:  mytype.VideoFile,
-		MimeType:  request.MimeType,
-		Extension: metadata,
+		FileID:   request.VideoId,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.VideoFile,
+		MimeType: request.MimeType,
+		Duration: request.Duration,
 	}
 
 	return c.sendContactMessage(context.Background(), server, mytype.VideoMsgType, request.ContactId, request.MimeType, payload, "", &file)
@@ -762,18 +741,12 @@ func (c *ContactSvc) SendContactFileMessage(request *proto.SendContactFileMessag
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	metadata, err := json.Marshal(mytype.OtherFileMetadata{})
-	if err != nil {
-		return fmt.Errorf("json.Marshal error: %w", err)
-	}
-
 	file := mytype.FileInfo{
-		FileID:    request.FileId,
-		FileName:  request.Name,
-		FileSize:  request.Size,
-		FileType:  mytype.OtherFile,
-		MimeType:  request.MimeType,
-		Extension: metadata,
+		FileID:   request.FileId,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.OtherFile,
+		MimeType: request.MimeType,
 	}
 
 	return c.sendContactMessage(context.Background(), server, mytype.FileMsgType, request.ContactId, request.MimeType, payload, "", &file)

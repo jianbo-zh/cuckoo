@@ -3,7 +3,9 @@ package fileds
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -89,22 +91,26 @@ func (f *FileDataStore) GetSessionResourceIDs(ctx context.Context, sessionID str
 	return resourceIDs, nil
 }
 
-func (f *FileDataStore) SaveSessionUploadFile(ctx context.Context, sessionID string, uploadFile *pb.FileInfo) error {
+func (f *FileDataStore) SaveSessionFile(ctx context.Context, sessionID string, file *pb.FileInfo) error {
 	batch, err := f.Batch(ctx)
 	if err != nil {
 		return fmt.Errorf("ds batch error: %w", err)
 	}
 
-	bs, err := proto.Marshal(uploadFile)
+	bs, err := proto.Marshal(file)
 	if err != nil {
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	if err = batch.Put(ctx, fileDsKey.SessionUploadFileKey(sessionID, uploadFile.Id), bs); err != nil {
+	if err = batch.Put(ctx, fileDsKey.SessionFileKey(sessionID, file.FileId), bs); err != nil {
 		return fmt.Errorf("batch.Put session upload file key error: %w", err)
 	}
 
-	if err = batch.Put(ctx, fileDsKey.FileSessionKey(uploadFile.Id, sessionID), []byte("true")); err != nil {
+	if err = batch.Put(ctx, fileDsKey.SessionFileTimeKey(sessionID, file.FileId), []byte(strconv.FormatInt(time.Now().Unix(), 10))); err != nil {
+		return fmt.Errorf("batch.Put session upload file key error: %w", err)
+	}
+
+	if err = batch.Put(ctx, fileDsKey.FileSessionKey(file.FileId, sessionID), []byte("true")); err != nil {
 		return fmt.Errorf("batch.Put file session key error: %w", err)
 	}
 
@@ -115,9 +121,13 @@ func (f *FileDataStore) SaveSessionUploadFile(ctx context.Context, sessionID str
 	return nil
 }
 
-func (f *FileDataStore) GetSessionUploadFiles(ctx context.Context, sessionID string) ([]*pb.FileInfo, error) {
+func (f *FileDataStore) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error) {
+	prefix := fileDsKey.SessionFileTimePrefix(sessionID)
 	results, err := f.Query(ctx, query.Query{
-		Prefix: fileDsKey.SessionUploadFilePrefix(sessionID),
+		Prefix: fileDsKey.SessionFileTimePrefix(sessionID),
+		Orders: []query.Order{query.OrderByValueDescending{}},
+		Offset: offset,
+		Limit:  limit,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ds query error: %w", err)
@@ -129,9 +139,15 @@ func (f *FileDataStore) GetSessionUploadFiles(ctx context.Context, sessionID str
 			return nil, fmt.Errorf("results.Next error: %w", result.Error)
 		}
 
+		fileID := strings.TrimPrefix(result.Key, prefix)
+		bs, err := f.Get(ctx, fileDsKey.SessionFileKey(sessionID, fileID))
+		if err != nil {
+			return nil, fmt.Errorf("ds get session file error: %w", err)
+		}
+
 		var file pb.FileInfo
-		if err := proto.Unmarshal(result.Value, &file); err != nil {
-			return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+		if err := proto.Unmarshal(bs, &file); err != nil {
+			return nil, fmt.Errorf("proto unmarshal error: %w", err)
 		}
 
 		files = append(files, &file)
@@ -140,54 +156,23 @@ func (f *FileDataStore) GetSessionUploadFiles(ctx context.Context, sessionID str
 	return files, nil
 }
 
-func (f *FileDataStore) SaveSessionDownloadFile(ctx context.Context, sessionID string, downloadFile *pb.FileInfo) error {
+func (f *FileDataStore) RemoveSessionFile(ctx context.Context, sessionID string, fileID string) error {
 	batch, err := f.Batch(ctx)
 	if err != nil {
 		return fmt.Errorf("ds batch error: %w", err)
 	}
 
-	bs, err := proto.Marshal(downloadFile)
-	if err != nil {
-		return fmt.Errorf("proto.Marshal error: %w", err)
+	if err := batch.Delete(ctx, fileDsKey.SessionFileKey(sessionID, fileID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
 	}
 
-	if err = batch.Put(ctx, fileDsKey.SessionDownloadFileKey(sessionID, downloadFile.Id), bs); err != nil {
-		return fmt.Errorf("batch.Put session download file key error: %w", err)
+	if err := batch.Delete(ctx, fileDsKey.FileSessionKey(fileID, sessionID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
 	}
 
-	if err = batch.Put(ctx, fileDsKey.FileSessionKey(downloadFile.Id, sessionID), []byte("true")); err != nil {
-		return fmt.Errorf("batch.Put file session key error: %w", err)
+	if err := batch.Delete(ctx, fileDsKey.SessionFileTimeKey(sessionID, fileID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
 	}
 
-	if err = batch.Commit(ctx); err != nil {
-		return fmt.Errorf("batch.Commit error: %w", err)
-	}
-
-	return nil
-}
-
-func (f *FileDataStore) GetSessionDownloadFiles(ctx context.Context, sessionID string) ([]*pb.FileInfo, error) {
-
-	results, err := f.Query(ctx, query.Query{
-		Prefix: fileDsKey.SessionDownloadFilePrefix(sessionID),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("ds query error: %w", err)
-	}
-
-	var files []*pb.FileInfo
-	for result := range results.Next() {
-		if result.Error != nil {
-			return nil, fmt.Errorf("results.Next error: %w", result.Error)
-		}
-
-		var file pb.FileInfo
-		if err := proto.Unmarshal(result.Value, &file); err != nil {
-			return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
-		}
-
-		files = append(files, &file)
-	}
-
-	return files, nil
+	return batch.Commit(ctx)
 }

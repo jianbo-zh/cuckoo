@@ -2854,13 +2854,32 @@ var ConfigSvc_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	FileSvc_ConvertFileToResource_FullMethodName = "/chat.FileSvc/ConvertFileToResource"
+	FileSvc_DownloadContactFile_FullMethodName   = "/chat.FileSvc/DownloadContactFile"
+	FileSvc_DownloadGroupFile_FullMethodName     = "/chat.FileSvc/DownloadGroupFile"
+	FileSvc_GetContactFiles_FullMethodName       = "/chat.FileSvc/GetContactFiles"
+	FileSvc_GetGroupFiles_FullMethodName         = "/chat.FileSvc/GetGroupFiles"
+	FileSvc_DeleteContactFile_FullMethodName     = "/chat.FileSvc/DeleteContactFile"
+	FileSvc_DeleteGroupFile_FullMethodName       = "/chat.FileSvc/DeleteGroupFile"
 )
 
 // FileSvcClient is the client API for FileSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileSvcClient interface {
+	// 转换文件为资源
 	ConvertFileToResource(ctx context.Context, in *ConvertFileToResourceRequest, opts ...grpc.CallOption) (*ConvertFileToResourceReply, error)
+	// 下载联系人文件
+	DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadContactFileReply, error)
+	// 下载群组文件
+	DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadGroupFileReply, error)
+	// 联系人相关文件
+	GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetContactFilesReply, error)
+	// 群组相关文件
+	GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetGroupFilesReply, error)
+	// 删除联系人文件
+	DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteContactFileReply, error)
+	// 删除群组文件
+	DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteGroupFileReply, error)
 }
 
 type fileSvcClient struct {
@@ -2880,11 +2899,78 @@ func (c *fileSvcClient) ConvertFileToResource(ctx context.Context, in *ConvertFi
 	return out, nil
 }
 
+func (c *fileSvcClient) DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadContactFileReply, error) {
+	out := new(DownloadContactFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DownloadContactFile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadGroupFileReply, error) {
+	out := new(DownloadGroupFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DownloadGroupFile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetContactFilesReply, error) {
+	out := new(GetContactFilesReply)
+	err := c.cc.Invoke(ctx, FileSvc_GetContactFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetGroupFilesReply, error) {
+	out := new(GetGroupFilesReply)
+	err := c.cc.Invoke(ctx, FileSvc_GetGroupFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteContactFileReply, error) {
+	out := new(DeleteContactFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DeleteContactFile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteGroupFileReply, error) {
+	out := new(DeleteGroupFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DeleteGroupFile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FileSvcServer is the server API for FileSvc service.
 // All implementations must embed UnimplementedFileSvcServer
 // for forward compatibility
 type FileSvcServer interface {
+	// 转换文件为资源
 	ConvertFileToResource(context.Context, *ConvertFileToResourceRequest) (*ConvertFileToResourceReply, error)
+	// 下载联系人文件
+	DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadContactFileReply, error)
+	// 下载群组文件
+	DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadGroupFileReply, error)
+	// 联系人相关文件
+	GetContactFiles(context.Context, *GetContactFilesRequest) (*GetContactFilesReply, error)
+	// 群组相关文件
+	GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetGroupFilesReply, error)
+	// 删除联系人文件
+	DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteContactFileReply, error)
+	// 删除群组文件
+	DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteGroupFileReply, error)
 	mustEmbedUnimplementedFileSvcServer()
 }
 
@@ -2894,6 +2980,24 @@ type UnimplementedFileSvcServer struct {
 
 func (UnimplementedFileSvcServer) ConvertFileToResource(context.Context, *ConvertFileToResourceRequest) (*ConvertFileToResourceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConvertFileToResource not implemented")
+}
+func (UnimplementedFileSvcServer) DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadContactFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadContactFile not implemented")
+}
+func (UnimplementedFileSvcServer) DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadGroupFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadGroupFile not implemented")
+}
+func (UnimplementedFileSvcServer) GetContactFiles(context.Context, *GetContactFilesRequest) (*GetContactFilesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactFiles not implemented")
+}
+func (UnimplementedFileSvcServer) GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetGroupFilesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupFiles not implemented")
+}
+func (UnimplementedFileSvcServer) DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteContactFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteContactFile not implemented")
+}
+func (UnimplementedFileSvcServer) DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteGroupFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroupFile not implemented")
 }
 func (UnimplementedFileSvcServer) mustEmbedUnimplementedFileSvcServer() {}
 
@@ -2926,6 +3030,114 @@ func _FileSvc_ConvertFileToResource_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FileSvc_DownloadContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadContactFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DownloadContactFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DownloadContactFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DownloadContactFile(ctx, req.(*DownloadContactFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_DownloadGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadGroupFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DownloadGroupFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DownloadGroupFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DownloadGroupFile(ctx, req.(*DownloadGroupFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_GetContactFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).GetContactFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_GetContactFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).GetContactFiles(ctx, req.(*GetContactFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_GetGroupFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).GetGroupFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_GetGroupFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).GetGroupFiles(ctx, req.(*GetGroupFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_DeleteContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteContactFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DeleteContactFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DeleteContactFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DeleteContactFile(ctx, req.(*DeleteContactFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_DeleteGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteGroupFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DeleteGroupFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DeleteGroupFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DeleteGroupFile(ctx, req.(*DeleteGroupFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FileSvc_ServiceDesc is the grpc.ServiceDesc for FileSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2936,6 +3148,30 @@ var FileSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConvertFileToResource",
 			Handler:    _FileSvc_ConvertFileToResource_Handler,
+		},
+		{
+			MethodName: "DownloadContactFile",
+			Handler:    _FileSvc_DownloadContactFile_Handler,
+		},
+		{
+			MethodName: "DownloadGroupFile",
+			Handler:    _FileSvc_DownloadGroupFile_Handler,
+		},
+		{
+			MethodName: "GetContactFiles",
+			Handler:    _FileSvc_GetContactFiles_Handler,
+		},
+		{
+			MethodName: "GetGroupFiles",
+			Handler:    _FileSvc_GetGroupFiles_Handler,
+		},
+		{
+			MethodName: "DeleteContactFile",
+			Handler:    _FileSvc_DeleteContactFile_Handler,
+		},
+		{
+			MethodName: "DeleteGroupFile",
+			Handler:    _FileSvc_DeleteGroupFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

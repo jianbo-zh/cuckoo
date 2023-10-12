@@ -27,9 +27,6 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 			}
 
 			switch evt := e.(type) {
-			case myevent.EvtDownloadFile:
-				go f.handleDownloadFile(ctx, evt)
-
 			case myevent.EvtCheckAvatar:
 				go f.handleCheckAvatarEvent(ctx, evt)
 
@@ -40,7 +37,7 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 				go f.handleDownloadResourceEvent(ctx, evt)
 
 			case myevent.EvtRecordSessionAttachment:
-				go f.handleRecordSessionAttachmentEvent(ctx, evt)
+				go f.handleLogSessionAttachmentEvent(ctx, evt)
 			}
 
 		case <-ctx.Done():
@@ -49,7 +46,7 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 	}
 }
 
-func (f *FileProto) handleRecordSessionAttachmentEvent(ctx context.Context, evt myevent.EvtRecordSessionAttachment) {
+func (f *FileProto) handleLogSessionAttachmentEvent(ctx context.Context, evt myevent.EvtRecordSessionAttachment) {
 	var resultErr error
 
 	defer func() {
@@ -65,21 +62,11 @@ func (f *FileProto) handleRecordSessionAttachmentEvent(ctx context.Context, evt 
 	}
 
 	if evt.File != nil {
-		file, err := convertFile(evt.File)
-		if err != nil {
-			resultErr = fmt.Errorf("convert file error: %w", err)
-			return
-		}
-
-		if err := f.data.SaveSessionUploadFile(ctx, evt.SessionID, file); err != nil {
-			resultErr = fmt.Errorf("data.SaveSessionUploadFile error: %w", err)
+		if err := f.data.SaveSessionFile(ctx, evt.SessionID, encodeFile(evt.File)); err != nil {
+			resultErr = fmt.Errorf("data.SaveSessionFile error: %w", err)
 			return
 		}
 	}
-}
-
-func (f *FileProto) handleDownloadFile(ctx context.Context, evt myevent.EvtDownloadFile) {
-	f.downloadFile(evt.FromPeerIDs, evt.FileName, evt.FileSize, evt.HashAlgo, evt.HashValue)
 }
 
 func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtCheckAvatar) {

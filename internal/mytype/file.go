@@ -27,30 +27,13 @@ const (
 )
 
 type FileInfo struct {
-	FileID    string
-	FileName  string
-	FileSize  int64
-	FileType  FileType
-	MimeType  string
-	Extension []byte // 扩展信息
-}
-
-type OtherFileMetadata struct{}
-type TextFileMetadata struct{}
-
-type ImageFileMetadata struct {
-	Width  int32
-	Height int32
-}
-
-type VoiceFileMetadata struct {
-	Duration int32
-}
-
-type AudioFileMetadata struct {
-	Duration int32
-}
-
-type VideoFileMetadata struct {
-	Duration int32
+	FileID      string
+	FileName    string
+	FileSize    int64
+	FileType    FileType
+	MimeType    string
+	ThumbnailID string
+	Width       int32
+	Height      int32
+	Duration    int32
 }

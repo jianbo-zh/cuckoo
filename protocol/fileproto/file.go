@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +28,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-msgio/pbio"
+	"google.golang.org/protobuf/proto"
 )
 
 var log = logging.Logger("file")
@@ -66,7 +70,7 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtRecordSessionAttachment), new(myevent.EvtDownloadFile), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtRecordSessionAttachment), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
 	}
@@ -76,7 +80,26 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	return &file, nil
 }
 
-func (f *FileProto) SendPeerFile(ctx context.Context, peerID peer.ID, file string) error {
+func (f *FileProto) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error) {
+	return f.data.GetSessionFiles(ctx, sessionID, keywords, offset, limit)
+}
+
+// DeleteSessionFiles 删除会话的文件
+func (f *FileProto) DeleteSessionFiles(ctx context.Context, sessionID string, fileIDs []string) error {
+	for _, fileID := range fileIDs {
+		if err := f.data.RemoveSessionFile(ctx, sessionID, fileID); err != nil {
+			return fmt.Errorf("data.RemoveSessionFile error: %w", err)
+		}
+
+		if sessionIDs, err := f.data.GetFileSessionIDs(ctx, fileID); err != nil {
+			return fmt.Errorf("data.GetFileSessionIDs error: %w", err)
+
+		} else if len(sessionIDs) == 0 { // 没有其他会话引用了，则可以删除
+			if err := os.Remove(filepath.Join(f.conf.FileDir, fileID)); err != nil {
+				return fmt.Errorf("os.Remove error: %w", err)
+			}
+		}
+	}
 
 	return nil
 }
@@ -94,8 +117,6 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("os.Stat error: %w", err)
 	}
-
-	fmt.Println("2222")
 
 	// 发送下载请求
 	stream, err := f.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, RESOURCE_DOWNLOAD_ID)
@@ -156,6 +177,147 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	return nil
 }
 
+func (f *FileProto) DownloadFile(ctx context.Context, sessionID string, fromPeerIDs []peer.ID, file *mytype.FileInfo) error {
+	// 检查是否存在，如果存在则不下载
+	if _, err := os.Stat(filepath.Join(f.conf.FileDir, file.FileID)); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("os.Stat error: %w", err)
+	}
+
+	// 执行下载
+	if err := f.downloadFile(ctx, fromPeerIDs, file.FileID, file.FileSize); err != nil {
+		return fmt.Errorf("download file error: %w", err)
+	}
+
+	// 下载成功则记录
+	if err := f.data.SaveSessionFile(ctx, sessionID, encodeFile(file)); err != nil {
+		return fmt.Errorf("save session file error: %w", err)
+	}
+
+	return nil
+}
+
+func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fileID string, fileSize int64) error {
+
+	hostID := d.host.ID()
+
+	fmt.Println("peers: ", fromPeerIDs, " fileID:"+fileID, " fileSize: "+strconv.FormatInt(fileSize, 10))
+
+	// 判断文件是否存在，存在则返回
+	filePath := filepath.Join(d.conf.FileDir, fileID)
+	if _, err := os.Stat(filePath); err == nil {
+		log.Errorln("file exists")
+		return nil
+
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("os.Stat error: %v", err)
+	}
+	fmt.Println("query which peer exists")
+
+	// 查询哪些peer有文件
+	resultCh := make(chan peer.ID, len(fromPeerIDs))
+	var wg sync.WaitGroup
+	for _, peerID := range fromPeerIDs {
+		// 排除自己
+		if peerID == hostID {
+			continue
+		}
+
+		wg.Add(1)
+		go d.queryFile(ctx, &wg, resultCh, peerID, fileID)
+	}
+	wg.Wait()
+	close(resultCh)
+
+	var peerIDs []peer.ID
+	for peerID := range resultCh {
+		peerIDs = append(peerIDs, peerID)
+	}
+
+	fmt.Println("get peerIDs: ", peerIDs)
+
+	if len(peerIDs) == 0 {
+		return fmt.Errorf("no peer have file")
+	}
+
+	// 计算文件任务
+	chunkTotal := fileSize / ChunkSize
+	if (fileSize % ChunkSize) > 0 {
+		chunkTotal++
+	}
+	if chunkTotal <= 0 {
+		chunkTotal = 1
+	}
+
+	fmt.Println("chunkTotal: ", chunkTotal)
+	taskCh := make(chan int64, chunkTotal)
+	for i := int64(0); i < chunkTotal; i++ {
+		taskCh <- i
+	}
+
+	mhr := NewMultiHandleResult(chunkTotal)
+
+	// 启动分片下载
+	var wg2 sync.WaitGroup
+	for _, peerID := range peerIDs {
+		wg2.Add(1)
+		go d.downloadFileChunk(ctx, &wg2, mhr, taskCh, peerID, fileID, chunkTotal)
+	}
+	wg2.Wait()
+	close(taskCh)
+
+	fmt.Println("finish task")
+
+	// 检查任务完成没
+	if _, isOk := <-taskCh; isOk {
+		// 还有值，则下载失败
+		return fmt.Errorf("download failed, task not finish")
+	}
+
+	fmt.Println("start merge file: " + filePath)
+	// 分片下载完成，则合并整个文件
+	ofile, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
+	if err != nil {
+		return fmt.Errorf("os open file error: %w", err)
+	}
+	defer ofile.Close()
+
+	hashSum := md5.New()
+	multiWriter := io.MultiWriter(ofile, hashSum)
+	for chunkIndex := int64(0); chunkIndex < chunkTotal; chunkIndex++ {
+		ofile2, err := os.Open(filepath.Join(d.conf.TmpDir, chunkFileName(fileID, chunkIndex)))
+		if err != nil {
+			os.Remove(filePath)
+			return fmt.Errorf("os open error: %w", err)
+		}
+
+		if _, err = io.Copy(multiWriter, ofile2); err != nil {
+			ofile2.Close()
+			os.Remove(filePath)
+			return fmt.Errorf("io.Copy error: %w", err)
+		}
+		ofile2.Close()
+	}
+
+	fmt.Println("merge succ")
+
+	calcHash := fmt.Sprintf("%x", hashSum.Sum(nil))
+	if !strings.Contains(fileID, calcHash) {
+		os.Remove(filePath)
+		return fmt.Errorf("file %s hash %s error", fileID, calcHash)
+	}
+
+	fmt.Println("download succ")
+
+	// 下载完成后，删除分片文件
+	for chunkIndex := int64(0); chunkIndex < chunkTotal; chunkIndex++ {
+		os.Remove(filepath.Join(d.conf.TmpDir, chunkFileName(fileID, chunkIndex)))
+	}
+
+	return nil
+}
+
 func (d *FileProto) CopyFileToResource(ctx context.Context, srcFile string) (string, error) {
 	// 计算hash
 	oSrcFile, err := os.Open(srcFile)
@@ -209,105 +371,11 @@ func (d *FileProto) CopyFileToResource(ctx context.Context, srcFile string) (str
 	return fileID.String(), nil
 }
 
-func (d *FileProto) downloadFile(peerIDs []peer.ID, fName string, fSize int64, hashAlgo string, hashValue string) {
-
-	cacheDir := ""
-	downloadDir := ""
-
-	fileCacheDir := filepath.Join(cacheDir, fmt.Sprintf("%s%s", hashAlgo, hashValue))
-
-	// 判断文件是否存在，存在则返回
-	filePath := filepath.Join(downloadDir, fName)
-	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		log.Errorln("file exists error")
-	}
-
-	resultCh := make(chan peer.ID, len(peerIDs))
-
-	var wg sync.WaitGroup
-	for _, peerID := range peerIDs {
-		wg.Add(1)
-		go d.query(&wg, peerID, hashAlgo, hashValue, resultCh)
-	}
-	wg.Wait()
-
-	// 计算文件任务
-	chunkSum := fSize / ChunkSize
-	if (fSize % ChunkSize) > 0 {
-		chunkSum++
-	}
-
-	fileCh := make(chan int64, chunkSum)
-	for i := int64(0); i < chunkSum; i++ {
-		fileCh <- i
-	}
-
-	// exists file peer
-	var wg2 sync.WaitGroup
-	for peerID := range resultCh {
-		wg2.Add(1)
-		go d.downloadPart(&wg2, peerID, hashAlgo, hashValue, ChunkSize, fileCh, fileCacheDir)
-	}
-	wg2.Wait()
-
-	if _, isOk := <-fileCh; isOk {
-		// 还有值，则下载失败
-		log.Errorln("download failed, task not finish")
-		return
-	}
-
-	// 分片下载完成，则合并整个文件
-	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		log.Errorln("file exists error")
-		return
-	}
-
-	ofile, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0755)
-	if err != nil {
-		log.Errorf("os open file error: %w", err)
-		return
-	}
-	defer ofile.Close()
-
-	hashSum := md5.New()
-	multiWriter := io.MultiWriter(ofile, hashSum)
-	for i := int64(0); i < chunkSum; i++ {
-		chunkFile := filepath.Join(fileCacheDir, fmt.Sprintf("%d.part", i))
-		ofile2, err := os.Open(chunkFile)
-		if err != nil {
-			os.Remove(filePath)
-
-			log.Errorf("os open error: %w", err)
-			return
-		}
-
-		if _, err = io.Copy(multiWriter, ofile2); err != nil {
-			ofile2.Close()
-			os.Remove(filePath)
-
-			log.Errorf("io copy error: %w", err)
-			return
-		}
-		ofile2.Close()
-	}
-
-	if fmt.Sprintf("%x", hashSum.Sum(nil)) != hashValue {
-		os.Remove(filePath)
-
-		log.Errorln("file hash error")
-		return
-	}
-
-	// 下载完成后，删除分片文件
-	for i := int64(0); i < chunkSum; i++ {
-		os.Remove(filepath.Join(fileCacheDir, fmt.Sprintf("%d.part", i)))
-	}
-}
-
-func (d *FileProto) query(wg *sync.WaitGroup, peerID peer.ID, hashAlgo string, hashValue string, resultCh chan peer.ID) {
+func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh chan peer.ID, peerID peer.ID, fileID string) {
 	defer wg.Done()
 
-	ctx := context.Background()
+	fmt.Println("start query file")
+
 	stream, err := d.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, QUERY_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
@@ -315,12 +383,14 @@ func (d *FileProto) query(wg *sync.WaitGroup, peerID peer.ID, hashAlgo string, h
 	}
 	defer stream.Close()
 
+	fmt.Println("write msg")
 	wt := pbio.NewDelimitedWriter(stream)
-	if err = wt.WriteMsg(&pb.FileQuery{HashAlgo: hashAlgo, HashValue: hashValue}); err != nil {
+	if err = wt.WriteMsg(&pb.FileQuery{FileId: fileID}); err != nil {
 		log.Errorf("pbio write msg error: %v", err)
 		return
 	}
 
+	fmt.Println("read msg")
 	var result pb.FileQueryResult
 	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	if err = rd.ReadMsg(&result); err != nil {
@@ -328,78 +398,95 @@ func (d *FileProto) query(wg *sync.WaitGroup, peerID peer.ID, hashAlgo string, h
 		return
 	}
 
-	resultCh <- peerID
+	fmt.Println("get msg", result.String())
 
+	if result.Exists {
+		resultCh <- peerID
+	}
 }
 
-func (d *FileProto) downloadPart(wg *sync.WaitGroup, peerID peer.ID, hashAlgo string, hashValue string, chunkSize int64, fileCh chan int64, fileCacheDir string) {
+// downloadPart 下载分片
+func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, mhr *MultiHandleResult,
+	taskCh chan int64, peerID peer.ID, fileID string, chunkTotal int64) {
+
 	defer wg.Done()
-	ctx := context.Background()
+
 	stream, err := d.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, DOWNLOAD_ID)
 	if err != nil {
-		log.Errorf("host new stream error: %w", err)
+		log.Errorf("host new stream error: %v", err)
 		return
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
 	wt := pbio.NewDelimitedWriter(stream)
+	bufReader := bufio.NewReader(stream)
 
-	for index := range fileCh {
-		msg := pb.FileDownloadChunk{
-			HashAlgo:   hashAlgo,
-			HashValue:  hashValue,
-			ChunkIndex: index,
-			ChunkSize:  chunkSize,
-		}
-		if err = wt.WriteMsg(&msg); err != nil {
+	for chunkIndex := range taskCh {
+		// 发送下载分片请求
+		if err = wt.WriteMsg(&pb.FileDownloadChunk{
+			FileId:     fileID,
+			ChunkIndex: chunkIndex,
+			ChunkTotal: chunkTotal,
+		}); err != nil {
 			// 失败了则还回去
-			fileCh <- index
-
-			log.Errorf("pbio write msg error: %w", err)
+			taskCh <- chunkIndex
+			log.Errorf("pbio write msg error: %v", err)
 			return
 		}
 
-		chunkFile := filepath.Join(fileCacheDir, fmt.Sprintf("%d.part", index))
-		ofile, err := os.OpenFile(chunkFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0755)
+		// 接收分片头信息
+		bs64, err := bufReader.ReadBytes('\n')
 		if err != nil {
-			// 失败了则还回去
-			fileCh <- index
-
-			log.Errorf("os open file error: %w", err)
+			taskCh <- chunkIndex
+			log.Errorf("bufRead stream header error: %v", err)
 			return
+		}
+
+		// 头信息base64解码
+		bs, err := base64.StdEncoding.DecodeString(string(bs64[:len(bs64)-1]))
+		if err != nil {
+			taskCh <- chunkIndex
+			log.Errorf("base64 decode string error: %w", err)
 		}
 
 		var chunkInfo pb.FileChunkInfo
-		if err = rd.ReadMsg(&chunkInfo); err != nil {
-			fileCh <- index
-			ofile.Close()
-
-			log.Errorf("pbio read msg error: %w", err)
+		if err := proto.Unmarshal(bs, &chunkInfo); err != nil {
+			taskCh <- chunkIndex
+			log.Errorf("proto.Unmarshal chunk header error: %v", err)
 			return
 		}
 
+		fmt.Print("chunkInfo: ", chunkInfo.String())
+
+		// 接收分片数据
 		hashSum := md5.New()
-
-		mulwriter := io.MultiWriter(ofile, hashSum)
-		size, err := io.CopyN(mulwriter, stream, chunkInfo.ChunkSize)
+		chunkFile := filepath.Join(d.conf.TmpDir, chunkFileName(fileID, chunkIndex))
+		ofile, err := os.OpenFile(chunkFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0755)
 		if err != nil {
-			fileCh <- index
-			ofile.Close()
-
-			log.Errorf("io copy error: %w", err)
+			taskCh <- chunkIndex
+			log.Errorf("os open file error: %v", err)
+			return
+		}
+		mulwriter := io.MultiWriter(ofile, hashSum)
+		size, err := io.CopyN(mulwriter, bufReader, chunkInfo.ChunkSize)
+		// 写完了关闭文件
+		ofile.Close()
+		if err != nil {
+			taskCh <- chunkIndex
+			log.Errorf("io copy error: %v", err)
 			return
 		}
 
 		if size != chunkInfo.ChunkSize || fmt.Sprintf("%x", hashSum.Sum(nil)) != chunkInfo.ChunkHash { // 文件不一致
-			fileCh <- index
-			ofile.Close()
-
+			taskCh <- chunkIndex
 			log.Errorln("chunk file error")
 			return
 		}
 
-		ofile.Close()
+		// 检查是否都下载完成
+		if isFinish := mhr.IncreOne(); isFinish {
+			return
+		}
 	}
 }
 

@@ -148,8 +148,22 @@ service ConfigSvc {
 
 // 文件服务
 service FileSvc {
+  // 转换文件为资源
   rpc ConvertFileToResource(ConvertFileToResourceRequest) returns (ConvertFileToResourceReply) {}
+  // 下载联系人文件
+  rpc DownloadContactFile(DownloadContactFileRequest) returns (DownloadContactFileReply) {}
+  // 下载群组文件
+  rpc DownloadGroupFile(DownloadGroupFileRequest) returns (DownloadGroupFileReply) {}
+  // 联系人相关文件
+  rpc GetContactFiles(GetContactFilesRequest) returns (GetContactFilesReply) {}
+  // 群组相关文件
+  rpc GetGroupFiles(GetGroupFilesRequest) returns (GetGroupFilesReply) {}
+  // 删除联系人文件
+  rpc DeleteContactFile(DeleteContactFileRequest) returns (DeleteContactFileReply) {}
+  // 删除群组文件
+  rpc DeleteGroupFile(DeleteGroupFileRequest) returns (DeleteGroupFileReply) {}
 }
+
 // 消息订阅服务
 service SubscribeSvc {
   rpc SubscribeCommonEvent(SubscribeCommonEventRequest) returns (stream SubscribeCommonEventReply) {}
@@ -706,10 +720,67 @@ message SetDownloadDirReply {
 message ConvertFileToResourceRequest {
   string srcFile = 1;
 }
-
 message ConvertFileToResourceReply {
   Result result = 1;
   string resource = 2;
+}
+
+message DownloadContactFileRequest {
+  string contactId = 1;
+  string msgId = 2;
+  string fileId = 3;
+}
+message DownloadContactFileReply {
+  Result result = 1;
+  string fileId = 2;
+}
+
+message DownloadGroupFileRequest {
+  string groupId = 1;
+  string msgId = 2;
+  string fileId = 3;
+}
+message DownloadGroupFileReply {
+  Result result = 1;
+  string fileId = 2;
+}
+
+message GetContactFilesRequest {
+  string contactId = 1;
+  string keywords = 2;
+  int32  offset = 3;
+  int32  limit = 4;
+}
+message GetContactFilesReply {
+  Result result = 1;
+  repeated FileInfo files = 2;
+}
+
+message GetGroupFilesRequest {
+  string groupId = 1;
+  string keywords = 2;
+  int32  offset = 3;
+  int32  limit = 4;
+}
+message GetGroupFilesReply {
+  Result result = 1;
+  repeated FileInfo files = 2;
+}
+
+message DeleteContactFileRequest {
+  string contactId = 1;
+  repeated string fileIds = 2;
+}
+message DeleteContactFileReply {
+  Result result = 1;
+}
+
+message DeleteGroupFileRequest {
+  string groupId = 1;
+  repeated string fileIds = 2;
+}
+message DeleteGroupFileReply {
+  Result result = 1;
 }
 
 // -------------------- 分隔符 --------------------
@@ -970,4 +1041,25 @@ message CommonEvent {
 
   EventType type = 1;
   bytes     payload = 2;
+}
+
+enum FileType {
+  OtherFileType = 0;
+  TextFileType = 1;
+  ImageFileType = 2;
+  VoiceFileType = 3;
+  AudioFileType = 4;
+  VideoFileType = 5;
+}
+
+message FileInfo {
+  string    fileId = 1;
+  FileType  fileType = 2;
+  string    mimeType = 3;
+  string    name = 4;
+  int64     size = 5;
+  string    thumbnailId = 6;
+  int32     width = 7;
+  int32     height = 8;
+  int32     duration = 9;
 }

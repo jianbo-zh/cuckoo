@@ -5,14 +5,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-type EvtDownloadFile struct {
-	FromPeerIDs []peer.ID
-	FileName    string
-	FileSize    int64
-	HashAlgo    string
-	HashValue   string
-}
-
 type EvtDownloadResult struct {
 	FileName   string
 	FileSize   int64

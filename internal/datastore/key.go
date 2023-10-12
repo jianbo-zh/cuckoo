@@ -295,8 +295,8 @@ file 文件服务
 ---------------------------------------
 /cuckoo/filetable/file/<fileID>/<sessionID>
 /cuckoo/filetable/session/<sessionID>/resource/<fileID>
-/cuckoo/filetable/session/<sessionID>/upload/<fileID>
-/cuckoo/filetable/session/<sessionID>/download/<fileID>
+/cuckoo/filetable/session/<sessionID>/file/<fileID>
+/cuckoo/filetable/session/<sessionID>/filetime/<fileID>
 ---------------------------------------
 */
 const FilePrefix = "/cuckoo/filetable/file/"
@@ -320,18 +320,18 @@ func (d *FileDsKey) SessionResourceKey(sessionID string, fileID string) ipfsds.K
 	return ipfsds.NewKey(SessionPrefix + sessionID + "/resource/" + fileID)
 }
 
-func (d *FileDsKey) SessionUploadFilePrefix(sessionID string) string {
-	return SessionPrefix + sessionID + "/upload/"
+func (d *FileDsKey) SessionFilePrefix(sessionID string) string {
+	return SessionPrefix + sessionID + "/file/"
 }
 
-func (d *FileDsKey) SessionUploadFileKey(sessionID string, fileID string) ipfsds.Key {
-	return ipfsds.NewKey(SessionPrefix + sessionID + "/upload/" + fileID)
+func (d *FileDsKey) SessionFileKey(sessionID string, fileID string) ipfsds.Key {
+	return ipfsds.NewKey(SessionPrefix + sessionID + "/file/" + fileID)
 }
 
-func (d *FileDsKey) SessionDownloadFilePrefix(sessionID string) string {
-	return SessionPrefix + sessionID + "/download/"
+func (d *FileDsKey) SessionFileTimePrefix(sessionID string) string {
+	return SessionPrefix + sessionID + "/filetime/"
 }
 
-func (d *FileDsKey) SessionDownloadFileKey(sessionID string, fileID string) ipfsds.Key {
-	return ipfsds.NewKey(SessionPrefix + sessionID + "/download/" + fileID)
+func (d *FileDsKey) SessionFileTimeKey(sessionID string, fileID string) ipfsds.Key {
+	return ipfsds.NewKey(SessionPrefix + sessionID + "/filetime/" + fileID)
 }

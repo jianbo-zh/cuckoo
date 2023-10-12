@@ -3,26 +3,24 @@ syntax = "proto3";
 package file.pb;
 
 message FileQuery {
-    string  hashAlgo = 1;
-    string  hashValue = 2;
+    string  fileId = 1;
 }
 
 message FileQueryResult {
-    string  hashAlgo = 1;
-    string  hashValue = 2;
-    bool    isExists = 3;
+    string  fileId = 1;
+    bool    exists = 2;
 }
 
 message FileDownloadChunk {
-    string  hashAlgo = 1;
-    string  hashValue = 2;
-    int64   chunkIndex = 3;
-    int64   chunkSize = 4;
+    string  fileId = 1;
+    int64   chunkIndex = 2;
+    int64   chunkTotal = 3;
 }
 
 message FileChunkInfo {
-    string  chunkHash = 1;
-    int64   chunkSize = 2;
+    string  fileId = 1;
+    string  chunkHash = 2;
+    int64   chunkSize = 3;
 }
 
 // message File {
@@ -66,32 +64,13 @@ enum FileType {
   }
 
 message FileInfo {
-    string      id = 1;
-    FileType    fileType = 2;
-    string      mimeType = 3;
-    string      fileName = 5;
-    int64       fileSize = 6;
-    string      filePath = 7;
-    bytes       metadata = 4;
-}
-
-message OtherFileMetadata {}
-
-message TextFileMetadata {}
-
-message ImageFileMetadata {
-    int32  width = 1;
-    int32  height = 2;
-}
-
-message VoiceFileMetadata {
-    int32   duration = 1;
-}
-
-message AudioFileMetadata {
-    int32  duration = 1;
-}
-
-message VideoFileMetadata {
-    int32  duration = 1;
+    string   fileId = 1;
+    FileType fileType = 2;
+    string   mimeType = 3;
+    string   fileName = 4;
+    int64    fileSize = 5;
+    string   thumbnailId = 6;
+    int32    width = 7;
+    int32    height = 8;
+    int32    duration = 9;
 }
