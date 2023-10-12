@@ -70,7 +70,7 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtRecordSessionAttachment), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
 	}
@@ -318,59 +318,6 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 	return nil
 }
 
-func (d *FileProto) CopyFileToResource(ctx context.Context, srcFile string) (string, error) {
-	// 计算hash
-	oSrcFile, err := os.Open(srcFile)
-	if err != nil {
-		return "", fmt.Errorf("os open file error: %w", err)
-	}
-	defer oSrcFile.Close()
-
-	fi, err := oSrcFile.Stat()
-	if err != nil {
-		return "", fmt.Errorf("file state error: %w", err)
-
-	} else if fi.IsDir() {
-		return "", fmt.Errorf("file is dir, need file")
-	}
-
-	tmpFile := filepath.Join(d.conf.TmpDir, fmt.Sprintf("%d.tmp", time.Now().Unix()))
-
-	oTmpFile, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_RDWR, 0755)
-	if err != nil {
-		return "", fmt.Errorf("os.OpenFile error: %w", err)
-	}
-
-	hashSum := md5.New()
-
-	multiWriter := io.MultiWriter(oTmpFile, hashSum)
-
-	size, err := io.Copy(multiWriter, oSrcFile)
-	if err != nil {
-		oTmpFile.Close()
-		os.Remove(tmpFile)
-		return "", fmt.Errorf("io copy calc file hash error: %w", err)
-	}
-	oTmpFile.Close()
-
-	if fi.Size() != size {
-		os.Remove(tmpFile)
-		return "", fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
-	}
-
-	fileID := mytype.FileID{
-		HashAlgo:  "md5",
-		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
-		Extension: filepath.Ext(srcFile),
-	}
-
-	if err := os.Rename(tmpFile, filepath.Join(d.conf.ResourceDir, fileID.String())); err != nil {
-		return "", fmt.Errorf("os.Rename error: %w", err)
-	}
-
-	return fileID.String(), nil
-}
-
 func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh chan peer.ID, peerID peer.ID, fileID string) {
 	defer wg.Done()
 
@@ -490,43 +437,79 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 	}
 }
 
-// func (f *FileProto) CalcFileID(ctx context.Context, filePath string) (*mytype.FileID, error) {
-// 	// 计算hash
-// 	ofile, err := os.Open(filePath)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("os open file error: %w", err)
-// 	}
-// 	defer ofile.Close()
+// CopyFileToResource 复制文件到资源目录
+func (f *FileProto) CopyFileToResource(ctx context.Context, srcFile string) (string, error) {
 
-// 	fi, err := ofile.Stat()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("file state error: %w", err)
+	tmpFile, fileID, err := f.calcFileID(ctx, srcFile)
+	if err != nil {
+		return "", fmt.Errorf("copy to tmp dir error: %w", err)
+	}
 
-// 	} else if fi.IsDir() {
-// 		return nil, fmt.Errorf("file is dir, need file")
-// 	}
+	// 内部资源目录
+	if err := os.Rename(tmpFile, filepath.Join(f.conf.ResourceDir, fileID.String())); err != nil {
+		return "", fmt.Errorf("os.Rename error: %w", err)
+	}
 
-// 	hashSum := md5.New()
+	return fileID.String(), nil
+}
 
-// 	size, err := io.Copy(hashSum, ofile)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("io copy calc file hash error: %w", err)
-// 	}
+// CopyFileToFile 复制外部文件到内部
+func (f *FileProto) CopyFileToFile(ctx context.Context, srcFile string) (string, error) {
 
-// 	if fi.Size() != size {
-// 		return nil, fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
-// 	}
+	tmpFile, fileID, err := f.calcFileID(ctx, srcFile)
+	if err != nil {
+		return "", fmt.Errorf("copy to tmp dir error: %w", err)
+	}
 
-// 	fileHash := mytype.FileID{
-// 		HashAlgo:  "md5",
-// 		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
-// 	}
+	// 内部文件目录
+	if err := os.Rename(tmpFile, filepath.Join(f.conf.FileDir, fileID.String())); err != nil {
+		return "", fmt.Errorf("os.Rename error: %w", err)
+	}
 
-// 	// 存储结果
-// 	err = f.data.SaveFile(ctx, filePath, fi.Size(), fileHash.HashAlgo, fileHash.HashValue)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("data save file error: %w", err)
-// 	}
+	return fileID.String(), nil
+}
 
-// 	return &fileHash, nil
-// }
+func (f *FileProto) calcFileID(ctx context.Context, srcFile string) (string, *mytype.FileID, error) {
+	// 计算hash
+	oSrcFile, err := os.Open(srcFile)
+	if err != nil {
+		return "", nil, fmt.Errorf("os open file error: %w", err)
+	}
+	defer oSrcFile.Close()
+
+	fi, err := oSrcFile.Stat()
+	if err != nil {
+		return "", nil, fmt.Errorf("file state error: %w", err)
+
+	} else if fi.IsDir() {
+		return "", nil, fmt.Errorf("file is dir, need file")
+	}
+
+	tmpFilePath := filepath.Join(f.conf.TmpDir, fmt.Sprintf("%d.tmp", time.Now().Unix()))
+
+	oTmpFile, err := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_RDWR, 0755)
+	if err != nil {
+		return "", nil, fmt.Errorf("os.OpenFile error: %w", err)
+	}
+	defer oTmpFile.Close()
+
+	hashSum := md5.New()
+	multiWriter := io.MultiWriter(oTmpFile, hashSum)
+
+	size, err := io.Copy(multiWriter, oSrcFile)
+	if err != nil {
+		os.Remove(tmpFilePath)
+		return "", nil, fmt.Errorf("io copy calc file hash error: %w", err)
+	}
+
+	if fi.Size() != size {
+		os.Remove(tmpFilePath)
+		return "", nil, fmt.Errorf("io copy size error, filesize: %d, copysize: %d", fi.Size(), size)
+	}
+
+	return tmpFilePath, &mytype.FileID{
+		HashAlgo:  "md5",
+		HashValue: fmt.Sprintf("%x", hashSum.Sum(nil)),
+		Extension: filepath.Ext(srcFile),
+	}, nil
+}

@@ -36,7 +36,7 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 			case myevent.EvtDownloadResource:
 				go f.handleDownloadResourceEvent(ctx, evt)
 
-			case myevent.EvtRecordSessionAttachment:
+			case myevent.EvtLogSessionAttachment:
 				go f.handleLogSessionAttachmentEvent(ctx, evt)
 			}
 
@@ -46,7 +46,7 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 	}
 }
 
-func (f *FileProto) handleLogSessionAttachmentEvent(ctx context.Context, evt myevent.EvtRecordSessionAttachment) {
+func (f *FileProto) handleLogSessionAttachmentEvent(ctx context.Context, evt myevent.EvtLogSessionAttachment) {
 	var resultErr error
 
 	defer func() {

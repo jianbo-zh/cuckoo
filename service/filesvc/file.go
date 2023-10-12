@@ -33,8 +33,12 @@ func NewFileService(ctx context.Context, conf config.FileServiceConfig, lhost my
 	return &dlsvc, nil
 }
 
-func (f *FileService) ConvertFileToResource(ctx context.Context, srcFile string) (string, error) {
+func (f *FileService) CopyFileToResource(ctx context.Context, srcFile string) (string, error) {
 	return f.fileProto.CopyFileToResource(ctx, srcFile)
+}
+
+func (f *FileService) CopyFileToFile(ctx context.Context, srcFile string) (string, error) {
+	return f.fileProto.CopyFileToFile(ctx, srcFile)
 }
 
 func (f *FileService) DownloadContactFile(ctx context.Context, contactID peer.ID, file *mytype.FileInfo) error {

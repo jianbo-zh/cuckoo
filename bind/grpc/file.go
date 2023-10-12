@@ -37,38 +37,6 @@ func (f *FileSvc) getFileSvc() (filesvc.FileServiceIface, error) {
 	return fileSvc, nil
 }
 
-func (f *FileSvc) ConvertFileToResource(ctx context.Context, request *proto.ConvertFileToResourceRequest) (reply *proto.ConvertFileToResourceReply, err error) {
-
-	log.Infoln("ConvertFileToResource request: ", request.String())
-	defer func() {
-		if e := recover(); e != nil {
-			log.Panicln("ConvertFileToResource panic: ", e)
-		} else if err != nil {
-			log.Errorln("ConvertFileToResource error: ", err.Error())
-		} else {
-			log.Infoln("ConvertFileToResource reply: ", reply.String())
-		}
-	}()
-
-	fileSvc, err := f.getFileSvc()
-	if err != nil {
-		return nil, fmt.Errorf("get file svc error: %w", err)
-	}
-
-	resourceID, err := fileSvc.ConvertFileToResource(ctx, request.SrcFile)
-	if err != nil {
-		return nil, fmt.Errorf("svc convertFileToResource error: %w", err)
-	}
-
-	return &proto.ConvertFileToResourceReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Resource: resourceID,
-	}, nil
-}
-
 // DownloadContactFile 下载联系人文件
 func (f *FileSvc) DownloadContactFile(ctx context.Context, request *proto.DownloadContactFileRequest) (reply *proto.DownloadContactFileReply, err error) {
 

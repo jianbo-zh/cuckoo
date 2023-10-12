@@ -10,6 +10,7 @@ import (
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/jianbo-zh/dchat/service/filesvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 	goproto "google.golang.org/protobuf/proto"
 )
@@ -53,6 +54,20 @@ func (c *ContactSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	}
 
 	return accountSvc, nil
+}
+
+func (c *ContactSvc) getFileSvc() (filesvc.FileServiceIface, error) {
+	cuckoo, err := c.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	fileSvc, err := cuckoo.GetFileSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return fileSvc, nil
 }
 
 func (c *ContactSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
@@ -602,9 +617,25 @@ func (c *ContactSvc) SendContactImageMessage(request *proto.SendContactImageMess
 		}
 	}()
 
+	fileSvc, err := c.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	thumbnailID, err := fileSvc.CopyFileToResource(ctx, request.ThumbnailPath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
+	imageID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to file error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.ImageMessagePayload{
-		ThumbnailId: request.ThumbnailId,
-		ImageId:     request.ImageId,
+		ThumbnailId: thumbnailID,
+		ImageId:     imageID,
 		Name:        request.Name,
 		Size:        request.Size,
 		Width:       request.Width,
@@ -615,17 +646,17 @@ func (c *ContactSvc) SendContactImageMessage(request *proto.SendContactImageMess
 	}
 
 	file := mytype.FileInfo{
-		FileID:      request.ImageId,
+		FileID:      imageID,
 		FileName:    request.Name,
 		FileSize:    request.Size,
 		FileType:    mytype.ImageFile,
 		MimeType:    request.MimeType,
-		ThumbnailID: request.ThumbnailId,
+		ThumbnailID: thumbnailID,
 		Width:       request.Width,
 		Height:      request.Height,
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, request.ThumbnailId, &file)
+	return c.sendContactMessage(context.Background(), server, mytype.ImageMsgType, request.ContactId, request.MimeType, payload, thumbnailID, &file)
 }
 
 // SendContactVoiceMessage 发送语音
@@ -641,15 +672,26 @@ func (c *ContactSvc) SendContactVoiceMessage(request *proto.SendContactVoiceMess
 		}
 	}()
 
+	fileSvc, err := c.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	voiceID, err := fileSvc.CopyFileToResource(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.VoiceMessagePayload{
-		VoiceId:  request.VoiceId,
+		VoiceId:  voiceID,
 		Duration: request.Duration,
 	})
 	if err != nil {
 		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	return c.sendContactMessage(context.Background(), server, mytype.VoiceMsgType, request.ContactId, request.MimeType, payload, request.VoiceId, nil)
+	return c.sendContactMessage(context.Background(), server, mytype.VoiceMsgType, request.ContactId, request.MimeType, payload, voiceID, nil)
 }
 
 // SendContactAudioMessage 发送音频
@@ -664,8 +706,19 @@ func (c *ContactSvc) SendContactAudioMessage(request *proto.SendContactAudioMess
 		}
 	}()
 
+	fileSvc, err := c.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	audioID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.AudioMessagePayload{
-		AudioId:  request.AudioId,
+		AudioId:  audioID,
 		Name:     request.Name,
 		Size:     request.Size,
 		Duration: request.Duration,
@@ -675,7 +728,7 @@ func (c *ContactSvc) SendContactAudioMessage(request *proto.SendContactAudioMess
 	}
 
 	file := mytype.FileInfo{
-		FileID:   request.AudioId,
+		FileID:   audioID,
 		FileName: request.Name,
 		FileSize: request.Size,
 		FileType: mytype.AudioFile,
@@ -698,8 +751,19 @@ func (c *ContactSvc) SendContactVideoMessage(request *proto.SendContactVideoMess
 		}
 	}()
 
+	fileSvc, err := c.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	videoID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.VideoMessagePayload{
-		VideoId:  request.VideoId,
+		VideoId:  videoID,
 		Name:     request.Name,
 		Size:     request.Size,
 		Duration: request.Duration,
@@ -709,7 +773,7 @@ func (c *ContactSvc) SendContactVideoMessage(request *proto.SendContactVideoMess
 	}
 
 	file := mytype.FileInfo{
-		FileID:   request.VideoId,
+		FileID:   videoID,
 		FileName: request.Name,
 		FileSize: request.Size,
 		FileType: mytype.VideoFile,
@@ -732,8 +796,19 @@ func (c *ContactSvc) SendContactFileMessage(request *proto.SendContactFileMessag
 		}
 	}()
 
+	fileSvc, err := c.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	fileID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.FileMessagePayload{
-		FileId: request.FileId,
+		FileId: fileID,
 		Name:   request.Name,
 		Size:   request.Size,
 	})
@@ -742,7 +817,7 @@ func (c *ContactSvc) SendContactFileMessage(request *proto.SendContactFileMessag
 	}
 
 	file := mytype.FileInfo{
-		FileID:   request.FileId,
+		FileID:   fileID,
 		FileName: request.Name,
 		FileSize: request.Size,
 		FileType: mytype.OtherFile,

@@ -53,7 +53,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 	if resourceID != "" || file != nil {
 		resultCh := make(chan error)
 		sessionID := mytype.ContactSessionID(contactID)
-		if err := c.emitters.evtRecordSessionAttachment.Emit(myevent.EvtRecordSessionAttachment{
+		if err := c.emitters.evtRecordSessionAttachment.Emit(myevent.EvtLogSessionAttachment{
 			SessionID:  sessionID.String(),
 			ResourceID: resourceID,
 			File:       file,

@@ -52,14 +52,29 @@ func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAcc
 		}
 	}()
 
-	accountSvc, err := a.getAccountSvc()
+	cuckoo, err := a.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	accountSvc, err := cuckoo.GetAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetAccountSvc error: %s", err.Error())
+	}
+
+	fileSvc, err := cuckoo.GetFileSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetFileSvc error: %s", err.Error())
+	}
+
+	avatarID, err := fileSvc.CopyFileToResource(ctx, request.ImagePath)
+	if err != nil {
+		return nil, fmt.Errorf("svc.CopyFileToResource error: %w", err)
 	}
 
 	fullAccount, err := accountSvc.CreateAccount(ctx, mytype.Account{
 		Name:           request.Name,
-		Avatar:         request.Avatar,
+		Avatar:         avatarID,
 		AutoAddContact: true,
 		AutoJoinGroup:  true,
 	})
@@ -143,9 +158,24 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 		}
 	}()
 
-	accountSvc, err := a.getAccountSvc()
+	cuckoo, err := a.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("a.getAccountSvc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	accountSvc, err := cuckoo.GetAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetAccountSvc error: %s", err.Error())
+	}
+
+	fileSvc, err := cuckoo.GetFileSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetFileSvc error: %s", err.Error())
+	}
+
+	avatarID, err := fileSvc.CopyFileToResource(ctx, request.ImagePath)
+	if err != nil {
+		return nil, fmt.Errorf("svc.CopyFileToResource error: %w", err)
 	}
 
 	account, err := accountSvc.GetAccount(ctx)
@@ -153,8 +183,8 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 		return nil, fmt.Errorf("svc get account error: %w", err)
 	}
 
-	if request.GetAvatar() != account.Avatar {
-		err = accountSvc.SetAccountAvatar(ctx, request.GetAvatar())
+	if avatarID != account.Avatar {
+		err = accountSvc.SetAccountAvatar(ctx, avatarID)
 		if err != nil {
 			return nil, fmt.Errorf("accountSvc.SetAvatar error: %w", err)
 		}
@@ -165,7 +195,7 @@ func (a *AccountSvc) SetAccountAvatar(ctx context.Context, request *proto.SetAcc
 			Code:    0,
 			Message: "ok",
 		},
-		Avatar: request.GetAvatar(),
+		Avatar: avatarID,
 	}
 	return reply, nil
 }

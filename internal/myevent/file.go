@@ -36,7 +36,7 @@ type EvtDownloadResource struct {
 	Result  chan<- error
 }
 
-type EvtRecordSessionAttachment struct {
+type EvtLogSessionAttachment struct {
 	SessionID  string
 	ResourceID string
 	File       *mytype.FileInfo

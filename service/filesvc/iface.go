@@ -8,7 +8,9 @@ import (
 )
 
 type FileServiceIface interface {
-	ConvertFileToResource(ctx context.Context, srcFile string) (string, error)
+	CopyFileToResource(ctx context.Context, srcFile string) (resourceID string, err error)
+	CopyFileToFile(ctx context.Context, srcFile string) (fileID string, err error)
+
 	DownloadContactFile(ctx context.Context, peerID peer.ID, file *mytype.FileInfo) error
 	DownloadGroupFile(ctx context.Context, groupID string, peerIDs []peer.ID, file *mytype.FileInfo) error
 

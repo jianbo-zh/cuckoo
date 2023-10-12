@@ -148,8 +148,6 @@ service ConfigSvc {
 
 // 文件服务
 service FileSvc {
-  // 转换文件为资源
-  rpc ConvertFileToResource(ConvertFileToResourceRequest) returns (ConvertFileToResourceReply) {}
   // 下载联系人文件
   rpc DownloadContactFile(DownloadContactFileRequest) returns (DownloadContactFileReply) {}
   // 下载群组文件
@@ -200,7 +198,7 @@ message Result {
 
 message CreateAccountRequest {
   string name = 1;
-  string avatar = 2;
+  string imagePath = 2;
 }
 message CreateAccountReply {
   Result result = 1;
@@ -214,7 +212,7 @@ message GetAccountReply {
 }
 
 message SetAccountAvatarRequest{
-  string avatar = 1;
+  string imagePath = 1;
 }
 message SetAccountAvatarReply{
     Result result = 1;
@@ -320,8 +318,8 @@ message SendContactTextMessageRequest {
 message SendContactImageMessageRequest {
   string  contactId = 1;
   string  mimeType = 2;
-  string  thumbnailId = 3;
-  string  imageId = 4;
+  string  filePath = 3;
+  string  thumbnailPath = 4;
   string  name = 5;
   int64   size = 6;
   int32   width = 7;
@@ -330,14 +328,14 @@ message SendContactImageMessageRequest {
 message SendContactVoiceMessageRequest {
   string  contactId = 1;
   string  mimeType = 2;
-  string  voiceId = 3;
+  string  filePath = 3;
   int64   size = 4;
   int32   duration = 5;
 }
 message SendContactAudioMessageRequest {
   string  contactId = 1;
   string  mimeType = 2;
-  string  audioId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
   int32   duration = 6;
@@ -345,7 +343,7 @@ message SendContactAudioMessageRequest {
 message SendContactVideoMessageRequest {
   string  contactId = 1;
   string  mimeType = 2;
-  string  videoId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
   int32   duration = 6;
@@ -353,7 +351,7 @@ message SendContactVideoMessageRequest {
 message SendContactFileMessageRequest {
   string  contactId = 1;
   string  mimeType = 2;
-  string  fileId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
 }

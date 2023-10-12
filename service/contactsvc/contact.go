@@ -47,7 +47,7 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
-	if svc.emitters.evtRecordSessionAttachment, err = ebus.Emitter(&myevent.EvtRecordSessionAttachment{}); err != nil {
+	if svc.emitters.evtRecordSessionAttachment, err = ebus.Emitter(&myevent.EvtLogSessionAttachment{}); err != nil {
 		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
