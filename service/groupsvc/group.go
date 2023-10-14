@@ -31,7 +31,9 @@ type GroupService struct {
 	contactSvc contactsvc.ContactServiceIface
 
 	emitters struct {
-		evtGroupsInit event.Emitter
+		evtGroupsInit           event.Emitter
+		evtLogSessionAttachment event.Emitter
+		evtUploadResource       event.Emitter
 	}
 }
 
@@ -65,6 +67,14 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 	groupsvc.emitters.evtGroupsInit, err = ebus.Emitter(&myevent.EvtGroupsInit{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
+	}
+
+	if groupsvc.emitters.evtLogSessionAttachment, err = ebus.Emitter(&myevent.EvtLogSessionAttachment{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	}
+
+	if groupsvc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtSendResource{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
 	// 订阅器
@@ -133,7 +143,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 }
 
 // 创建群
-func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*mytype.Group, error) {
+func (g *GroupService) CreateGroup(ctx context.Context, name string, avatarID string, memberIDs []peer.ID) (*mytype.Group, error) {
 
 	account, err := g.accountSvc.GetAccount(ctx)
 	if err != nil {
@@ -145,7 +155,7 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar stri
 		return nil, fmt.Errorf("get contacts by ids error: %w", err)
 	}
 
-	return g.adminProto.CreateGroup(ctx, account, name, avatar, contacts)
+	return g.adminProto.CreateGroup(ctx, account, name, avatarID, contacts)
 }
 
 // GetGroup 获取群信息
@@ -311,14 +321,64 @@ func (g *GroupService) GetGroupMembers(ctx context.Context, groupID string, keyw
 }
 
 // 发送消息
-func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (string, error) {
+func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte,
+	attachmentID string, file *mytype.FileInfo) (<-chan mytype.GroupMessage, error) {
+
+	// 处理资源文件
+	if attachmentID != "" || file != nil {
+		resultCh := make(chan error)
+		sessionID := mytype.GroupSessionID(groupID)
+		if err := g.emitters.evtLogSessionAttachment.Emit(myevent.EvtLogSessionAttachment{
+			SessionID:  sessionID.String(),
+			ResourceID: attachmentID,
+			File:       file,
+			Result:     resultCh,
+		}); err != nil {
+			return nil, fmt.Errorf("emit record session attachment error: %w", err)
+		}
+		if err := <-resultCh; err != nil {
+			return nil, fmt.Errorf("record session attachment error: %w", err)
+		}
+	}
 
 	account, err := g.accountSvc.GetAccount(ctx)
 	if err != nil {
-		return "", fmt.Errorf("accountSvc.GetAccount error: %w", err)
+		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
 	}
 
-	return g.messageProto.SendGroupMessage(ctx, account, groupID, msgType, mimeType, payload)
+	// 创建消息
+	msg, err := g.messageProto.CreateMessage(ctx, account, groupID, msgType, mimeType, payload, attachmentID)
+	if err != nil {
+		return nil, fmt.Errorf("generate message error: %w", err)
+	}
+
+	resultCh := make(chan mytype.GroupMessage, 1)
+	resultCh <- *convertMessage(msg)
+
+	go func(msgID string) {
+		defer func() {
+			close(resultCh)
+		}()
+
+		isSucc := true
+		if err := g.messageProto.SendGroupMessage(ctx, groupID, msgID); err != nil {
+			isSucc = false
+			// log error
+			log.Error("send message error: %v", err)
+		}
+
+		msg, err := g.messageProto.UpdateMessageState(ctx, groupID, msgID, isSucc)
+		if err != nil {
+			// log error
+			log.Errorf("msgProto.UpdateMessageState error: %w", err)
+			return
+		}
+
+		resultCh <- *convertMessage(msg)
+
+	}(msg.Id)
+
+	return resultCh, nil
 }
 
 // 获取消息消息
@@ -328,19 +388,7 @@ func (g *GroupService) GetGroupMessage(ctx context.Context, groupID string, msgI
 		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
 	}
 
-	message := &mytype.GroupMessage{
-		ID:      msg.Id,
-		GroupID: msg.GroupId,
-		FromPeer: mytype.GroupMember{
-			ID:     peer.ID(msg.Member.Id),
-			Name:   msg.Member.Name,
-			Avatar: msg.Member.Avatar,
-		},
-		MsgType:    msg.MsgType,
-		MimeType:   msg.MimeType,
-		Payload:    msg.Payload,
-		CreateTime: msg.CreateTime,
-	}
+	message := convertMessage(msg)
 
 	return message, nil
 }
@@ -354,27 +402,15 @@ func (g *GroupService) DeleteGroupMessage(ctx context.Context, groupID string, m
 }
 
 // 消息列表
-func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]mytype.GroupMessage, error) {
+func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]*mytype.GroupMessage, error) {
 	msgs, err := g.messageProto.GetMessageList(ctx, groupID, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("messageSvc.GetMessageList error: %w", err)
 	}
 
-	var messageList []mytype.GroupMessage
+	var messageList []*mytype.GroupMessage
 	for _, msg := range msgs {
-		messageList = append(messageList, mytype.GroupMessage{
-			ID:       msg.Id,
-			GroupID:  msg.GroupId,
-			MsgType:  msg.MsgType,
-			MimeType: msg.MimeType,
-			FromPeer: mytype.GroupMember{
-				ID:     peer.ID(msg.Member.Id),
-				Name:   msg.Member.Name,
-				Avatar: msg.Member.Avatar,
-			},
-			Payload:    msg.Payload,
-			CreateTime: msg.CreateTime,
-		})
+		messageList = append(messageList, convertMessage(msg))
 	}
 
 	return messageList, nil

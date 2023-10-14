@@ -10,6 +10,7 @@ import (
 	"time"
 
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/filepb"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -38,11 +39,65 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 
 			case myevent.EvtLogSessionAttachment:
 				go f.handleLogSessionAttachmentEvent(ctx, evt)
+
+			case myevent.EvtGetResourceData:
+				go f.handleGetResourceDataEvent(ctx, evt)
+
+			case myevent.EvtSaveResourceData:
+				go f.handleSaveResourceDataEvent(ctx, evt)
 			}
 
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// handleGetResourceDataEvent 读取资源数据
+func (f *FileProto) handleGetResourceDataEvent(ctx context.Context, evt myevent.EvtGetResourceData) {
+	var result myevent.GetResourceDataResult
+	defer func() {
+		evt.Result <- &result
+		close(evt.Result)
+	}()
+
+	file := filepath.Join(f.conf.ResourceDir, evt.ResourceID)
+	if _, err := os.Stat(file); err != nil {
+		result.Error = fmt.Errorf("os.Stat error: %w", err)
+		return
+	}
+
+	bs, err := os.ReadFile(file)
+	if err != nil {
+		result.Error = fmt.Errorf("os.ReadFile error: %w", err)
+		return
+	}
+
+	result.Data = bs
+}
+
+// handleSaveResourceDataEvent 保存资源
+func (f *FileProto) handleSaveResourceDataEvent(ctx context.Context, evt myevent.EvtSaveResourceData) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	file := filepath.Join(f.conf.ResourceDir, evt.ResourceID)
+	if _, err := os.Stat(file); err == nil {
+		// exists
+		return
+
+	} else if !os.IsNotExist(err) {
+		resultErr = fmt.Errorf("os.Stat error: %w", err)
+		return
+	}
+
+	if err := os.WriteFile(file, evt.Data, 0755); err != nil {
+		resultErr = fmt.Errorf("os.WriteFile error: %w", err)
+		return
 	}
 }
 
@@ -151,7 +206,7 @@ func (f *FileProto) handleUploadResourceEvent(ctx context.Context, evt myevent.E
 	fmt.Println("send upload request: ", reqMsg.String())
 
 	// 接收请求回复
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	var replyMsg pb.FileUploadReply
 	if err = rd.ReadMsg(&replyMsg); err != nil {
 		resultErr = fmt.Errorf("pbio.ReadMsg error: %w", err)

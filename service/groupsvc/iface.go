@@ -8,7 +8,7 @@ import (
 )
 
 type GroupServiceIface interface {
-	CreateGroup(ctx context.Context, name string, avatar string, memberIDs []peer.ID) (*mytype.Group, error)         // 创建群
+	CreateGroup(ctx context.Context, name string, avatarID string, memberIDs []peer.ID) (*mytype.Group, error)       // 创建群
 	AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error // 同意加入群
 	DisbandGroup(ctx context.Context, groupID string) error                                                          // 解散群
 	ExitGroup(ctx context.Context, groupID string) error                                                             // 退出群
@@ -31,11 +31,12 @@ type GroupServiceIface interface {
 	RemoveGroupMember(ctx context.Context, groupID string, memberID peer.ID) error                                             // 移除成员
 	GetGroupMembers(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]mytype.GroupMember, error) // 成员列表
 
-	SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte) (msgID string, err error) // 发送消息
-	GetGroupMessage(ctx context.Context, groupID string, msgID string) (*mytype.GroupMessage, error)                                 // 获取消息
-	GetGroupMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error)                                           // 获取消息
-	DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error                                                      // 删除消息
-	GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]mytype.GroupMessage, error)                      // 消息列表
+	SendGroupMessage(ctx context.Context, groupID string, msgType string, mimeType string, payload []byte, resourceID string, file *mytype.FileInfo) (resultCh <-chan mytype.GroupMessage, err error) // 发送消息
+
+	GetGroupMessage(ctx context.Context, groupID string, msgID string) (*mytype.GroupMessage, error)             // 获取消息
+	GetGroupMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error)                       // 获取消息
+	DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error                                  // 删除消息
+	GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]*mytype.GroupMessage, error) // 消息列表
 	ClearGroupMessage(ctx context.Context, groupID string) error
 
 	Close()

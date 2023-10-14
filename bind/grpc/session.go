@@ -88,8 +88,9 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 				return nil, fmt.Errorf("svc get contact error: %w", err)
 			}
 			sessionList = append(sessionList, &proto.Session{
+				Id:      session.ID.String(),
 				Type:    proto.Session_ContactSession,
-				Id:      contactID.String(), // 这里直接用联系人ID
+				RelId:   contactID.String(),
 				Name:    contact.Name,
 				Avatar:  contact.Avatar,
 				State:   encodeOnlineState(onlineStateMap[contactID]),
@@ -104,8 +105,9 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 				return nil, fmt.Errorf("svc get group error: %w", err)
 			}
 			sessionList = append(sessionList, &proto.Session{
+				Id:      session.ID.String(),
 				Type:    proto.Session_GroupSession,
-				Id:      groupID, // 这里直接用群组ID
+				RelId:   groupID,
 				Name:    group.Name,
 				Avatar:  group.Avatar,
 				State:   proto.ConnState_UnknownState,

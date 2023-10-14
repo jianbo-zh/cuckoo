@@ -36,7 +36,6 @@ const (
 	SYNC_ID = myprotocol.GroupAdminSyncID_v100
 
 	ServiceName = "group.admin"
-	maxMsgSize  = 4 * 1024 // 4K
 )
 
 type GroupLogStats struct {
@@ -105,7 +104,7 @@ func (m *AdminProto) syncHandler(stream network.Stream) {
 
 	// 获取同步GroupID
 	var syncmsg pb.GroupSyncLog
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&syncmsg); err != nil {
 		log.Errorf("pbio read sync init msg error: %v", err)
 		return
@@ -152,7 +151,7 @@ func (a *AdminProto) handler(stream network.Stream) {
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	defer rd.Close()
 
 	stream.SetDeadline(time.Now().Add(StreamTimeout))

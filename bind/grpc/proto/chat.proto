@@ -103,17 +103,17 @@ service GroupSvc {
   rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
 
   // 发送消息
-  rpc SendGroupTextMessage(SendGroupTextMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupTextMessage(SendGroupTextMessageRequest) returns (stream SendGroupMessageReply) {}
   // 发送图片消息
-  rpc SendGroupImageMessage(SendGroupImageMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupImageMessage(SendGroupImageMessageRequest) returns (stream SendGroupMessageReply) {}
   // 发送语音消息
-  rpc SendGroupVoiceMessage(SendGroupVoiceMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupVoiceMessage(SendGroupVoiceMessageRequest) returns (stream SendGroupMessageReply) {}
   // 发送音频消息
-  rpc SendGroupAudioMessage(SendGroupAudioMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupAudioMessage(SendGroupAudioMessageRequest) returns (stream SendGroupMessageReply) {}
   // 发送视频消息
-  rpc SendGroupVideoMessage(SendGroupVideoMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupVideoMessage(SendGroupVideoMessageRequest) returns (stream SendGroupMessageReply) {}
   // 发送文件消息
-  rpc SendGroupFileMessage(SendGroupFileMessageRequest) returns (SendGroupMessageReply) {}
+  rpc SendGroupFileMessage(SendGroupFileMessageRequest) returns (stream SendGroupMessageReply) {}
 }
 
 // 会话服务
@@ -148,18 +148,12 @@ service ConfigSvc {
 
 // 文件服务
 service FileSvc {
-  // 下载联系人文件
-  rpc DownloadContactFile(DownloadContactFileRequest) returns (DownloadContactFileReply) {}
-  // 下载群组文件
-  rpc DownloadGroupFile(DownloadGroupFileRequest) returns (DownloadGroupFileReply) {}
-  // 联系人相关文件
-  rpc GetContactFiles(GetContactFilesRequest) returns (GetContactFilesReply) {}
-  // 群组相关文件
-  rpc GetGroupFiles(GetGroupFilesRequest) returns (GetGroupFilesReply) {}
-  // 删除联系人文件
-  rpc DeleteContactFile(DeleteContactFileRequest) returns (DeleteContactFileReply) {}
-  // 删除群组文件
-  rpc DeleteGroupFile(DeleteGroupFileRequest) returns (DeleteGroupFileReply) {}
+  // 下载会话文件文件
+  rpc DownloadSessionFile(DownloadSessionFileRequest) returns (DownloadSessionFileReply) {}
+  // 获取会话文件
+  rpc GetSessionFiles(GetSessionFilesRequest) returns (GetSessionFilesReply) {}
+  // 删除会话文件
+  rpc DeleteSessionFile(DeleteSessionFileRequest) returns (DeleteSessionFileReply) {}
 }
 
 // 消息订阅服务
@@ -392,7 +386,7 @@ message DeleteContactReply {
 
 message CreateGroupRequest {
   string name = 1;
-  string avatar = 2;
+  string imagePath = 2;
   repeated string memberIds = 3;
 }
 message CreateGroupReply {
@@ -448,8 +442,8 @@ message SendGroupTextMessageRequest {
 message SendGroupImageMessageRequest {
   string  groupId = 1;
   string  mimeType = 2;
-  string  thumbnailId = 3;
-  string  imageId = 4;
+  string  filePath = 3;
+  string  thumbnailPath = 4;
   string  name = 5;
   int64   size = 6;
   int32   width = 7;
@@ -458,14 +452,14 @@ message SendGroupImageMessageRequest {
 message SendGroupVoiceMessageRequest {
   string  groupId = 1;
   string  mimeType = 2;
-  string  voiceId = 3;
+  string  filePath = 3;
   int64   size = 4;
   int32   duration = 5;
 }
 message SendGroupAudioMessageRequest {
   string  groupId = 1;
   string  mimeType = 2;
-  string  audioId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
   int32   duration = 6;
@@ -473,7 +467,7 @@ message SendGroupAudioMessageRequest {
 message SendGroupVideoMessageRequest {
   string  groupId = 1;
   string  mimeType = 2;
-  string  videoId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
   int32   duration = 6;
@@ -481,14 +475,15 @@ message SendGroupVideoMessageRequest {
 message SendGroupFileMessageRequest {
   string  groupId = 1;
   string  mimeType = 2;
-  string  fileId = 3;
+  string  filePath = 3;
   string  name = 4;
   int64   size = 5;
 }
 
 message SendGroupMessageReply {
   Result result = 1;
-  GroupMessage message = 2;
+  bool   isUpdated = 2;
+  GroupMessage message = 3;
 }
 
 message SetGroupAvatarRequest {
@@ -715,69 +710,32 @@ message SetDownloadDirReply {
 }
 
 // -------------------- 分隔符 --------------------
-message ConvertFileToResourceRequest {
-  string srcFile = 1;
-}
-message ConvertFileToResourceReply {
-  Result result = 1;
-  string resource = 2;
-}
-
-message DownloadContactFileRequest {
-  string contactId = 1;
+message DownloadSessionFileRequest {
+  string sessionId = 1;
   string msgId = 2;
   string fileId = 3;
 }
-message DownloadContactFileReply {
+message DownloadSessionFileReply {
   Result result = 1;
   string fileId = 2;
 }
 
-message DownloadGroupFileRequest {
-  string groupId = 1;
-  string msgId = 2;
-  string fileId = 3;
-}
-message DownloadGroupFileReply {
-  Result result = 1;
-  string fileId = 2;
-}
-
-message GetContactFilesRequest {
-  string contactId = 1;
+message GetSessionFilesRequest {
+  string sessionId = 1;
   string keywords = 2;
   int32  offset = 3;
   int32  limit = 4;
 }
-message GetContactFilesReply {
+message GetSessionFilesReply {
   Result result = 1;
   repeated FileInfo files = 2;
 }
 
-message GetGroupFilesRequest {
-  string groupId = 1;
-  string keywords = 2;
-  int32  offset = 3;
-  int32  limit = 4;
-}
-message GetGroupFilesReply {
-  Result result = 1;
-  repeated FileInfo files = 2;
-}
-
-message DeleteContactFileRequest {
-  string contactId = 1;
+message DeleteSessionFileRequest {
+  string sessionId = 1;
   repeated string fileIds = 2;
 }
-message DeleteContactFileReply {
-  Result result = 1;
-}
-
-message DeleteGroupFileRequest {
-  string groupId = 1;
-  repeated string fileIds = 2;
-}
-message DeleteGroupFileReply {
+message DeleteSessionFileReply {
   Result result = 1;
 }
 
@@ -962,8 +920,10 @@ message  GroupMessage {
   string mimeType = 5;
   // 内容
   bytes payload = 6;
+  // 消息状态
+  MsgState state = 7;
   // 消息时间
-  int64 createTime = 7;
+  int64 createTime = 8;
 }
 
 // 会话信息
@@ -978,16 +938,18 @@ message Session {
 
   // 会话类型
   SessionType type = 1;
-  // 会话id（群组id或者PeerId）
+  // 会话id
   string id = 2;
+  // 关联ID（联系人ID或群组ID）
+  string relId = 3;
   // 名称
-  string name = 3;
+  string name = 4;
   // 头像 SHA1
-  string avatar = 4;
+  string avatar = 5;
   // 在线状态
-  ConnState state = 5;
+  ConnState state = 6;
   // 最新消息
-  string lastmsg = 6;
+  string lastmsg = 7;
   // 有未读消息
   int64 unreads = 8;
 }

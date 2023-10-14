@@ -127,7 +127,7 @@ func (m *MessageDS) GetMessage(ctx context.Context, peerID peer.ID, msgID string
 	return &msg, nil
 }
 
-func (m *MessageDS) GetCoreMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.ContactMessage_CoreMessage, error) {
+func (m *MessageDS) GetCoreMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.CoreMessage, error) {
 	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 	if err != nil {
 		return nil, fmt.Errorf("m.Get error: %w", err)

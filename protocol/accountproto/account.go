@@ -26,9 +26,8 @@ var log = logging.Logger("account-protocol")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID         = myprotocol.AccountID_v100
-	ONLINE_ID  = myprotocol.AccountOnlineID_v100
-	maxMsgSize = 4 * 1024 // 4K
+	ID        = myprotocol.AccountID_v100
+	ONLINE_ID = myprotocol.AccountOnlineID_v100
 )
 
 type AccountProto struct {
@@ -138,7 +137,7 @@ func (a *AccountProto) goCheckOnline(wg *sync.WaitGroup, peerID peer.ID, onlineC
 	defer stream.Close()
 
 	wt := pbio.NewDelimitedWriter(stream)
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
 	stream.SetDeadline(time.Now().Add(2 * time.Second))
 	if err = wt.WriteMsg(&pb.AccountOnline{IsOnline: true}); err != nil {
@@ -162,7 +161,7 @@ func (a *AccountProto) onlineHandler(stream network.Stream) {
 	defer stream.Close()
 
 	wt := pbio.NewDelimitedWriter(stream)
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
 	var pbOnline pb.AccountOnline
 	if err := rd.ReadMsg(&pbOnline); err != nil {
@@ -324,7 +323,7 @@ func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*pb.Account
 	}
 
 	stream.SetDeadline(time.Now().Add(StreamTimeout))
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	defer rd.Close()
 
 	var peerInfo pb.AccountPeer

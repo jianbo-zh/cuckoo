@@ -42,11 +42,12 @@ type GroupMember struct {
 }
 
 type GroupMessage struct {
-	ID         string
-	GroupID    string
-	FromPeer   GroupMember
-	MsgType    string
-	MimeType   string
-	Payload    []byte
-	CreateTime int64
+	ID        string
+	GroupID   string
+	FromPeer  GroupMember
+	MsgType   string
+	MimeType  string
+	Payload   []byte
+	State     MessageState
+	Timestamp int64
 }

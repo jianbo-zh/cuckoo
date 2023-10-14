@@ -8,6 +8,7 @@ import (
 	ds "github.com/jianbo-zh/dchat/datastore/ds/depositds"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/myprotocol"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/depositpb"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -25,7 +26,6 @@ const (
 	GROUP_GET_ID    = myprotocol.DepositGroupGetID_v100
 
 	ServiceName  = "deposit.peer"
-	maxMsgSize   = 4 * 1024  // 4K
 	msgCacheDays = 3 * 86400 // 3Day
 	msgCacheNums = 5000
 )
@@ -69,7 +69,7 @@ func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
 	}
 	defer stream.Close()
 
-	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositContactMessage
@@ -105,7 +105,7 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 	}
 	defer stream.Close()
 
-	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositGroupMessage
@@ -138,7 +138,7 @@ func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 
 	remotePeerID := stream.Conn().RemotePeer()
 
-	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositContactMessagePull
@@ -182,7 +182,7 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 
 	defer stream.Close()
 
-	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositGroupMessagePull

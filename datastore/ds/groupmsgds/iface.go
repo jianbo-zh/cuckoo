@@ -14,12 +14,15 @@ type MessageIface interface {
 	MergeLamportTime(ctx context.Context, groupID string, lamptime uint64) error
 	TickLamportTime(ctx context.Context, groupID string) (uint64, error)
 
+	HasMessage(ctx context.Context, groupID string, msgID string) (bool, error)
+	GetCoreMessage(ctx context.Context, groupID string, msgID string) (*pb.CoreMessage, error)
 	GetMessage(ctx context.Context, groupID string, msgID string) (*pb.GroupMessage, error)
 	GetMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error)
 	DeleteMessage(ctx context.Context, groupID string, msgID string) error
 	SaveMessage(ctx context.Context, groupID string, pbmsg *pb.GroupMessage) (isLatest bool, err error)
 	GetMessages(ctx context.Context, groupID string, offset int, limit int) ([]*pb.GroupMessage, error)
 	ClearMessage(ctx context.Context, groupID string) error
+	UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isSucc bool) (*pb.GroupMessage, error)
 
 	GetMessageHead(ctx context.Context, groupID string) (string, error)
 	GetMessageTail(ctx context.Context, groupID string) (string, error)

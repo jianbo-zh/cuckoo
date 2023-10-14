@@ -48,7 +48,7 @@ func (m *MessageProto) goSync(groupID string, peerID peer.ID) {
 		return
 	}
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
 	err = m.loopSync(groupID, stream, rd, wt)
 	if err != nil {
@@ -311,12 +311,12 @@ func (m *MessageProto) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyncM
 }
 
 func (m *MessageProto) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncMessage) error {
-	var msg pb.GroupMessage
+	var msg pb.MessageEnvelope
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
 		return fmt.Errorf("proto unmarshal error: %w, len: %d", err, len(syncmsg.Payload))
 	}
 
-	if err := m.saveMessage(context.Background(), groupID, &msg); err != nil {
+	if err := m.saveCoreMessage(context.Background(), groupID, msg.CoreMessage); err != nil {
 		return fmt.Errorf("data save msg error: %w", err)
 	}
 

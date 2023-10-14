@@ -47,7 +47,7 @@ func (p *PeerMessageProto) goSyncMessage(contactID peer.ID) {
 		return
 	}
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	err = p.loopSync(contactID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)
@@ -63,7 +63,7 @@ func (p *PeerMessageProto) syncIDHandler(stream network.Stream) {
 	defer stream.Close()
 
 	// 后台同步处理
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	err := p.loopSync(peerID, stream, rd, wt)
@@ -322,7 +322,7 @@ func (p *PeerMessageProto) handleSyncRangeIDs(peerID peer.ID, syncmsg *pb.Contac
 }
 
 func (p *PeerMessageProto) handleSyncPushMsg(contactID peer.ID, syncmsg *pb.ContactSyncMessage) error {
-	var coreMsg pb.ContactMessage_CoreMessage
+	var coreMsg pb.CoreMessage
 	if err := proto.Unmarshal(syncmsg.Payload, &coreMsg); err != nil {
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}

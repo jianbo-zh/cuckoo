@@ -49,7 +49,7 @@ func (a *AdminProto) goSync(groupID string, peerID peer.ID) {
 		return
 	}
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
 	err = a.loopSync(groupID, stream, rd, wt)
 	if err != nil {

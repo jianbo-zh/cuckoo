@@ -30,6 +30,18 @@ func TestDecodeSessionID(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			args: args{
+				sessionID: "group_debf6dd0-095a-4b20-b31b-2eb0e65db425",
+			},
+			want: &SessionID{
+				Type: GroupSession,
+				Value: func() []byte {
+					return []byte("debf6dd0-095a-4b20-b31b-2eb0e65db425")
+				}(),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

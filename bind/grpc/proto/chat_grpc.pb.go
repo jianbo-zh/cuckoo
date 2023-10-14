@@ -1315,17 +1315,17 @@ type GroupSvcClient interface {
 	// 清空聊天记录
 	ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error)
 	// 发送消息
-	SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupTextMessageClient, error)
 	// 发送图片消息
-	SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupImageMessageClient, error)
 	// 发送语音消息
-	SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupVoiceMessageClient, error)
 	// 发送音频消息
-	SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupAudioMessageClient, error)
 	// 发送视频消息
-	SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupVideoMessageClient, error)
 	// 发送文件消息
-	SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error)
+	SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupFileMessageClient, error)
 }
 
 type groupSvcClient struct {
@@ -1489,58 +1489,196 @@ func (c *groupSvcClient) ClearGroupMessage(ctx context.Context, in *ClearGroupMe
 	return out, nil
 }
 
-func (c *groupSvcClient) SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupTextMessage_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupTextMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[0], GroupSvc_SendGroupTextMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &groupSvcSendGroupTextMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *groupSvcClient) SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupImageMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+type GroupSvc_SendGroupTextMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
 }
 
-func (c *groupSvcClient) SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupVoiceMessage_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+type groupSvcSendGroupTextMessageClient struct {
+	grpc.ClientStream
 }
 
-func (c *groupSvcClient) SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupAudioMessage_FullMethodName, in, out, opts...)
-	if err != nil {
+func (x *groupSvcSendGroupTextMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return m, nil
 }
 
-func (c *groupSvcClient) SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupVideoMessage_FullMethodName, in, out, opts...)
+func (c *groupSvcClient) SendGroupImageMessage(ctx context.Context, in *SendGroupImageMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupImageMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[1], GroupSvc_SendGroupImageMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &groupSvcSendGroupImageMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *groupSvcClient) SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (*SendGroupMessageReply, error) {
-	out := new(SendGroupMessageReply)
-	err := c.cc.Invoke(ctx, GroupSvc_SendGroupFileMessage_FullMethodName, in, out, opts...)
+type GroupSvc_SendGroupImageMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
+}
+
+type groupSvcSendGroupImageMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupSvcSendGroupImageMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *groupSvcClient) SendGroupVoiceMessage(ctx context.Context, in *SendGroupVoiceMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupVoiceMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[2], GroupSvc_SendGroupVoiceMessage_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &groupSvcSendGroupVoiceMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type GroupSvc_SendGroupVoiceMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
+}
+
+type groupSvcSendGroupVoiceMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupSvcSendGroupVoiceMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *groupSvcClient) SendGroupAudioMessage(ctx context.Context, in *SendGroupAudioMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupAudioMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[3], GroupSvc_SendGroupAudioMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupSvcSendGroupAudioMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type GroupSvc_SendGroupAudioMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
+}
+
+type groupSvcSendGroupAudioMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupSvcSendGroupAudioMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *groupSvcClient) SendGroupVideoMessage(ctx context.Context, in *SendGroupVideoMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupVideoMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[4], GroupSvc_SendGroupVideoMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupSvcSendGroupVideoMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type GroupSvc_SendGroupVideoMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
+}
+
+type groupSvcSendGroupVideoMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupSvcSendGroupVideoMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *groupSvcClient) SendGroupFileMessage(ctx context.Context, in *SendGroupFileMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupFileMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GroupSvc_ServiceDesc.Streams[5], GroupSvc_SendGroupFileMessage_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &groupSvcSendGroupFileMessageClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type GroupSvc_SendGroupFileMessageClient interface {
+	Recv() (*SendGroupMessageReply, error)
+	grpc.ClientStream
+}
+
+type groupSvcSendGroupFileMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *groupSvcSendGroupFileMessageClient) Recv() (*SendGroupMessageReply, error) {
+	m := new(SendGroupMessageReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // GroupSvcServer is the server API for GroupSvc service.
@@ -1582,17 +1720,17 @@ type GroupSvcServer interface {
 	// 清空聊天记录
 	ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error)
 	// 发送消息
-	SendGroupTextMessage(context.Context, *SendGroupTextMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupTextMessage(*SendGroupTextMessageRequest, GroupSvc_SendGroupTextMessageServer) error
 	// 发送图片消息
-	SendGroupImageMessage(context.Context, *SendGroupImageMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupImageMessage(*SendGroupImageMessageRequest, GroupSvc_SendGroupImageMessageServer) error
 	// 发送语音消息
-	SendGroupVoiceMessage(context.Context, *SendGroupVoiceMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupVoiceMessage(*SendGroupVoiceMessageRequest, GroupSvc_SendGroupVoiceMessageServer) error
 	// 发送音频消息
-	SendGroupAudioMessage(context.Context, *SendGroupAudioMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupAudioMessage(*SendGroupAudioMessageRequest, GroupSvc_SendGroupAudioMessageServer) error
 	// 发送视频消息
-	SendGroupVideoMessage(context.Context, *SendGroupVideoMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupVideoMessage(*SendGroupVideoMessageRequest, GroupSvc_SendGroupVideoMessageServer) error
 	// 发送文件消息
-	SendGroupFileMessage(context.Context, *SendGroupFileMessageRequest) (*SendGroupMessageReply, error)
+	SendGroupFileMessage(*SendGroupFileMessageRequest, GroupSvc_SendGroupFileMessageServer) error
 	mustEmbedUnimplementedGroupSvcServer()
 }
 
@@ -1651,23 +1789,23 @@ func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMe
 func (UnimplementedGroupSvcServer) ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearGroupMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupTextMessage(context.Context, *SendGroupTextMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupTextMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupTextMessage(*SendGroupTextMessageRequest, GroupSvc_SendGroupTextMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupTextMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupImageMessage(context.Context, *SendGroupImageMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupImageMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupImageMessage(*SendGroupImageMessageRequest, GroupSvc_SendGroupImageMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupImageMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupVoiceMessage(context.Context, *SendGroupVoiceMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupVoiceMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupVoiceMessage(*SendGroupVoiceMessageRequest, GroupSvc_SendGroupVoiceMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupVoiceMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupAudioMessage(context.Context, *SendGroupAudioMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupAudioMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupAudioMessage(*SendGroupAudioMessageRequest, GroupSvc_SendGroupAudioMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupAudioMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupVideoMessage(context.Context, *SendGroupVideoMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupVideoMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupVideoMessage(*SendGroupVideoMessageRequest, GroupSvc_SendGroupVideoMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupVideoMessage not implemented")
 }
-func (UnimplementedGroupSvcServer) SendGroupFileMessage(context.Context, *SendGroupFileMessageRequest) (*SendGroupMessageReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendGroupFileMessage not implemented")
+func (UnimplementedGroupSvcServer) SendGroupFileMessage(*SendGroupFileMessageRequest, GroupSvc_SendGroupFileMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendGroupFileMessage not implemented")
 }
 func (UnimplementedGroupSvcServer) mustEmbedUnimplementedGroupSvcServer() {}
 
@@ -1988,112 +2126,130 @@ func _GroupSvc_ClearGroupMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GroupSvc_SendGroupTextMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupTextMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _GroupSvc_SendGroupTextMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupTextMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupTextMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupTextMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupTextMessage(ctx, req.(*SendGroupTextMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(GroupSvcServer).SendGroupTextMessage(m, &groupSvcSendGroupTextMessageServer{stream})
 }
 
-func _GroupSvc_SendGroupImageMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupImageMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupImageMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupImageMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupImageMessage(ctx, req.(*SendGroupImageMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+type GroupSvc_SendGroupTextMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
 }
 
-func _GroupSvc_SendGroupVoiceMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupVoiceMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupVoiceMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupVoiceMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupVoiceMessage(ctx, req.(*SendGroupVoiceMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+type groupSvcSendGroupTextMessageServer struct {
+	grpc.ServerStream
 }
 
-func _GroupSvc_SendGroupAudioMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupAudioMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupAudioMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupAudioMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupAudioMessage(ctx, req.(*SendGroupAudioMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func (x *groupSvcSendGroupTextMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
-func _GroupSvc_SendGroupVideoMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupVideoMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _GroupSvc_SendGroupImageMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupImageMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupVideoMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupVideoMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupVideoMessage(ctx, req.(*SendGroupVideoMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(GroupSvcServer).SendGroupImageMessage(m, &groupSvcSendGroupImageMessageServer{stream})
 }
 
-func _GroupSvc_SendGroupFileMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendGroupFileMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+type GroupSvc_SendGroupImageMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
+}
+
+type groupSvcSendGroupImageMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupSvcSendGroupImageMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _GroupSvc_SendGroupVoiceMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupVoiceMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).SendGroupFileMessage(ctx, in)
+	return srv.(GroupSvcServer).SendGroupVoiceMessage(m, &groupSvcSendGroupVoiceMessageServer{stream})
+}
+
+type GroupSvc_SendGroupVoiceMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
+}
+
+type groupSvcSendGroupVoiceMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupSvcSendGroupVoiceMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _GroupSvc_SendGroupAudioMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupAudioMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_SendGroupFileMessage_FullMethodName,
+	return srv.(GroupSvcServer).SendGroupAudioMessage(m, &groupSvcSendGroupAudioMessageServer{stream})
+}
+
+type GroupSvc_SendGroupAudioMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
+}
+
+type groupSvcSendGroupAudioMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupSvcSendGroupAudioMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _GroupSvc_SendGroupVideoMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupVideoMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).SendGroupFileMessage(ctx, req.(*SendGroupFileMessageRequest))
+	return srv.(GroupSvcServer).SendGroupVideoMessage(m, &groupSvcSendGroupVideoMessageServer{stream})
+}
+
+type GroupSvc_SendGroupVideoMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
+}
+
+type groupSvcSendGroupVideoMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupSvcSendGroupVideoMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _GroupSvc_SendGroupFileMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SendGroupFileMessageRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(GroupSvcServer).SendGroupFileMessage(m, &groupSvcSendGroupFileMessageServer{stream})
+}
+
+type GroupSvc_SendGroupFileMessageServer interface {
+	Send(*SendGroupMessageReply) error
+	grpc.ServerStream
+}
+
+type groupSvcSendGroupFileMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *groupSvcSendGroupFileMessageServer) Send(m *SendGroupMessageReply) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // GroupSvc_ServiceDesc is the grpc.ServiceDesc for GroupSvc service.
@@ -2171,32 +2327,39 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ClearGroupMessage",
 			Handler:    _GroupSvc_ClearGroupMessage_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "SendGroupTextMessage",
-			Handler:    _GroupSvc_SendGroupTextMessage_Handler,
+			StreamName:    "SendGroupTextMessage",
+			Handler:       _GroupSvc_SendGroupTextMessage_Handler,
+			ServerStreams: true,
 		},
 		{
-			MethodName: "SendGroupImageMessage",
-			Handler:    _GroupSvc_SendGroupImageMessage_Handler,
+			StreamName:    "SendGroupImageMessage",
+			Handler:       _GroupSvc_SendGroupImageMessage_Handler,
+			ServerStreams: true,
 		},
 		{
-			MethodName: "SendGroupVoiceMessage",
-			Handler:    _GroupSvc_SendGroupVoiceMessage_Handler,
+			StreamName:    "SendGroupVoiceMessage",
+			Handler:       _GroupSvc_SendGroupVoiceMessage_Handler,
+			ServerStreams: true,
 		},
 		{
-			MethodName: "SendGroupAudioMessage",
-			Handler:    _GroupSvc_SendGroupAudioMessage_Handler,
+			StreamName:    "SendGroupAudioMessage",
+			Handler:       _GroupSvc_SendGroupAudioMessage_Handler,
+			ServerStreams: true,
 		},
 		{
-			MethodName: "SendGroupVideoMessage",
-			Handler:    _GroupSvc_SendGroupVideoMessage_Handler,
+			StreamName:    "SendGroupVideoMessage",
+			Handler:       _GroupSvc_SendGroupVideoMessage_Handler,
+			ServerStreams: true,
 		},
 		{
-			MethodName: "SendGroupFileMessage",
-			Handler:    _GroupSvc_SendGroupFileMessage_Handler,
+			StreamName:    "SendGroupFileMessage",
+			Handler:       _GroupSvc_SendGroupFileMessage_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "bind/grpc/proto/chat.proto",
 }
 
@@ -2853,30 +3016,21 @@ var ConfigSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	FileSvc_DownloadContactFile_FullMethodName = "/chat.FileSvc/DownloadContactFile"
-	FileSvc_DownloadGroupFile_FullMethodName   = "/chat.FileSvc/DownloadGroupFile"
-	FileSvc_GetContactFiles_FullMethodName     = "/chat.FileSvc/GetContactFiles"
-	FileSvc_GetGroupFiles_FullMethodName       = "/chat.FileSvc/GetGroupFiles"
-	FileSvc_DeleteContactFile_FullMethodName   = "/chat.FileSvc/DeleteContactFile"
-	FileSvc_DeleteGroupFile_FullMethodName     = "/chat.FileSvc/DeleteGroupFile"
+	FileSvc_DownloadSessionFile_FullMethodName = "/chat.FileSvc/DownloadSessionFile"
+	FileSvc_GetSessionFiles_FullMethodName     = "/chat.FileSvc/GetSessionFiles"
+	FileSvc_DeleteSessionFile_FullMethodName   = "/chat.FileSvc/DeleteSessionFile"
 )
 
 // FileSvcClient is the client API for FileSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileSvcClient interface {
-	// 下载联系人文件
-	DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadContactFileReply, error)
-	// 下载群组文件
-	DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadGroupFileReply, error)
-	// 联系人相关文件
-	GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetContactFilesReply, error)
-	// 群组相关文件
-	GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetGroupFilesReply, error)
-	// 删除联系人文件
-	DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteContactFileReply, error)
-	// 删除群组文件
-	DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteGroupFileReply, error)
+	// 下载会话文件文件
+	DownloadSessionFile(ctx context.Context, in *DownloadSessionFileRequest, opts ...grpc.CallOption) (*DownloadSessionFileReply, error)
+	// 获取会话文件
+	GetSessionFiles(ctx context.Context, in *GetSessionFilesRequest, opts ...grpc.CallOption) (*GetSessionFilesReply, error)
+	// 删除会话文件
+	DeleteSessionFile(ctx context.Context, in *DeleteSessionFileRequest, opts ...grpc.CallOption) (*DeleteSessionFileReply, error)
 }
 
 type fileSvcClient struct {
@@ -2887,54 +3041,27 @@ func NewFileSvcClient(cc grpc.ClientConnInterface) FileSvcClient {
 	return &fileSvcClient{cc}
 }
 
-func (c *fileSvcClient) DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadContactFileReply, error) {
-	out := new(DownloadContactFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DownloadContactFile_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) DownloadSessionFile(ctx context.Context, in *DownloadSessionFileRequest, opts ...grpc.CallOption) (*DownloadSessionFileReply, error) {
+	out := new(DownloadSessionFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DownloadSessionFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileSvcClient) DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadGroupFileReply, error) {
-	out := new(DownloadGroupFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DownloadGroupFile_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) GetSessionFiles(ctx context.Context, in *GetSessionFilesRequest, opts ...grpc.CallOption) (*GetSessionFilesReply, error) {
+	out := new(GetSessionFilesReply)
+	err := c.cc.Invoke(ctx, FileSvc_GetSessionFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileSvcClient) GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetContactFilesReply, error) {
-	out := new(GetContactFilesReply)
-	err := c.cc.Invoke(ctx, FileSvc_GetContactFiles_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *fileSvcClient) GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetGroupFilesReply, error) {
-	out := new(GetGroupFilesReply)
-	err := c.cc.Invoke(ctx, FileSvc_GetGroupFiles_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *fileSvcClient) DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteContactFileReply, error) {
-	out := new(DeleteContactFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DeleteContactFile_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *fileSvcClient) DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteGroupFileReply, error) {
-	out := new(DeleteGroupFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DeleteGroupFile_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) DeleteSessionFile(ctx context.Context, in *DeleteSessionFileRequest, opts ...grpc.CallOption) (*DeleteSessionFileReply, error) {
+	out := new(DeleteSessionFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DeleteSessionFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2945,18 +3072,12 @@ func (c *fileSvcClient) DeleteGroupFile(ctx context.Context, in *DeleteGroupFile
 // All implementations must embed UnimplementedFileSvcServer
 // for forward compatibility
 type FileSvcServer interface {
-	// 下载联系人文件
-	DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadContactFileReply, error)
-	// 下载群组文件
-	DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadGroupFileReply, error)
-	// 联系人相关文件
-	GetContactFiles(context.Context, *GetContactFilesRequest) (*GetContactFilesReply, error)
-	// 群组相关文件
-	GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetGroupFilesReply, error)
-	// 删除联系人文件
-	DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteContactFileReply, error)
-	// 删除群组文件
-	DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteGroupFileReply, error)
+	// 下载会话文件文件
+	DownloadSessionFile(context.Context, *DownloadSessionFileRequest) (*DownloadSessionFileReply, error)
+	// 获取会话文件
+	GetSessionFiles(context.Context, *GetSessionFilesRequest) (*GetSessionFilesReply, error)
+	// 删除会话文件
+	DeleteSessionFile(context.Context, *DeleteSessionFileRequest) (*DeleteSessionFileReply, error)
 	mustEmbedUnimplementedFileSvcServer()
 }
 
@@ -2964,23 +3085,14 @@ type FileSvcServer interface {
 type UnimplementedFileSvcServer struct {
 }
 
-func (UnimplementedFileSvcServer) DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadContactFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadContactFile not implemented")
+func (UnimplementedFileSvcServer) DownloadSessionFile(context.Context, *DownloadSessionFileRequest) (*DownloadSessionFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadSessionFile not implemented")
 }
-func (UnimplementedFileSvcServer) DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadGroupFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadGroupFile not implemented")
+func (UnimplementedFileSvcServer) GetSessionFiles(context.Context, *GetSessionFilesRequest) (*GetSessionFilesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSessionFiles not implemented")
 }
-func (UnimplementedFileSvcServer) GetContactFiles(context.Context, *GetContactFilesRequest) (*GetContactFilesReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetContactFiles not implemented")
-}
-func (UnimplementedFileSvcServer) GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetGroupFilesReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroupFiles not implemented")
-}
-func (UnimplementedFileSvcServer) DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteContactFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteContactFile not implemented")
-}
-func (UnimplementedFileSvcServer) DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteGroupFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroupFile not implemented")
+func (UnimplementedFileSvcServer) DeleteSessionFile(context.Context, *DeleteSessionFileRequest) (*DeleteSessionFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSessionFile not implemented")
 }
 func (UnimplementedFileSvcServer) mustEmbedUnimplementedFileSvcServer() {}
 
@@ -2995,110 +3107,56 @@ func RegisterFileSvcServer(s grpc.ServiceRegistrar, srv FileSvcServer) {
 	s.RegisterService(&FileSvc_ServiceDesc, srv)
 }
 
-func _FileSvc_DownloadContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DownloadContactFileRequest)
+func _FileSvc_DownloadSessionFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadSessionFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).DownloadContactFile(ctx, in)
+		return srv.(FileSvcServer).DownloadSessionFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_DownloadContactFile_FullMethodName,
+		FullMethod: FileSvc_DownloadSessionFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DownloadContactFile(ctx, req.(*DownloadContactFileRequest))
+		return srv.(FileSvcServer).DownloadSessionFile(ctx, req.(*DownloadSessionFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FileSvc_DownloadGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DownloadGroupFileRequest)
+func _FileSvc_GetSessionFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSessionFilesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).DownloadGroupFile(ctx, in)
+		return srv.(FileSvcServer).GetSessionFiles(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_DownloadGroupFile_FullMethodName,
+		FullMethod: FileSvc_GetSessionFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DownloadGroupFile(ctx, req.(*DownloadGroupFileRequest))
+		return srv.(FileSvcServer).GetSessionFiles(ctx, req.(*GetSessionFilesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FileSvc_GetContactFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetContactFilesRequest)
+func _FileSvc_DeleteSessionFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSessionFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).GetContactFiles(ctx, in)
+		return srv.(FileSvcServer).DeleteSessionFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_GetContactFiles_FullMethodName,
+		FullMethod: FileSvc_DeleteSessionFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).GetContactFiles(ctx, req.(*GetContactFilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _FileSvc_GetGroupFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupFilesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FileSvcServer).GetGroupFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FileSvc_GetGroupFiles_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).GetGroupFiles(ctx, req.(*GetGroupFilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _FileSvc_DeleteContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteContactFileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FileSvcServer).DeleteContactFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FileSvc_DeleteContactFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DeleteContactFile(ctx, req.(*DeleteContactFileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _FileSvc_DeleteGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteGroupFileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FileSvcServer).DeleteGroupFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FileSvc_DeleteGroupFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DeleteGroupFile(ctx, req.(*DeleteGroupFileRequest))
+		return srv.(FileSvcServer).DeleteSessionFile(ctx, req.(*DeleteSessionFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3111,28 +3169,16 @@ var FileSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*FileSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "DownloadContactFile",
-			Handler:    _FileSvc_DownloadContactFile_Handler,
+			MethodName: "DownloadSessionFile",
+			Handler:    _FileSvc_DownloadSessionFile_Handler,
 		},
 		{
-			MethodName: "DownloadGroupFile",
-			Handler:    _FileSvc_DownloadGroupFile_Handler,
+			MethodName: "GetSessionFiles",
+			Handler:    _FileSvc_GetSessionFiles_Handler,
 		},
 		{
-			MethodName: "GetContactFiles",
-			Handler:    _FileSvc_GetContactFiles_Handler,
-		},
-		{
-			MethodName: "GetGroupFiles",
-			Handler:    _FileSvc_GetGroupFiles_Handler,
-		},
-		{
-			MethodName: "DeleteContactFile",
-			Handler:    _FileSvc_DeleteContactFile_Handler,
-		},
-		{
-			MethodName: "DeleteGroupFile",
-			Handler:    _FileSvc_DeleteGroupFile_Handler,
+			MethodName: "DeleteSessionFile",
+			Handler:    _FileSvc_DeleteSessionFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

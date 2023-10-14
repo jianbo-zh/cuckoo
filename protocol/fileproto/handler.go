@@ -23,7 +23,7 @@ func (f *FileProto) fileQueryHandler(stream network.Stream) {
 	defer stream.Close()
 
 	var msg pb.FileQuery
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("pbio read file query msg: %w", err)
 		return
@@ -58,7 +58,7 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	var reqMsg pb.FileUploadRequest
@@ -155,7 +155,7 @@ func (f *FileProto) resourceDownloadIDHandler(stream network.Stream) {
 
 	// 接收请求
 	var reqMsg pb.DownloadResourceRequest
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&reqMsg); err != nil {
 		log.Errorf("pbio read request msg error: %w", err)
 		stream.Reset()
@@ -205,7 +205,7 @@ func (f *FileProto) fileDownloadHandler(stream network.Stream) {
 	for {
 		// 读取请求分片
 		var msg pb.FileDownloadChunk
-		rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+		rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 		if err := rd.ReadMsg(&msg); err != nil {
 			log.Errorf("pbio read download chunk error: %v", err)
 			return

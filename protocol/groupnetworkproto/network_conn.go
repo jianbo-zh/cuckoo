@@ -47,7 +47,7 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	}
 
 	var recvConnInit pb.GroupConnectInit
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&recvConnInit); err != nil {
 		stream.Reset()
 		return fmt.Errorf("rd read msg error: %w", err)

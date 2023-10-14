@@ -2,17 +2,15 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
-	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
+	"github.com/jianbo-zh/dchat/service/filesvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 	goproto "google.golang.org/protobuf/proto"
@@ -59,6 +57,20 @@ func (g *GroupSvc) getGroupSvc() (groupsvc.GroupServiceIface, error) {
 	return groupSvc, nil
 }
 
+func (g *GroupSvc) getFileSvc() (filesvc.FileServiceIface, error) {
+	cuckoo, err := g.getter.GetCuckoo()
+	if err != nil {
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	fileSvc, err := cuckoo.GetFileSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	return fileSvc, nil
+}
+
 func (g *GroupSvc) getDepositSvc() (depositsvc.DepositServiceIface, error) {
 	cuckoo, err := g.getter.GetCuckoo()
 	if err != nil {
@@ -86,9 +98,24 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 		}
 	}()
 
-	groupSvc, err := g.getGroupSvc()
+	cuckoo, err := g.getter.GetCuckoo()
 	if err != nil {
-		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+		return nil, fmt.Errorf("getter.GetCuckoo error: %s", err.Error())
+	}
+
+	groupSvc, err := cuckoo.GetGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetPeerSvc error: %s", err.Error())
+	}
+
+	fileSvc, err := cuckoo.GetFileSvc()
+	if err != nil {
+		return nil, fmt.Errorf("cuckoo.GetFileSvc error: %s", err.Error())
+	}
+
+	avatarID, err := fileSvc.CopyFileToResource(ctx, request.ImagePath)
+	if err != nil {
+		return nil, fmt.Errorf("svc.CopyFileToResource error: %w", err)
 	}
 
 	var memberIDs []peer.ID
@@ -100,7 +127,7 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 		memberIDs = append(memberIDs, peerID)
 	}
 
-	_, err = groupSvc.CreateGroup(ctx, request.Name, request.Avatar, memberIDs)
+	_, err = groupSvc.CreateGroup(ctx, request.Name, avatarID, memberIDs)
 	if err != nil {
 		return nil, fmt.Errorf("groupSvc.CreateGroup error: %w", err)
 	}
@@ -610,287 +637,291 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 	return reply, nil
 }
 
-func (g *GroupSvc) SendGroupTextMessage(ctx context.Context, request *proto.SendGroupTextMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+// SendGroupTextMessage 发送文本消息
+func (g *GroupSvc) SendGroupTextMessage(request *proto.SendGroupTextMessageRequest, server proto.GroupSvc_SendGroupTextMessageServer) (err error) {
 	log.Infoln("SendGroupTextMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupTextMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupTextMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupTextMessage reply: ", reply.String())
 		}
 	}()
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.TextMsgType, request.GroupId, "text/plain", []byte(request.Content))
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
-	}
-
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(context.Background(), server, mytype.TextMsgType, request.GroupId, "text/plain", []byte(request.Content), "", nil)
 }
-func (g *GroupSvc) SendGroupImageMessage(ctx context.Context, request *proto.SendGroupImageMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+
+// SendGroupImageMessage 发送图片消息
+func (g *GroupSvc) SendGroupImageMessage(request *proto.SendGroupImageMessageRequest, server proto.GroupSvc_SendGroupImageMessageServer) (err error) {
 	log.Infoln("SendGroupImageMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupImageMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupImageMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupImageMessage reply: ", reply.String())
 		}
 	}()
 
+	fileSvc, err := g.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	thumbnailID, err := fileSvc.CopyFileToResource(ctx, request.ThumbnailPath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
+	imageID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to file error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.ImageMessagePayload{
-		ThumbnailId: request.ThumbnailId,
-		ImageId:     request.ImageId,
+		ThumbnailId: thumbnailID,
+		ImageId:     imageID,
 		Name:        request.Name,
 		Size:        request.Size,
 		Width:       request.Width,
 		Height:      request.Height,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.ImageMsgType, request.GroupId, request.MimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
+	file := mytype.FileInfo{
+		FileID:      imageID,
+		FileName:    request.Name,
+		FileSize:    request.Size,
+		FileType:    mytype.ImageFile,
+		MimeType:    request.MimeType,
+		ThumbnailID: thumbnailID,
+		Width:       request.Width,
+		Height:      request.Height,
 	}
 
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(ctx, server, mytype.ImageMsgType, request.GroupId, request.MimeType, payload, thumbnailID, &file)
 }
-func (g *GroupSvc) SendGroupVoiceMessage(ctx context.Context, request *proto.SendGroupVoiceMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+
+// SendGroupVoiceMessage 发送语音消息
+func (g *GroupSvc) SendGroupVoiceMessage(request *proto.SendGroupVoiceMessageRequest, server proto.GroupSvc_SendGroupVoiceMessageServer) (err error) {
 	log.Infoln("SendGroupVoiceMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupVoiceMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupVoiceMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupVoiceMessage reply: ", reply.String())
 		}
 	}()
 
+	fileSvc, err := g.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	voiceID, err := fileSvc.CopyFileToResource(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.VoiceMessagePayload{
-		VoiceId:  request.VoiceId,
+		VoiceId:  voiceID,
 		Duration: request.Duration,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.VoiceMsgType, request.GroupId, request.MimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
-	}
-
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(ctx, server, mytype.VoiceMsgType, request.GroupId, request.MimeType, payload, voiceID, nil)
 }
-func (g *GroupSvc) SendGroupAudioMessage(ctx context.Context, request *proto.SendGroupAudioMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+
+// SendGroupAudioMessage 发送音频消息
+func (g *GroupSvc) SendGroupAudioMessage(request *proto.SendGroupAudioMessageRequest, server proto.GroupSvc_SendGroupAudioMessageServer) (err error) {
 	log.Infoln("SendGroupAudioMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupAudioMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupAudioMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupAudioMessage reply: ", reply.String())
 		}
 	}()
 
+	fileSvc, err := g.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	audioID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.AudioMessagePayload{
-		AudioId:  request.AudioId,
+		AudioId:  audioID,
 		Name:     request.Name,
 		Size:     request.Size,
 		Duration: request.Duration,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.AudioMsgType, request.GroupId, request.MimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
+	file := mytype.FileInfo{
+		FileID:   audioID,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.AudioFile,
+		MimeType: request.MimeType,
+		Duration: request.Duration,
 	}
 
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(ctx, server, mytype.AudioMsgType, request.GroupId, request.MimeType, payload, "", &file)
 }
-func (g *GroupSvc) SendGroupVideoMessage(ctx context.Context, request *proto.SendGroupVideoMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+
+// SendGroupVideoMessage 发送视频消息
+func (g *GroupSvc) SendGroupVideoMessage(request *proto.SendGroupVideoMessageRequest, server proto.GroupSvc_SendGroupVideoMessageServer) (err error) {
 	log.Infoln("SendGroupVideoMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupVideoMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupVideoMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupVideoMessage reply: ", reply.String())
 		}
 	}()
 
+	fileSvc, err := g.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get file svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	videoID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("copy file to resource error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.VideoMessagePayload{
-		VideoId:  request.VideoId,
+		VideoId:  videoID,
 		Name:     request.Name,
 		Size:     request.Size,
 		Duration: request.Duration,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.VideoMsgType, request.GroupId, request.MimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
+	file := mytype.FileInfo{
+		FileID:   videoID,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.VideoFile,
+		MimeType: request.MimeType,
+		Duration: request.Duration,
 	}
 
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(ctx, server, mytype.VideoMsgType, request.GroupId, request.MimeType, payload, "", &file)
 }
-func (g *GroupSvc) SendGroupFileMessage(ctx context.Context, request *proto.SendGroupFileMessageRequest) (reply *proto.SendGroupMessageReply, err error) {
+
+// SendGroupFileMessage 发送文件消息
+func (g *GroupSvc) SendGroupFileMessage(request *proto.SendGroupFileMessageRequest, server proto.GroupSvc_SendGroupFileMessageServer) (err error) {
 	log.Infoln("SendGroupFileMessage request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
 			log.Panicln("SendGroupFileMessage panic: ", e)
 		} else if err != nil {
 			log.Errorln("SendGroupFileMessage error: ", err.Error())
-		} else {
-			log.Infoln("SendGroupFileMessage reply: ", reply.String())
 		}
 	}()
 
+	fileSvc, err := g.getFileSvc()
+	if err != nil {
+		return fmt.Errorf("get group svc error: %w", err)
+	}
+
+	ctx := context.Background()
+	fileID, err := fileSvc.CopyFileToFile(ctx, request.FilePath)
+	if err != nil {
+		return fmt.Errorf("svc.CopyFileToFile error: %w", err)
+	}
+
 	payload, err := goproto.Marshal(&proto.FileMessagePayload{
-		FileId: request.FileId,
+		FileId: fileID,
 		Name:   request.Name,
 		Size:   request.Size,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+		return fmt.Errorf("proto.Marshal error: %w", err)
 	}
 
-	pbmsg, err := g.sendGroupMessage(ctx, mytype.FileMsgType, request.GroupId, request.MimeType, payload)
-	if err != nil {
-		return nil, fmt.Errorf("send group msg error: %w", err)
+	file := mytype.FileInfo{
+		FileID:   fileID,
+		FileName: request.Name,
+		FileSize: request.Size,
+		FileType: mytype.OtherFile,
+		MimeType: request.MimeType,
 	}
 
-	reply = &proto.SendGroupMessageReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Message: pbmsg,
-	}
-	return reply, nil
+	return g.sendGroupMessage(ctx, server, mytype.FileMsgType, request.GroupId, request.MimeType, payload, "", &file)
 }
 
-func (g *GroupSvc) sendGroupMessage(ctx context.Context, msgType string, groupID string, mimeType string, payload []byte) (reply *proto.GroupMessage, err error) {
+func (g *GroupSvc) sendGroupMessage(ctx context.Context, server proto.GroupSvc_SendGroupTextMessageServer,
+	msgType string, groupID string, mimeType string, payload []byte, resourceID string, file *mytype.FileInfo) (err error) {
 
 	groupSvc, err := g.getGroupSvc()
 	if err != nil {
-		return nil, fmt.Errorf("get group svc error: %w", err)
+		return fmt.Errorf("get group svc error: %w", err)
 	}
 
 	accountSvc, err := g.getAccountSvc()
 	if err != nil {
-		return nil, fmt.Errorf("get account service error: %w", err)
-	}
-
-	depositSvc, err := g.getDepositSvc()
-	if err != nil {
-		return nil, fmt.Errorf("get deposit service error: %w", err)
+		return fmt.Errorf("get account service error: %w", err)
 	}
 
 	account, err := accountSvc.GetAccount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("svc get account error: %w", err)
+		return fmt.Errorf("svc get account error: %w", err)
 	}
 
-	var sendErr error
-	msgID, err := groupSvc.SendGroupMessage(ctx, groupID, msgType, mimeType, payload)
+	resultCh, err := groupSvc.SendGroupMessage(ctx, groupID, msgType, mimeType, payload, resourceID, file)
 	if err != nil {
-		if msgID != "" && errors.Is(err, myerror.ErrSendGroupMessageFailed) && account.AutoDepositMessage {
-			group, err2 := groupSvc.GetGroup(ctx, groupID)
-			if err2 != nil {
-				sendErr = fmt.Errorf("svc get group error: %w", err2)
-
-			} else if group.DepositAddress.Validate() != nil { // 没有设置寄存节点
-				sendErr = err
-
-			} else {
-				msgData, err := groupSvc.GetGroupMessageData(ctx, groupID, msgID)
-				if err != nil {
-					sendErr = fmt.Errorf("svc get group msg data error: %w", err)
-
-				} else {
-					err = depositSvc.PushGroupMessage(group.DepositAddress, groupID, msgID, msgData)
-					if err != nil {
-						sendErr = fmt.Errorf("deposit group msg error: %w", err)
-					}
-				}
-			}
-
-		} else {
-			sendErr = err
-		}
+		return fmt.Errorf("svc.SendGroupMessage error: %w", err)
 	}
 
-	if sendErr != nil {
-		if msgID != "" {
-			// delete msg
-			if err = groupSvc.DeleteGroupMessage(ctx, groupID, msgID); err != nil {
-				return nil, fmt.Errorf("svc delete group msg error: %w", err)
-			}
+	i := 0
+	for msg := range resultCh {
+		i++
+		reply := proto.SendGroupMessageReply{
+			Result: &proto.Result{
+				Code:    0,
+				Message: "ok",
+			},
+			IsUpdated: i > 1,
+			Message: &proto.GroupMessage{
+				Id:      msg.ID,
+				GroupId: groupID,
+				Sender: &proto.Peer{
+					Id:     account.ID.String(),
+					Name:   account.Name,
+					Avatar: account.Avatar,
+				},
+				MsgType:    encodeMsgType(msg.MsgType),
+				MimeType:   msg.MimeType,
+				Payload:    msg.Payload,
+				State:      encodeMessageState(msg.State),
+				CreateTime: msg.Timestamp,
+			},
+		}
+		if err := server.Send(&reply); err != nil {
+			return fmt.Errorf("server.Send error: %w", err)
 		}
 
-		return nil, sendErr
+		log.Infoln("sendContactMessage reply: ", reply.String())
 	}
 
-	return &proto.GroupMessage{
-		Id:      msgID,
-		GroupId: groupID,
-		Sender: &proto.Peer{
-			Id:     account.ID.String(),
-			Name:   account.Name,
-			Avatar: account.Avatar,
-		},
-		MsgType:    encodeMsgType(msgType),
-		MimeType:   mimeType,
-		Payload:    payload,
-		CreateTime: time.Now().Unix(),
-	}, nil
+	return nil
 }
 
 func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupMessageRequest) (reply *proto.GetGroupMessageReply, err error) {
@@ -950,7 +981,8 @@ func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupM
 			MsgType:    encodeMsgType(msg.MsgType),
 			MimeType:   msg.MimeType,
 			Payload:    msg.Payload,
-			CreateTime: msg.CreateTime,
+			State:      encodeMessageState(msg.State),
+			CreateTime: msg.Timestamp,
 		},
 	}
 	return reply, nil
@@ -1010,7 +1042,8 @@ func (g *GroupSvc) GetGroupMessages(ctx context.Context, request *proto.GetGroup
 			MsgType:    encodeMsgType(msg.MsgType),
 			MimeType:   msg.MimeType,
 			Payload:    msg.Payload,
-			CreateTime: msg.CreateTime,
+			State:      encodeMessageState(msg.State),
+			CreateTime: msg.Timestamp,
 		}
 	}
 

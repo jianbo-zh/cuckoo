@@ -41,54 +41,33 @@ func (f *FileService) CopyFileToFile(ctx context.Context, srcFile string) (strin
 	return f.fileProto.CopyFileToFile(ctx, srcFile)
 }
 
-func (f *FileService) DownloadContactFile(ctx context.Context, contactID peer.ID, file *mytype.FileInfo) error {
-	sessionID := mytype.ContactSessionID(contactID)
-	return f.fileProto.DownloadFile(ctx, sessionID.String(), []peer.ID{contactID}, file)
+// DownloadSessionFile 下载会话文件
+func (f *FileService) DownloadSessionFile(ctx context.Context, sessionID string, peerIDs []peer.ID, file *mytype.FileInfo) error {
+	return f.fileProto.DownloadFile(ctx, sessionID, peerIDs, file)
 }
 
-func (f *FileService) DownloadGroupFile(ctx context.Context, groupID string, peerIDs []peer.ID, file *mytype.FileInfo) error {
-	sessionID := mytype.GroupSessionID(groupID)
-	return f.fileProto.DownloadFile(ctx, sessionID.String(), peerIDs, file)
+// GetSessionFiles 获取会话文件
+func (f *FileService) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]mytype.FileInfo, error) {
+	files, err := f.fileProto.GetSessionFiles(ctx, sessionID, keywords, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("proto.GetSessionFiles error: %w", err)
+	}
+
+	var fileList []mytype.FileInfo
+	for _, file := range files {
+		fileList = append(fileList, *decodeFile(file))
+	}
+
+	return fileList, nil
+}
+
+// DeleteSessionFile 删除会话文件
+func (f *FileService) DeleteSessionFile(ctx context.Context, sessionID string, fileIDs []string) error {
+	return f.fileProto.DeleteSessionFiles(ctx, sessionID, fileIDs)
 }
 
 func (f *FileService) DownloadAvatar(ctx context.Context, peerID peer.ID, avatar string) error {
 	return f.fileProto.DownloadResource(ctx, peerID, avatar)
-}
-
-func (f *FileService) GetContactFiles(ctx context.Context, contactID peer.ID, keywords string, offset int, limit int) ([]mytype.FileInfo, error) {
-	sessionID := mytype.ContactSessionID(contactID)
-	files, err := f.fileProto.GetSessionFiles(ctx, sessionID.String(), keywords, offset, limit)
-	if err != nil {
-		return nil, fmt.Errorf("proto.GetSessionFiles error: %w", err)
-	}
-
-	var fileList []mytype.FileInfo
-	for _, file := range files {
-		fileList = append(fileList, *decodeFile(file))
-	}
-
-	return fileList, nil
-}
-
-func (f *FileService) GetGroupFiles(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]mytype.FileInfo, error) {
-	sessionID := mytype.GroupSessionID(groupID)
-	files, err := f.fileProto.GetSessionFiles(ctx, sessionID.String(), keywords, offset, limit)
-	if err != nil {
-		return nil, fmt.Errorf("proto.GetSessionFiles error: %w", err)
-	}
-
-	var fileList []mytype.FileInfo
-	for _, file := range files {
-		fileList = append(fileList, *decodeFile(file))
-	}
-
-	return fileList, nil
-}
-
-// DeleteContactFile 删除联系人文件
-func (f *FileService) DeleteContactFile(ctx context.Context, contactID peer.ID, fileIDs []string) error {
-	sessionID := mytype.ContactSessionID(contactID)
-	return f.fileProto.DeleteSessionFiles(ctx, sessionID.String(), fileIDs)
 }
 
 func (f *FileService) Close() {}

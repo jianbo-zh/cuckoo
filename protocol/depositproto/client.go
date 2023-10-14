@@ -135,7 +135,7 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 	}
 	defer stream.Close()
 
-	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	if err = pw.WriteMsg(&pb.DepositContactMessagePull{StartId: lastDepositID}); err != nil {
@@ -190,7 +190,7 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 	}
 	defer stream.Close()
 
-	pr := pbio.NewDelimitedReader(stream, maxMsgSize)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	if err = pw.WriteMsg(&pb.DepositGroupMessagePull{GroupId: groupID, StartId: lastDepositID}); err != nil {
@@ -236,7 +236,7 @@ func (d *DepositClientProto) PushContactMessage(depositPeerID peer.ID, toPeerID 
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	if err = wt.WriteMsg(&pb.DepositContactMessage{
@@ -275,7 +275,7 @@ func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID str
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	dmsg := pb.DepositGroupMessage{

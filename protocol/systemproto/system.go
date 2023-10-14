@@ -22,8 +22,7 @@ var log = logging.Logger("system")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID         = myprotocol.SystemMessageID_v100
-	maxMsgSize = 4 * 1024 // 4K
+	ID = myprotocol.SystemMessageID_v100
 )
 
 type SystemProto struct {
@@ -47,7 +46,7 @@ func NewSystemProto(lhost myhost.Host, ids ipfsds.Batching, msgCh chan<- *pb.Sys
 }
 
 func (s *SystemProto) Handler(stream network.Stream) {
-	rb := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	defer rb.Close()
 
 	var msg pb.SystemMessage

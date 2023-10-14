@@ -11,15 +11,10 @@ type FileServiceIface interface {
 	CopyFileToResource(ctx context.Context, srcFile string) (resourceID string, err error)
 	CopyFileToFile(ctx context.Context, srcFile string) (fileID string, err error)
 
-	DownloadContactFile(ctx context.Context, peerID peer.ID, file *mytype.FileInfo) error
-	DownloadGroupFile(ctx context.Context, groupID string, peerIDs []peer.ID, file *mytype.FileInfo) error
+	DownloadSessionFile(ctx context.Context, sessionID string, peerIDs []peer.ID, file *mytype.FileInfo) error
+	GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]mytype.FileInfo, error)
+	DeleteSessionFile(ctx context.Context, sessionID string, fileIDs []string) error
 
-	GetContactFiles(ctx context.Context, contactID peer.ID, keywords string, offset int, limit int) ([]mytype.FileInfo, error)
-	GetGroupFiles(ctx context.Context, groupID string, keywords string, offset int, limit int) ([]mytype.FileInfo, error)
-
-	DeleteContactFile(ctx context.Context, contactID peer.ID, fileIDs []string) error
-
-	// CalcFileID(ctx context.Context, filePath string) (*mytype.FileID, error)
 	DownloadAvatar(ctx context.Context, peerID peer.ID, avatar string) error
 	Close()
 }

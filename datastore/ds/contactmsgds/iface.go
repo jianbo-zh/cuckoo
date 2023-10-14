@@ -13,7 +13,7 @@ type PeerMessageIface interface {
 
 	SaveMessage(ctx context.Context, peerID peer.ID, msg *pb.ContactMessage) (isLatest bool, err error)
 	GetMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.ContactMessage, error)
-	GetCoreMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.ContactMessage_CoreMessage, error)
+	GetCoreMessage(ctx context.Context, peerID peer.ID, msgID string) (*pb.CoreMessage, error)
 	UpdateMessageSendState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error)
 	DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error
 	GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error)

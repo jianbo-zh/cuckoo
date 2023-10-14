@@ -36,7 +36,7 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 
 	// 接收对方路由表
 	var msg pb.GroupRoutingTable
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&msg); err != nil {
 		return err
 	}

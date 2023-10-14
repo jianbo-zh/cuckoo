@@ -20,7 +20,7 @@ type ContactServiceIface interface {
 	DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error
 	GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error)
 	GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]mytype.ContactMessage, error)
-	SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, resource string, file *mytype.FileInfo) (resultCh <-chan mytype.ContactMessage, err error)
+	SendMessage(ctx context.Context, peerID peer.ID, msgType string, mimeType string, payload []byte, attachmentID string, file *mytype.FileInfo) (resultCh <-chan mytype.ContactMessage, err error)
 	ClearMessage(ctx context.Context, peerID peer.ID) error
 
 	Close()

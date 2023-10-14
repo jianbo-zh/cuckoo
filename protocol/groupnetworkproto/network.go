@@ -11,6 +11,7 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/myprotocol"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -29,7 +30,6 @@ const (
 	ROUTING_ID = myprotocol.GroupRoutingID_100
 
 	ServiceName = "group.connect"
-	maxMsgSize  = 4 * 1024 // 4K
 
 	HeartbeatInterval = 5 * time.Second
 	HeartbeatTimeout  = 11 * time.Second
@@ -121,7 +121,7 @@ func (n *NetworkProto) GetGroupOnlinePeers(groupID string) ([]peer.ID, error) {
 func (n *NetworkProto) connectHandler(stream network.Stream) {
 
 	var connInit pb.GroupConnectInit
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&connInit); err != nil {
 		log.Errorf("read msg error: %v", err)
 		stream.Reset()
@@ -206,7 +206,7 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 
 // routingHandler 接收更新路由表请求
 func (n *NetworkProto) routingHandler(stream network.Stream) {
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	defer rd.Close()
 
 	// 接收对方路由表

@@ -38,6 +38,10 @@ func MessageWrap(d ipfsds.Batching) *MessageDs {
 	}
 }
 
+func (m *MessageDs) HasMessage(ctx context.Context, groupID string, msgID string) (bool, error) {
+	return m.Has(ctx, adminDsKey.MsgLogKey(groupID, msgID))
+}
+
 func (m *MessageDs) GetMessage(ctx context.Context, groupID string, msgID string) (*pb.GroupMessage, error) {
 	bs, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
 	if err != nil {
@@ -50,6 +54,24 @@ func (m *MessageDs) GetMessage(ctx context.Context, groupID string, msgID string
 	}
 
 	return &msg, nil
+}
+
+func (m *MessageDs) GetCoreMessage(ctx context.Context, groupID string, msgID string) (*pb.CoreMessage, error) {
+	val, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("m.Get error: %w", err)
+	}
+
+	var msg pb.GroupMessage
+	err = proto.Unmarshal(val, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+
+	} else if msg.CoreMessage == nil {
+		return nil, fmt.Errorf("msg.RawMessage nil")
+	}
+
+	return msg.CoreMessage, nil
 }
 
 func (m *MessageDs) GetMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error) {
@@ -68,6 +90,35 @@ func (m *MessageDs) DeleteMessage(ctx context.Context, groupID string, msgID str
 	}
 
 	return nil
+}
+
+func (m *MessageDs) UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isSucc bool) (*pb.GroupMessage, error) {
+	val, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
+	if err != nil {
+		return nil, fmt.Errorf("m.Get error: %w", err)
+	}
+
+	var msg pb.GroupMessage
+	err = proto.Unmarshal(val, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
+	}
+
+	if isSucc {
+		msg.SendState = pb.GroupMessage_SendSucc
+	} else {
+		msg.SendState = pb.GroupMessage_SendFail
+	}
+
+	bs, err := proto.Marshal(&msg)
+	if err != nil {
+		return nil, fmt.Errorf("proto marshal error: %w", err)
+	}
+	if err := m.Put(ctx, adminDsKey.MsgLogKey(groupID, msgID), bs); err != nil {
+		return nil, fmt.Errorf("ds put key error: %w", err)
+	}
+
+	return &msg, nil
 }
 
 func (m *MessageDs) SaveMessage(ctx context.Context, groupID string, msg *pb.GroupMessage) (isLatest bool, err error) {

@@ -43,7 +43,6 @@ const (
 	RESOURCE_DOWNLOAD_ID = myprotocol.ResourceDownloadID_v100
 
 	ServiceName = "peer.message"
-	maxMsgSize  = 4 * 1024 // 4K
 
 	ChunkSize = 256 * 1024 // 256K
 )
@@ -70,7 +69,10 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment), new(myevent.EvtDownloadResource), new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment), new(myevent.EvtDownloadResource),
+		new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource),
+		new(myevent.EvtGetResourceData), new(myevent.EvtSaveResourceData),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
 	}
@@ -79,6 +81,8 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 
 	return &file, nil
 }
+
+// func (f *FileProto)
 
 func (f *FileProto) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error) {
 	return f.data.GetSessionFiles(ctx, sessionID, keywords, offset, limit)
@@ -136,7 +140,7 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 
 	// // 等待鉴权结果
 	// var replyMsg pb.DownloadResourceReply
-	// rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	// rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	// if err := rd.ReadMsg(&replyMsg); err != nil {
 	// 	stream.Reset()
 	// 	return fmt.Errorf("pbio.ReadMsg error: %w", err)
@@ -339,7 +343,7 @@ func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh 
 
 	fmt.Println("read msg")
 	var result pb.FileQueryResult
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&result); err != nil {
 		log.Errorf("pbio read msg error: %v", err)
 		return

@@ -42,3 +42,19 @@ type EvtLogSessionAttachment struct {
 	File       *mytype.FileInfo
 	Result     chan<- error
 }
+
+type GetResourceDataResult struct {
+	Error error
+	Data  []byte
+}
+
+type EvtGetResourceData struct {
+	ResourceID string
+	Result     chan<- *GetResourceDataResult
+}
+
+type EvtSaveResourceData struct {
+	ResourceID string
+	Data       []byte
+	Result     chan<- error
+}

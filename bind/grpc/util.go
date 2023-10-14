@@ -164,7 +164,67 @@ func parseContactMessageFile(msg *mytype.ContactMessage) (file *mytype.FileInfo,
 	return file, nil
 }
 
-// todo: ...
 func parseGroupMessageFile(msg *mytype.GroupMessage) (file *mytype.FileInfo, err error) {
-	return nil, nil
+	switch msg.MsgType {
+	case mytype.ImageMsgType:
+		var pFile proto.ImageMessagePayload
+		if err := goproto.Unmarshal(msg.Payload, &pFile); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal payload error: %w", err)
+		}
+		file = &mytype.FileInfo{
+			FileID:      pFile.ImageId,
+			FileName:    pFile.Name,
+			FileSize:    pFile.Size,
+			FileType:    mytype.ImageFile,
+			MimeType:    msg.MimeType,
+			ThumbnailID: pFile.ThumbnailId,
+			Width:       pFile.Width,
+			Height:      pFile.Height,
+		}
+	case mytype.AudioMsgType:
+		var pFile proto.AudioMessagePayload
+		if err := goproto.Unmarshal(msg.Payload, &pFile); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal payload error: %w", err)
+		}
+		file = &mytype.FileInfo{
+			FileID:   pFile.AudioId,
+			FileName: pFile.Name,
+			FileSize: pFile.Size,
+			FileType: mytype.AudioFile,
+			MimeType: msg.MimeType,
+			Duration: pFile.Duration,
+		}
+
+	case mytype.VideoMsgType:
+		var pFile proto.VideoMessagePayload
+		if err := goproto.Unmarshal(msg.Payload, &pFile); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal payload error: %w", err)
+		}
+		file = &mytype.FileInfo{
+			FileID:   pFile.VideoId,
+			FileName: pFile.Name,
+			FileSize: pFile.Size,
+			FileType: mytype.VideoFile,
+			MimeType: msg.MimeType,
+			Duration: pFile.Duration,
+		}
+
+	case mytype.FileMsgType:
+		var pFile proto.FileMessagePayload
+		if err := goproto.Unmarshal(msg.Payload, &pFile); err != nil {
+			return nil, fmt.Errorf("proto.Unmarshal payload error: %w", err)
+		}
+		file = &mytype.FileInfo{
+			FileID:   pFile.FileId,
+			FileName: pFile.Name,
+			FileSize: pFile.Size,
+			FileType: mytype.OtherFile,
+			MimeType: msg.MimeType,
+		}
+	default:
+		// not file msg
+		return nil, fmt.Errorf("msg no file")
+	}
+
+	return file, nil
 }

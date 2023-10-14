@@ -47,15 +47,15 @@ func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int
 }
 
 func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType string, mimeType string, payload []byte,
-	resourceID string, file *mytype.FileInfo) (<-chan mytype.ContactMessage, error) {
+	attachmentID string, file *mytype.FileInfo) (<-chan mytype.ContactMessage, error) {
 
 	// 处理资源文件
-	if resourceID != "" || file != nil {
+	if attachmentID != "" || file != nil {
 		resultCh := make(chan error)
 		sessionID := mytype.ContactSessionID(contactID)
-		if err := c.emitters.evtRecordSessionAttachment.Emit(myevent.EvtLogSessionAttachment{
+		if err := c.emitters.evtLogSessionAttachment.Emit(myevent.EvtLogSessionAttachment{
 			SessionID:  sessionID.String(),
-			ResourceID: resourceID,
+			ResourceID: attachmentID,
 			File:       file,
 			Result:     resultCh,
 		}); err != nil {
@@ -67,7 +67,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 	}
 
 	// 创建消息
-	msg, err := c.msgProto.CreateMessage(ctx, contactID, msgType, mimeType, payload)
+	msg, err := c.msgProto.CreateMessage(ctx, contactID, msgType, mimeType, payload, attachmentID)
 	if err != nil {
 		return nil, fmt.Errorf("generate message error: %w", err)
 	}
@@ -82,7 +82,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 		}()
 
 		isSucc := true
-		if err := c.sendMessage(ctx, contactID, msgID, resourceID); err != nil {
+		if err := c.sendMessage(ctx, contactID, msgID); err != nil {
 			isSucc = false
 			// log error
 			log.Error("send message error: %w", err)
@@ -101,22 +101,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 	return msgCh, nil
 }
 
-func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string, resourceID string) error {
-	if resourceID != "" {
-		resultCh := make(chan error, 1)
-		if err := c.emitters.evtUploadResource.Emit(myevent.EvtSendResource{
-			ToPeerID: peerID,
-			GroupID:  "",
-			FileID:   resourceID,
-			Result:   resultCh,
-		}); err != nil {
-			return fmt.Errorf("emit evtUploadResource error: %w", err)
-		}
-
-		if err := <-resultCh; err != nil {
-			return fmt.Errorf("send resource %s, error: %w", resourceID, err)
-		}
-	}
+func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string) error {
 
 	if err := c.msgProto.SendMessage(ctx, peerID, msgID); err != nil {
 		fmt.Println("proto.SendMessage error: %w", err)

@@ -29,7 +29,6 @@ const (
 	CHECK_ID = myprotocol.ContactCheckID_v100
 
 	ServiceName = "peer.contact"
-	maxMsgSize  = 4 * 1024 // 4K
 )
 
 type ContactProto struct {
@@ -84,7 +83,7 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 func (c *ContactProto) handler(stream network.Stream) {
 
 	remotePeerID := stream.Conn().RemotePeer()
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	defer rd.Close()
 
 	// 读取对方数据
@@ -169,7 +168,7 @@ func (c *ContactProto) checkApplyHandler(stream network.Stream) {
 
 	// 读取对方数据
 	var msg pb.ContactPeer
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&msg); err != nil {
 		log.Errorf("pbio read msg error: %w", err)
 		stream.Reset()
@@ -240,7 +239,7 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer mytype.AccountPeer,
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	// 发送数据给对方
@@ -311,7 +310,7 @@ func (c *ContactProto) goCheckApply(peerID peer.ID, accountPeer mytype.AccountPe
 	}
 	defer stream.Close()
 
-	rd := pbio.NewDelimitedReader(stream, maxMsgSize)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	// 发送数据给对方
