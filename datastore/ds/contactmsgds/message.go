@@ -145,7 +145,7 @@ func (m *MessageDS) GetCoreMessage(ctx context.Context, peerID peer.ID, msgID st
 	return msg.CoreMessage, nil
 }
 
-func (m *MessageDS) UpdateMessageSendState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
+func (m *MessageDS) UpdateMessageSendState(ctx context.Context, peerID peer.ID, msgID string, isDeposit bool, isSucc bool) (*pb.ContactMessage, error) {
 
 	val, err := m.Get(ctx, contactDsKey.MsgLogKey(peerID, msgID))
 	if err != nil {
@@ -157,6 +157,8 @@ func (m *MessageDS) UpdateMessageSendState(ctx context.Context, peerID peer.ID, 
 	if err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
+
+	msg.IsDeposit = isDeposit
 
 	if isSucc {
 		msg.SendState = pb.ContactMessage_SendSucc

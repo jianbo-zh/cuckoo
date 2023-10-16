@@ -40,8 +40,10 @@ message GroupMessage {
     string      groupId = 2;
     CoreMessage coreMessage = 3;
     SendState   sendState = 4;
-    int64       createTime = 5;
-    int64       updateTime = 6;
+    // directly or deposit
+    bool        isDeposit = 5;
+    int64       createTime = 6;
+    int64       updateTime = 7;
 }
 
 message GroupMessageAck { 

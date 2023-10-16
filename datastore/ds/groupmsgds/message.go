@@ -92,7 +92,7 @@ func (m *MessageDs) DeleteMessage(ctx context.Context, groupID string, msgID str
 	return nil
 }
 
-func (m *MessageDs) UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isSucc bool) (*pb.GroupMessage, error) {
+func (m *MessageDs) UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isDeposit bool, isSucc bool) (*pb.GroupMessage, error) {
 	val, err := m.Get(ctx, adminDsKey.MsgLogKey(groupID, msgID))
 	if err != nil {
 		return nil, fmt.Errorf("m.Get error: %w", err)
@@ -103,6 +103,8 @@ func (m *MessageDs) UpdateMessageSendState(ctx context.Context, groupID string, 
 	if err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
+
+	msg.IsDeposit = isDeposit
 
 	if isSucc {
 		msg.SendState = pb.GroupMessage_SendSucc

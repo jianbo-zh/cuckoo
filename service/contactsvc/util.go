@@ -26,6 +26,7 @@ func convertMessage(msg *pb.ContactMessage) *mytype.ContactMessage {
 		FromPeerID: peer.ID(msg.CoreMessage.FromPeerId),
 		ToPeerID:   peer.ID(msg.CoreMessage.ToPeerId),
 		Payload:    msg.CoreMessage.Payload,
+		IsDeposit:  msg.IsDeposit,
 		State:      msgState,
 		Timestamp:  msg.CreateTime,
 	}

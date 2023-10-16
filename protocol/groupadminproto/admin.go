@@ -32,8 +32,8 @@ var log = logging.Logger("group-admin")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID      = myprotocol.GroupAdminID_v100
-	SYNC_ID = myprotocol.GroupAdminSyncID_v100
+	ADMIN_ID = myprotocol.GroupAdminID_v100
+	SYNC_ID  = myprotocol.GroupAdminSyncID_v100
 
 	ServiceName = "group.admin"
 )
@@ -53,9 +53,10 @@ type AdminProto struct {
 	sessionData sessionds.SessionIface
 
 	emitters struct {
-		evtInviteJoinGroup event.Emitter
-		evtGroupsChange    event.Emitter
-		evtCheckAvatar     event.Emitter
+		evtInviteJoinGroup  event.Emitter
+		evtGroupsChange     event.Emitter
+		evtSyncResource     event.Emitter
+		evtSyncGroupMessage event.Emitter
 	}
 
 	groupConns map[string]map[peer.ID]struct{}
@@ -73,7 +74,7 @@ func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 		groupStats:  make(map[string]*GroupLogStats),
 	}
 
-	lhost.SetStreamHandler(ID, admsvc.handler)
+	lhost.SetStreamHandler(ADMIN_ID, admsvc.handler)
 	lhost.SetStreamHandler(SYNC_ID, admsvc.syncHandler)
 
 	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&myevent.EvtInviteJoinGroup{}); err != nil {
@@ -84,11 +85,15 @@ func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 		return nil, fmt.Errorf("set group change emitter error: %v", err)
 	}
 
-	if admsvc.emitters.evtCheckAvatar, err = eventBus.Emitter(&myevent.EvtCheckAvatar{}); err != nil {
-		return nil, fmt.Errorf("set group change emitter error: %v", err)
+	if admsvc.emitters.evtSyncResource, err = eventBus.Emitter(&myevent.EvSyncResource{}); err != nil {
+		return nil, fmt.Errorf("set sync resource emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupConnectChange), new(myevent.EvtGroupNetworkSuccess)}, eventbus.Name("adminlog"))
+	if admsvc.emitters.evtSyncGroupMessage, err = eventBus.Emitter(&myevent.EvtSyncGroupMessage{}); err != nil {
+		return nil, fmt.Errorf("set sync group message emitter error: %v", err)
+	}
+
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupNetworkSuccess), new(myevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
@@ -212,7 +217,7 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 
 						if a.host.ID() < evt.PeerID {
 							// 小方主动发起同步
-							go a.goSync(evt.GroupID, evt.PeerID)
+							go a.goSyncAdmin(evt.GroupID, evt.PeerID)
 						}
 					}
 					log.Debugln("event connect peer: ", evt.PeerID.String())
@@ -221,18 +226,35 @@ func (a *AdminProto) subscribeHandler(ctx context.Context, sub event.Subscriptio
 					log.Debugln("event disconnect peer: ", evt.PeerID.String())
 					delete(a.groupConns[evt.GroupID], evt.PeerID)
 				}
+
 			case myevent.EvtGroupNetworkSuccess:
-				if avatar, err := a.data.GetAvatar(ctx, evt.GroupID); err != nil {
+
+				avatar, err := a.data.GetAvatar(ctx, evt.GroupID)
+				if err != nil {
 					log.Errorf("data get group avatar error: %v", err)
 
-				} else {
-					if err = a.emitters.evtCheckAvatar.Emit(myevent.EvtCheckAvatar{
-						Avatar:  avatar,
-						PeerIDs: evt.PeerIDs,
+				} else if len(avatar) > 0 {
+					if err = a.emitters.evtSyncResource.Emit(myevent.EvSyncResource{
+						ResourceID: avatar,
+						PeerIDs:    evt.PeerIDs,
 					}); err != nil {
-						log.Errorf("emite check avatar event error: %w", err)
+						log.Errorf("emite sync resource event error: %w", err)
 					}
 				}
+
+				depositAddress, err := a.data.GetDepositAddress(ctx, evt.GroupID)
+				if err != nil {
+					log.Errorf("data get group deposit address error: %v", err)
+
+				} else if depositAddress != peer.ID("") {
+					if err = a.emitters.evtSyncGroupMessage.Emit(myevent.EvtSyncGroupMessage{
+						GroupID:        evt.GroupID,
+						DepositAddress: depositAddress,
+					}); err != nil {
+						log.Errorf("emite sync group message event error: %w", err)
+					}
+				}
+
 			}
 
 		case <-ctx.Done():
@@ -277,7 +299,7 @@ func (a *AdminProto) getConnectPeers(groupID string) []peer.ID {
 // 发送消息（指定peerID）
 func (a *AdminProto) goSendAdminMessage(peerID peer.ID, msg *pb.GroupLog) {
 	ctx := context.Background()
-	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, ID)
+	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, ADMIN_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
 		return

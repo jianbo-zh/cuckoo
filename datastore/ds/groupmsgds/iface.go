@@ -22,7 +22,7 @@ type MessageIface interface {
 	SaveMessage(ctx context.Context, groupID string, pbmsg *pb.GroupMessage) (isLatest bool, err error)
 	GetMessages(ctx context.Context, groupID string, offset int, limit int) ([]*pb.GroupMessage, error)
 	ClearMessage(ctx context.Context, groupID string) error
-	UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isSucc bool) (*pb.GroupMessage, error)
+	UpdateMessageSendState(ctx context.Context, groupID string, msgID string, isDeposit bool, isSucc bool) (*pb.GroupMessage, error)
 
 	GetMessageHead(ctx context.Context, groupID string) (string, error)
 	GetMessageTail(ctx context.Context, groupID string) (string, error)

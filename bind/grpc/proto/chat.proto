@@ -808,10 +808,12 @@ message ContactMessage {
   string mimeType = 5;
   // 消息内容
   bytes payload = 6;
+  // 是否离线消息
+  bool isDeposit = 7;
   // 消息状态
-  MsgState state = 7;
+  MsgState state = 8;
   // 消息时间
-  int64 createTime = 8;
+  int64 createTime = 9;
 }
 
 message ImageMessagePayload {
@@ -920,10 +922,12 @@ message  GroupMessage {
   string mimeType = 5;
   // 内容
   bytes payload = 6;
+  // 是否离线消息
+  bool isDeposit = 7;
   // 消息状态
-  MsgState state = 7;
+  MsgState state = 8;
   // 消息时间
-  int64 createTime = 8;
+  int64 createTime = 9;
 }
 
 // 会话信息

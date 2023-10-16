@@ -11,8 +11,7 @@ type EvtPushDepositContactMessage struct {
 	ToPeerID       peer.ID
 	MsgID          string
 	MsgData        []byte
-
-	ResultCallback func(toPeerID peer.ID, msgID string, err error)
+	Result         chan<- error
 }
 
 type EvtPushDepositGroupMessage struct {
@@ -20,8 +19,7 @@ type EvtPushDepositGroupMessage struct {
 	ToGroupID      string
 	MsgID          string
 	MsgData        []byte
-
-	ResultCallback func(toGroupID string, msgID string, err error)
+	Result         chan<- error
 }
 
 type EvtPullDepositContactMessage struct {
@@ -30,7 +28,7 @@ type EvtPullDepositContactMessage struct {
 }
 
 type EvtPullDepositGroupMessage struct {
-	DepositAddress peer.ID
 	GroupID        string
-	MessageHandler func(fromGroupID string, msgID string, msgData []byte) error
+	DepositAddress peer.ID
+	MessageHandler func(ctx context.Context, fromGroupID string, msgID string, msgData []byte) error
 }

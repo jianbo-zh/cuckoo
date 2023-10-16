@@ -11,7 +11,6 @@ import (
 	deposit "github.com/jianbo-zh/dchat/protocol/depositproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
 
@@ -44,6 +43,7 @@ func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lh
 	}
 
 	if conf.EnableDepositService {
+		fmt.Println("start deposit service!")
 		depositsvc.service, err = deposit.NewDepositServiceProto(ctx, lhost, ids)
 		if err != nil {
 			return nil, fmt.Errorf("new deposit service proto error: %w", err)
@@ -58,14 +58,6 @@ func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lh
 	go depositsvc.subscribeHandler(ctx, sub)
 
 	return depositsvc, nil
-}
-
-func (d *DepositService) PushContactMessage(depositPeerID peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
-	return d.client.PushContactMessage(depositPeerID, toPeerID, msgID, msgData)
-}
-
-func (d *DepositService) PushGroupMessage(depositPeerID peer.ID, groupID string, msgID string, msgData []byte) error {
-	return d.client.PushGroupMessage(depositPeerID, groupID, msgID, msgData)
 }
 
 func (d *DepositService) subscribeHandler(ctx context.Context, sub event.Subscription) {

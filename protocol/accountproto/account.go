@@ -36,8 +36,9 @@ type AccountProto struct {
 	avatarDir string
 
 	emitter struct {
-		evtAccountPeerChange   event.Emitter
+		evtAccountBaseChange   event.Emitter
 		evtOnlineStateDiscover event.Emitter
+		evtSyncAccountMessage  event.Emitter
 	}
 }
 
@@ -52,15 +53,67 @@ func NewAccountProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 	lhost.SetStreamHandler(ID, accountProto.GetPeerHandler)
 	lhost.SetStreamHandler(ONLINE_ID, accountProto.onlineHandler)
 
-	if accountProto.emitter.evtAccountPeerChange, err = eventBus.Emitter(&myevent.EvtAccountPeerChange{}); err != nil {
-		return nil, fmt.Errorf("set account peer change emitter error: %w", err)
+	if accountProto.emitter.evtSyncAccountMessage, err = eventBus.Emitter(&myevent.EvtSyncAccountMessage{}); err != nil {
+		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
+	}
+
+	if accountProto.emitter.evtAccountBaseChange, err = eventBus.Emitter(&myevent.EvtAccountBaseChange{}); err != nil {
+		return nil, fmt.Errorf("set account base change emitter error: %w", err)
 	}
 
 	if accountProto.emitter.evtOnlineStateDiscover, err = eventBus.Emitter(&myevent.EvtOnlineStateDiscover{}); err != nil {
 		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
 	}
 
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtHostBootComplete)})
+	if err != nil {
+		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
+	} else {
+		go accountProto.subscribeHandler(context.Background(), sub)
+	}
+
 	return &accountProto, nil
+}
+
+func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				log.Errorln("account proto subscribe out not ok")
+				return
+			}
+
+			switch evt := e.(type) {
+			case myevent.EvtHostBootComplete:
+				if evt.IsSucc {
+					account, err := a.data.GetAccount(ctx)
+					if err != nil {
+						log.Errorf("data.GetAccount error: %w", err)
+					}
+
+					if len(account.DepositAddress) > 0 {
+						if err := a.emitter.evtSyncAccountMessage.Emit(myevent.EvtSyncAccountMessage{
+							DepositAddress: peer.ID(account.DepositAddress),
+						}); err != nil {
+							log.Errorf("emit sync account message error: %w", err)
+
+						} else {
+							log.Debugln("emit sync account message: ", peer.ID(account.DepositAddress).String())
+						}
+					}
+				}
+
+				// 只会执行一次，直接退出
+				return
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
@@ -220,7 +273,7 @@ func (a *AccountProto) UpdateAccountName(ctx context.Context, name string) error
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
+		a.emitter.evtAccountBaseChange.Emit(myevent.EvtAccountBaseChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}
@@ -239,7 +292,7 @@ func (a *AccountProto) UpdateAccountAvatar(ctx context.Context, avatar string) e
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
+		a.emitter.evtAccountBaseChange.Emit(myevent.EvtAccountBaseChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}
@@ -306,7 +359,7 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 			return fmt.Errorf("data update account error: %w", err)
 		}
 
-		a.emitter.evtAccountPeerChange.Emit(myevent.EvtAccountPeerChange{
+		a.emitter.evtAccountBaseChange.Emit(myevent.EvtAccountBaseChange{
 			AccountPeer: DecodeAccountPeer(account),
 		})
 	}

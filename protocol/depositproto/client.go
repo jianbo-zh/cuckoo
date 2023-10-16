@@ -81,37 +81,33 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 	}
 }
 
-func (d *DepositClientProto) handlePushContactEvent(ev myevent.EvtPushDepositContactMessage) {
-	log.Debugf("handle push contact msg event: %s", ev.MsgID)
-	err := d.PushContactMessage(ev.DepositAddress, ev.ToPeerID, ev.MsgID, ev.MsgData)
+func (d *DepositClientProto) handlePushContactEvent(evt myevent.EvtPushDepositContactMessage) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	log.Debugf("handle push contact msg event: %s", evt.MsgID)
+	err := d.PushContactMessage(evt.DepositAddress, evt.ToPeerID, evt.MsgID, evt.MsgData)
 	if err != nil {
-		log.Errorf("push contact message error: %w", err)
-
-		if ev.ResultCallback != nil {
-			ev.ResultCallback(ev.ToPeerID, ev.MsgID, fmt.Errorf("push contact message error: %w", err))
-		}
-		return
-	}
-
-	if ev.ResultCallback != nil {
-		ev.ResultCallback(ev.ToPeerID, ev.MsgID, nil)
+		resultErr = fmt.Errorf("push contact msg error: %w", err)
 	}
 }
 
-func (d *DepositClientProto) handlePushGroupEvent(ev myevent.EvtPushDepositGroupMessage) {
-	log.Debugf("handle push group msg event: %s", ev.MsgID)
-	err := d.PushGroupMessage(ev.DepositAddress, ev.ToGroupID, ev.MsgID, ev.MsgData)
+func (d *DepositClientProto) handlePushGroupEvent(evt myevent.EvtPushDepositGroupMessage) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	log.Debugf("handle push group msg event: %s", evt.MsgID)
+	err := d.PushGroupMessage(evt.DepositAddress, evt.ToGroupID, evt.MsgID, evt.MsgData)
 	if err != nil {
-		log.Errorf("push group message error: %w", err)
-
-		if ev.ResultCallback != nil {
-			ev.ResultCallback(ev.ToGroupID, ev.MsgID, fmt.Errorf("push group message error: %w", err))
-		}
-		return
-	}
-
-	if ev.ResultCallback != nil {
-		ev.ResultCallback(ev.ToGroupID, ev.MsgID, nil)
+		resultErr = fmt.Errorf("push group msg error: %w", err)
 	}
 }
 
@@ -128,14 +124,14 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 
 	depositPeerID := evt.DepositAddress
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, CONTACT_GET_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PULL_CONTACT_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
 	}
 	defer stream.Close()
 
-	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	if err = pw.WriteMsg(&pb.DepositContactMessagePull{StartId: lastDepositID}); err != nil {
@@ -183,14 +179,14 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 
 	fmt.Println("deposit peerID: ", depositPeerID.String())
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, GROUP_GET_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PULL_GROUP_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
 	}
 	defer stream.Close()
 
-	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	pw := pbio.NewDelimitedWriter(stream)
 
 	if err = pw.WriteMsg(&pb.DepositGroupMessagePull{GroupId: groupID, StartId: lastDepositID}); err != nil {
@@ -209,7 +205,7 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 		}
 
 		if evt.MessageHandler != nil {
-			if err = evt.MessageHandler(groupID, msg.MsgId, msg.MsgData); err != nil {
+			if err = evt.MessageHandler(ctx, groupID, msg.MsgId, msg.MsgData); err != nil {
 				log.Errorf("message handler error: %v", err)
 				stream.Reset()
 				return
@@ -230,7 +226,7 @@ func (d *DepositClientProto) PushContactMessage(depositPeerID peer.ID, toPeerID 
 	log.Debugf("get deposit service peer: %s", depositPeerID.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, CONTACT_SAVE_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PUSH_CONTACT_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
@@ -269,7 +265,7 @@ func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID str
 	log.Debugf("get deposit service peer: %s", depositPeerID.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, GROUP_SAVE_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PUSH_GROUP_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}

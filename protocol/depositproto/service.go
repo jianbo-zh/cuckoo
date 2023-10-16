@@ -2,6 +2,7 @@ package deposit
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
@@ -20,10 +21,11 @@ var log = logging.Logger("deposit")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	CONTACT_SAVE_ID = myprotocol.DepositContactSaveID_v100
-	CONTACT_GET_ID  = myprotocol.DepositContactGetID_v100
-	GROUP_SAVE_ID   = myprotocol.DepositGroupSaveID_v100
-	GROUP_GET_ID    = myprotocol.DepositGroupGetID_v100
+	PUSH_CONTACT_MSG_ID = myprotocol.DepositSaveContactMsgID_v100
+	PULL_CONTACT_MSG_ID = myprotocol.DepositGetContactMsgID_v100
+
+	PUSH_GROUP_MSG_ID = myprotocol.DepositSaveGroupMsgID_v100
+	PULL_GROUP_MSG_ID = myprotocol.DepositGetGroupMsgID_v100
 
 	ServiceName  = "deposit.peer"
 	msgCacheDays = 3 * 86400 // 3Day
@@ -42,20 +44,20 @@ func NewDepositServiceProto(ctx context.Context, h myhost.Host, ids ipfsds.Batch
 		datastore: ds.DepositPeerWrap(ids),
 	}
 
-	h.SetStreamHandler(CONTACT_SAVE_ID, gsvc.SaveContactMessageHandler)
-	h.SetStreamHandler(CONTACT_GET_ID, gsvc.GetContactMessageHandler)
+	h.SetStreamHandler(PUSH_CONTACT_MSG_ID, gsvc.SaveContactMessageHandler)
+	h.SetStreamHandler(PULL_CONTACT_MSG_ID, gsvc.GetContactMessageHandler)
 
-	h.SetStreamHandler(GROUP_SAVE_ID, gsvc.SaveGroupMessageHandler)
-	h.SetStreamHandler(GROUP_GET_ID, gsvc.GetGroupMessageHandler)
+	h.SetStreamHandler(PUSH_GROUP_MSG_ID, gsvc.SaveGroupMessageHandler)
+	h.SetStreamHandler(PULL_GROUP_MSG_ID, gsvc.GetGroupMessageHandler)
 
 	return gsvc, nil
 }
 
 func (d *DepositServiceProto) Close() {
-	d.host.RemoveStreamHandler(CONTACT_SAVE_ID)
-	d.host.RemoveStreamHandler(CONTACT_GET_ID)
-	d.host.RemoveStreamHandler(GROUP_SAVE_ID)
-	d.host.RemoveStreamHandler(GROUP_GET_ID)
+	d.host.RemoveStreamHandler(PUSH_CONTACT_MSG_ID)
+	d.host.RemoveStreamHandler(PULL_CONTACT_MSG_ID)
+	d.host.RemoveStreamHandler(PUSH_GROUP_MSG_ID)
+	d.host.RemoveStreamHandler(PULL_GROUP_MSG_ID)
 }
 
 func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
@@ -69,7 +71,7 @@ func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
 	}
 	defer stream.Close()
 
-	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositContactMessage
@@ -105,7 +107,7 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 	}
 	defer stream.Close()
 
-	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	wt := pbio.NewDelimitedWriter(stream)
 
 	var msg pb.DepositGroupMessage
@@ -114,6 +116,8 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 		log.Errorf("read deposit peer message error: %v", err)
 		return
 	}
+
+	fmt.Println("save group msg: ", msg.String())
 
 	if err = d.datastore.SaveGroupMessage(&msg); err != nil {
 		stream.Reset()
@@ -175,10 +179,12 @@ func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 		}
 	}
 
-	log.Debugln("get contact message success")
+	log.Debugln("get contact message finish")
 }
 
 func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
+
+	log.Debugln("get group message start")
 
 	defer stream.Close()
 
@@ -203,11 +209,15 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 			return
 		}
 
+		fmt.Println("get group msgs len: ", len(msgs))
+
 		if len(msgs) == 0 {
 			break
 		}
 
 		for _, msg := range msgs {
+			fmt.Println("send msg: ", msg.String())
+
 			if err = pw.WriteMsg(msg); err != nil {
 				log.Errorf("io write message error: %v", err)
 				stream.Reset()
@@ -217,4 +227,6 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 			startID = msg.Id
 		}
 	}
+
+	log.Debugln("get group message finish")
 }

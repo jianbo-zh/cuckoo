@@ -5,37 +5,18 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-type EvtDownloadResult struct {
-	FileName   string
-	FileSize   int64
-	HashAlgo   string
-	HashValue  string
-	FilePath   string
-	IsSuccess  bool
-	FailReason string
+type GetResourceDataResult struct {
+	Error error
+	Data  []byte
 }
 
-type EvtDownloadProcess struct {
-	FileName     string
-	FileID       string
-	FileSize     int64
-	DownloadSize int64
+// EvSyncResource 同步资源文件
+type EvSyncResource struct {
+	ResourceID string
+	PeerIDs    []peer.ID
 }
 
-type EvtSendResource struct {
-	ToPeerID peer.ID
-	GroupID  string
-	FileID   string
-	Result   chan<- error
-}
-
-type EvtDownloadResource struct {
-	PeerID  peer.ID
-	GroupID string
-	FileID  string
-	Result  chan<- error
-}
-
+// EvtLogSessionAttachment 记录会话关联的资源与文件
 type EvtLogSessionAttachment struct {
 	SessionID  string
 	ResourceID string
@@ -43,16 +24,13 @@ type EvtLogSessionAttachment struct {
 	Result     chan<- error
 }
 
-type GetResourceDataResult struct {
-	Error error
-	Data  []byte
-}
-
+// EvtGetResourceData 获取资源文件数据
 type EvtGetResourceData struct {
 	ResourceID string
 	Result     chan<- *GetResourceDataResult
 }
 
+// EvtSaveResourceData 保存资源文件数据
 type EvtSaveResourceData struct {
 	ResourceID string
 	Data       []byte

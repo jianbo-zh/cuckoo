@@ -25,7 +25,7 @@ var log = logging.Logger("contact")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID       = myprotocol.ContactID_v100
+	SYNC_ID  = myprotocol.ContactID_v100
 	CHECK_ID = myprotocol.ContactCheckID_v100
 
 	ServiceName = "peer.contact"
@@ -41,7 +41,7 @@ type ContactProto struct {
 	emitters struct {
 		evtSyncPeerMessage event.Emitter
 		evtApplyAddContact event.Emitter
-		evtCheckAvatar     event.Emitter
+		evtSyncResource    event.Emitter
 	}
 }
 
@@ -54,7 +54,7 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 		accountGetter: accountGetter,
 	}
 
-	contactsvc.host.SetStreamHandler(ID, contactsvc.handler)
+	contactsvc.host.SetStreamHandler(SYNC_ID, contactsvc.handler)
 	contactsvc.host.SetStreamHandler(CHECK_ID, contactsvc.checkApplyHandler)
 
 	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&myevent.EvtSyncContactMessage{}); err != nil {
@@ -65,11 +65,11 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 		return nil, fmt.Errorf("set apply add contact emitter error: %w", err)
 	}
 
-	if contactsvc.emitters.evtCheckAvatar, err = eventBus.Emitter(&myevent.EvtCheckAvatar{}); err != nil {
+	if contactsvc.emitters.evtSyncResource, err = eventBus.Emitter(&myevent.EvSyncResource{}); err != nil {
 		return nil, fmt.Errorf("set check avatar emitter error: %w", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtHostBootComplete), new(myevent.EvtAccountPeerChange)})
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtHostBootComplete), new(myevent.EvtAccountBaseChange)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete error: %w", err)
 
@@ -105,9 +105,9 @@ func (c *ContactProto) handler(stream network.Stream) {
 
 	if contact.Avatar != msg.Avatar {
 		// 触发检查是否需要同步头像
-		if err = c.emitters.evtCheckAvatar.Emit(myevent.EvtCheckAvatar{
-			Avatar:  msg.Avatar,
-			PeerIDs: []peer.ID{remotePeerID},
+		if err = c.emitters.evtSyncResource.Emit(myevent.EvSyncResource{
+			ResourceID: msg.Avatar,
+			PeerIDs:    []peer.ID{remotePeerID},
 		}); err != nil {
 			log.Errorf("emit check avatar evt error: %w", err)
 		}
@@ -227,12 +227,12 @@ func (c *ContactProto) checkApplyHandler(stream network.Stream) {
 
 }
 
-func (c *ContactProto) goSync(contactID peer.ID, accountPeer mytype.AccountPeer, isBootSync bool) {
+func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.AccountPeer, isBootSync bool) {
 
 	log.Debugln("sync contact: ", contactID.String(), accountPeer, isBootSync)
 
 	ctx := context.Background()
-	stream, err := c.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, ID)
+	stream, err := c.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, SYNC_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %w", err)
 		return
@@ -285,14 +285,16 @@ func (c *ContactProto) goSync(contactID peer.ID, accountPeer mytype.AccountPeer,
 			ContactID: contactID,
 		}); err != nil {
 			log.Errorf("emit sync peer message error: %w", err)
+
+		} else {
+			log.Debugln("emit EvtSyncContactMessage ", contactID.String())
 		}
 	}
 
 	// 触发检查是否需要同步头像
-	log.Infoln("------- emit check peer avatar")
-	if err = c.emitters.evtCheckAvatar.Emit(myevent.EvtCheckAvatar{
-		Avatar:  recvmsg.Avatar,
-		PeerIDs: []peer.ID{contactID},
+	if err = c.emitters.evtSyncResource.Emit(myevent.EvSyncResource{
+		ResourceID: recvmsg.Avatar,
+		PeerIDs:    []peer.ID{contactID},
 	}); err != nil {
 		log.Errorf("emit check avatar evt error: %w", err)
 	}
@@ -415,7 +417,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 
 				} else if len(contactIDs) > 0 {
 					for _, contactID := range contactIDs {
-						go c.goSync(contactID, mytype.AccountPeer{
+						go c.goSyncContact(contactID, mytype.AccountPeer{
 							ID:             account.ID,
 							Name:           account.Name,
 							Avatar:         account.Avatar,
@@ -423,14 +425,15 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 						}, true)
 					}
 				}
-			case myevent.EvtAccountPeerChange:
+
+			case myevent.EvtAccountBaseChange:
 				if contactIDs, err := c.data.GetFormalIDs(ctx); err != nil {
 					log.Warnf("get peer ids error: %v", err)
 					continue
 
 				} else if len(contactIDs) > 0 {
 					for _, contactID := range contactIDs {
-						go c.goSync(contactID, ev.AccountPeer, false)
+						go c.goSyncContact(contactID, ev.AccountPeer, false)
 					}
 				}
 
@@ -501,7 +504,7 @@ func (c *ContactProto) AgreeAddContact(ctx context.Context, peer0 *mytype.Peer) 
 		return fmt.Errorf("get account error: %w", err)
 	}
 
-	go c.goSync(peer0.ID, mytype.AccountPeer{
+	go c.goSyncContact(peer0.ID, mytype.AccountPeer{
 		ID:             account.ID,
 		Name:           account.Name,
 		Avatar:         account.Avatar,

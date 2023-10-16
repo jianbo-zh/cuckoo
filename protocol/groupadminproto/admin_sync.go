@@ -30,7 +30,7 @@ import (
 // 3，发送区间消息KEY
 // 4，发送对方没有的消息ID
 
-func (a *AdminProto) goSync(groupID string, peerID peer.ID) {
+func (a *AdminProto) goSyncAdmin(groupID string, peerID peer.ID) {
 
 	log.Infoln("sync group admin log start")
 

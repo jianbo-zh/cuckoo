@@ -48,6 +48,7 @@ type GroupMessage struct {
 	MsgType   string
 	MimeType  string
 	Payload   []byte
+	IsDeposit bool
 	State     MessageState
 	Timestamp int64
 }

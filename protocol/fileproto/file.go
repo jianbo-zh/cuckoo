@@ -69,8 +69,8 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment), new(myevent.EvtDownloadResource),
-		new(myevent.EvtCheckAvatar), new(myevent.EvtSendResource),
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment),
+		new(myevent.EvSyncResource),
 		new(myevent.EvtGetResourceData), new(myevent.EvtSaveResourceData),
 	})
 	if err != nil {

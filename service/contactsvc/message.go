@@ -2,8 +2,10 @@ package contactsvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -82,13 +84,13 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 		}()
 
 		isSucc := true
-		if err := c.sendMessage(ctx, contactID, msgID); err != nil {
+		isDeposit, err := c.sendMessage(ctx, contactID, msgID)
+		if err != nil {
 			isSucc = false
-			// log error
 			log.Error("send message error: %w", err)
 		}
 
-		msg, err := c.msgProto.UpdateMessageState(ctx, contactID, msgID, isSucc)
+		msg, err := c.msgProto.UpdateMessageState(ctx, contactID, msgID, isDeposit, isSucc)
 		if err != nil {
 			// log error
 			log.Errorf("msgProto.UpdateMessageState error: %w", err)
@@ -101,24 +103,48 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 	return msgCh, nil
 }
 
-func (c *ContactSvc) sendMessage(ctx context.Context, peerID peer.ID, msgID string) error {
+func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID string) (isDeposit bool, err error) {
 
-	if err := c.msgProto.SendMessage(ctx, peerID, msgID); err != nil {
-		fmt.Println("proto.SendMessage error: %w", err)
-		return fmt.Errorf("msgProto.SendMessage error: %w", err)
+	if msgData, err1 := c.msgProto.SendMessage(ctx, contactID, msgID); err1 != nil {
+		// 发送失败
+		if errors.As(err1, &myerror.StreamErr{}) && len(msgData) > 0 {
+			// 可能对方不在线
+			if account, err2 := c.accountGetter.GetAccount(ctx); err2 != nil {
+				return false, fmt.Errorf("get account error: %w", err2)
+
+			} else if account.AutoDepositMessage {
+				// 开启了消息自动寄存
+				if contact, err3 := c.contactProto.GetContact(ctx, contactID); err3 != nil {
+					return false, fmt.Errorf("proto.GetContact error: %w", err3)
+
+				} else if contact.DepositAddress != peer.ID("") {
+					// 对方设置了寄存地址
+					resultCh := make(chan error, 1)
+					if err4 := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
+						DepositAddress: contact.DepositAddress,
+						ToPeerID:       contact.ID,
+						MsgID:          msgID,
+						MsgData:        msgData,
+						Result:         resultCh,
+					}); err4 != nil {
+						return false, fmt.Errorf("emit EvtPushDepositContactMessage error: %w", err4)
+					}
+
+					if err5 := <-resultCh; err5 != nil {
+						// 发送寄存信息失败
+						return false, fmt.Errorf("push deposit msg error: %w", err5)
+
+					} else {
+						return true, nil
+					}
+				}
+			}
+		}
+
+		return false, fmt.Errorf("msgProto.SendMessage error: %w", err1)
 	}
 
-	fmt.Println("sendMessage succ: ", msgID)
-	return nil
-}
-
-func (c *ContactSvc) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*mytype.ContactMessage, error) {
-	msg, err := c.msgProto.UpdateMessageState(ctx, peerID, msgID, isSucc)
-	if err != nil {
-		return nil, fmt.Errorf("msgProto.UpdateMessageState error: %w", err)
-	}
-
-	return convertMessage(msg), nil
+	return false, nil
 }
 
 func (c *ContactSvc) ClearMessage(ctx context.Context, peerID peer.ID) error {

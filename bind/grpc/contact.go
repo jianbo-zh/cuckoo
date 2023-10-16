@@ -475,6 +475,7 @@ func (c *ContactSvc) GetContactMessage(ctx context.Context, request *proto.GetCo
 			MsgType:     encodeMsgType(msg.MsgType),
 			MimeType:    msg.MimeType,
 			Payload:     msg.Payload,
+			IsDeposit:   msg.IsDeposit,
 			State:       encodeMessageState(msg.State),
 			CreateTime:  msg.Timestamp,
 		},
@@ -572,6 +573,7 @@ func (c *ContactSvc) GetContactMessages(ctx context.Context, request *proto.GetC
 			MsgType:     encodeMsgType(msg.MsgType),
 			MimeType:    msg.MimeType,
 			Payload:     msg.Payload,
+			IsDeposit:   msg.IsDeposit,
 			State:       encodeMessageState(msg.State),
 			CreateTime:  msg.Timestamp,
 		})
@@ -882,6 +884,7 @@ func (c *ContactSvc) sendContactMessage(ctx context.Context, server proto.Contac
 				MsgType:     encodeMsgType(msg.MsgType),
 				MimeType:    msg.MimeType,
 				Payload:     msg.Payload,
+				IsDeposit:   msg.IsDeposit,
 				State:       encodeMessageState(msg.State),
 				CreateTime:  msg.Timestamp,
 			},

@@ -2,6 +2,7 @@ package contactmsgproto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,11 +63,6 @@ func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	lhost.SetStreamHandler(MSG_ID, msgsvc.msgIDHandler)
 	lhost.SetStreamHandler(MSG_SYNC_ID, msgsvc.syncIDHandler)
 
-	// 触发器：发送离线消息
-	if msgsvc.emitters.evtPushOfflineMessage, err = eventBus.Emitter(&myevent.EvtPushDepositContactMessage{}); err != nil {
-		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
-	}
-
 	// 触发器：获取离线消息
 	if msgsvc.emitters.evtPullOfflineMessage, err = eventBus.Emitter(&myevent.EvtPullDepositContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
@@ -86,7 +82,7 @@ func NewMessageSvc(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	}
 
 	// 订阅：同步Peer的消息，拉取离线消息事件
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncContactMessage), new(event.EvtLocalAddressesUpdated)})
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncAccountMessage), new(myevent.EvtSyncContactMessage)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe boot complete event error: %v", err)
 
@@ -109,25 +105,19 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 			}
 
 			switch evt := e.(type) {
+			case myevent.EvtSyncAccountMessage:
+				if err := p.emitters.evtPullOfflineMessage.Emit(myevent.EvtPullDepositContactMessage{
+					DepositAddress: evt.DepositAddress,
+					MessageHandler: p.SaveDepositMessage,
+				}); err != nil {
+					log.Errorf("emit EvtPullDepositContactMessage error: %w", err)
+				} else {
+					log.Debugln("emit pull offline message")
+				}
+
 			case myevent.EvtSyncContactMessage:
 				// todo: 同步功能暂时不开，所以功能可以暂时不测
 				// go p.goSyncMessage(evt.ContactID)
-
-			case event.EvtLocalAddressesUpdated:
-				if !evt.Diffs {
-					log.Warnf("event local address no ok or no diff")
-					return
-				}
-
-				for _, curr := range evt.Current {
-					if isPublicAddr(curr.Address) {
-						p.emitters.evtPullOfflineMessage.Emit(myevent.EvtPullDepositContactMessage{
-							DepositAddress: peer.ID(""),
-							MessageHandler: p.SaveCoreMessage,
-						})
-						break
-					}
-				}
 			}
 
 		case <-ctx.Done():
@@ -192,7 +182,7 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 		}
 	}
 
-	if err := p.saveCoreMessage(context.Background(), peer.ID(coreMsg.FromPeerId), coreMsg); err != nil {
+	if err := p.saveCoreMessage(context.Background(), peer.ID(coreMsg.FromPeerId), coreMsg, false); err != nil {
 		log.Errorf("store message error %v", err)
 		stream.Reset()
 		return
@@ -221,16 +211,44 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 	})
 }
 
-func (p *PeerMessageProto) SaveCoreMessage(ctx context.Context, peerID peer.ID, msgID string, coreMsgData []byte) error {
-	var coreMsg pb.CoreMessage
-	if err := proto.Unmarshal(coreMsgData, &coreMsg); err != nil {
-		return err
+func (p *PeerMessageProto) SaveDepositMessage(ctx context.Context, fromPeerID peer.ID, msgID string, msgData []byte) error {
 
-	} else if coreMsg.Id != msgID {
-		return fmt.Errorf("msg id not equal")
+	var switchMsg pb.MessageEnvelope
+	if err := proto.Unmarshal(msgData, &switchMsg); err != nil {
+		return fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
 
-	return p.saveCoreMessage(ctx, peerID, &coreMsg)
+	coreMsg := switchMsg.CoreMessage
+
+	if err := p.data.MergeLamportTime(ctx, fromPeerID, coreMsg.Lamportime); err != nil {
+		return fmt.Errorf("data.MergeLamportTime error: %w", err)
+	}
+
+	if coreMsg.AttachmentId != "" {
+		if len(switchMsg.Attachment) <= 0 {
+			return fmt.Errorf("attachment data is empty")
+		}
+
+		// 触发接收消息
+		resultCh := make(chan error, 1)
+		if err := p.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			ResourceID: coreMsg.AttachmentId,
+			Data:       switchMsg.Attachment,
+			Result:     resultCh,
+		}); err != nil {
+			return fmt.Errorf("emit EvtSaveResourceData error: %w", err)
+		}
+
+		if err := <-resultCh; err != nil {
+			return fmt.Errorf("save resource data error: %w", err)
+		}
+	}
+
+	if err := p.saveCoreMessage(ctx, peer.ID(coreMsg.FromPeerId), coreMsg, true); err != nil {
+		return fmt.Errorf("saveCoreMessage error: %w", err)
+	}
+
+	return nil
 }
 
 // CreateMessage 创建新消息
@@ -312,18 +330,18 @@ func (p *PeerMessageProto) CreateMessage(ctx context.Context, contactID peer.ID,
 	return &msg, nil
 }
 
-// SendMessage 发送消息，实际发送的是核心消息
-func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgID string) error {
+// SendMessage 发送消息
+func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
 
 	hostID := p.host.ID()
 
 	coreMsg, err := p.data.GetCoreMessage(ctx, peerID, msgID)
 	if err != nil {
-		return fmt.Errorf("data.GetMessage error: %w", err)
+		return nil, fmt.Errorf("data.GetMessage error: %w", err)
 	}
 
 	if peer.ID(coreMsg.FromPeerId) != hostID {
-		return fmt.Errorf("msg from peer id not equal host id")
+		return nil, fmt.Errorf("msg from peer id not equal host id")
 	}
 
 	var attachment []byte
@@ -334,15 +352,15 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgI
 			ResourceID: coreMsg.AttachmentId,
 			Result:     resultCh,
 		}); err != nil {
-			return fmt.Errorf("emit evtGetResourceData error: %w", err)
+			return nil, fmt.Errorf("emit evtGetResourceData error: %w", err)
 		}
 
 		result := <-resultCh
 		if result == nil {
-			return fmt.Errorf("GetResourceDataResult is nil")
+			return nil, fmt.Errorf("GetResourceDataResult is nil")
 
 		} else if result.Error != nil {
-			return fmt.Errorf("GetResourceDataResult error: %w", result.Error)
+			return nil, fmt.Errorf("GetResourceDataResult error: %w", result.Error)
 		}
 
 		attachment = result.Data
@@ -354,7 +372,19 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgI
 		Attachment:  attachment,
 	}
 
-	return p.sendMessage(ctx, peerID, &switchMsg)
+	if err1 := p.sendMessage(ctx, peerID, &switchMsg); err1 != nil {
+		if errors.As(err1, &myerror.StreamErr{}) {
+			if bs, err2 := proto.Marshal(&switchMsg); err2 != nil {
+				return nil, fmt.Errorf("proto.Marshal error2: %w, error1: %v", err2, err1)
+
+			} else {
+				return bs, err1
+			}
+		}
+		return nil, err1
+	}
+
+	return nil, nil
 }
 
 func (p *PeerMessageProto) sendMessage(ctx context.Context, peerID peer.ID, msg *pb.MessageEnvelope) error {
@@ -388,8 +418,8 @@ func (p *PeerMessageProto) GetMessage(ctx context.Context, peerID peer.ID, msgID
 	return p.data.GetMessage(ctx, peerID, msgID)
 }
 
-func (p *PeerMessageProto) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isSucc bool) (*pb.ContactMessage, error) {
-	return p.data.UpdateMessageSendState(ctx, peerID, msgID, isSucc)
+func (p *PeerMessageProto) UpdateMessageState(ctx context.Context, peerID peer.ID, msgID string, isDeposit bool, isSucc bool) (*pb.ContactMessage, error) {
+	return p.data.UpdateMessageSendState(ctx, peerID, msgID, isDeposit, isSucc)
 }
 
 func (p *PeerMessageProto) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
@@ -408,7 +438,7 @@ func (p *PeerMessageProto) ClearMessage(ctx context.Context, peerID peer.ID) err
 	return p.data.ClearMessage(ctx, peerID)
 }
 
-func (p *PeerMessageProto) saveCoreMessage(ctx context.Context, contactID peer.ID, coreMsg *pb.CoreMessage) error {
+func (p *PeerMessageProto) saveCoreMessage(ctx context.Context, contactID peer.ID, coreMsg *pb.CoreMessage, isDeposit bool) error {
 
 	exists, err := p.data.HasMessage(ctx, contactID, coreMsg.Id)
 	if err != nil {
@@ -421,6 +451,7 @@ func (p *PeerMessageProto) saveCoreMessage(ctx context.Context, contactID peer.I
 	isLatest, err := p.data.SaveMessage(ctx, contactID, &pb.ContactMessage{
 		Id:          coreMsg.Id,
 		CoreMessage: coreMsg,
+		IsDeposit:   isDeposit,
 		SendState:   pb.ContactMessage_SendSucc,
 		CreateTime:  time.Now().Unix(),
 		UpdateTime:  time.Now().Unix(),

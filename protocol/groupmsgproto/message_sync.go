@@ -316,7 +316,7 @@ func (m *MessageProto) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncMe
 		return fmt.Errorf("proto unmarshal error: %w, len: %d", err, len(syncmsg.Payload))
 	}
 
-	if err := m.saveCoreMessage(context.Background(), groupID, msg.CoreMessage); err != nil {
+	if err := m.saveCoreMessage(context.Background(), groupID, msg.CoreMessage, false); err != nil {
 		return fmt.Errorf("data save msg error: %w", err)
 	}
 

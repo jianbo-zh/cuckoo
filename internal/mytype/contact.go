@@ -26,6 +26,7 @@ type ContactMessage struct {
 	FromPeerID peer.ID
 	ToPeerID   peer.ID
 	Payload    []byte
+	IsDeposit  bool
 	State      MessageState
 	Timestamp  int64
 }

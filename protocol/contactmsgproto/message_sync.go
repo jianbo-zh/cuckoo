@@ -327,7 +327,7 @@ func (p *PeerMessageProto) handleSyncPushMsg(contactID peer.ID, syncmsg *pb.Cont
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
-	if err := p.saveCoreMessage(context.Background(), contactID, &coreMsg); err != nil {
+	if err := p.saveCoreMessage(context.Background(), contactID, &coreMsg, false); err != nil {
 		return fmt.Errorf("data save msg error: %w", err)
 	}
 	return nil

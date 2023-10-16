@@ -910,6 +910,7 @@ func (g *GroupSvc) sendGroupMessage(ctx context.Context, server proto.GroupSvc_S
 				MsgType:    encodeMsgType(msg.MsgType),
 				MimeType:   msg.MimeType,
 				Payload:    msg.Payload,
+				IsDeposit:  msg.IsDeposit,
 				State:      encodeMessageState(msg.State),
 				CreateTime: msg.Timestamp,
 			},
@@ -918,7 +919,7 @@ func (g *GroupSvc) sendGroupMessage(ctx context.Context, server proto.GroupSvc_S
 			return fmt.Errorf("server.Send error: %w", err)
 		}
 
-		log.Infoln("sendContactMessage reply: ", reply.String())
+		log.Infoln("sendGroupMessage reply: ", reply.String())
 	}
 
 	return nil
@@ -981,6 +982,7 @@ func (g *GroupSvc) GetGroupMessage(ctx context.Context, request *proto.GetGroupM
 			MsgType:    encodeMsgType(msg.MsgType),
 			MimeType:   msg.MimeType,
 			Payload:    msg.Payload,
+			IsDeposit:  msg.IsDeposit,
 			State:      encodeMessageState(msg.State),
 			CreateTime: msg.Timestamp,
 		},
@@ -1042,6 +1044,7 @@ func (g *GroupSvc) GetGroupMessages(ctx context.Context, request *proto.GetGroup
 			MsgType:    encodeMsgType(msg.MsgType),
 			MimeType:   msg.MimeType,
 			Payload:    msg.Payload,
+			IsDeposit:  msg.IsDeposit,
 			State:      encodeMessageState(msg.State),
 			CreateTime: msg.Timestamp,
 		}

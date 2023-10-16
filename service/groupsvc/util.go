@@ -30,6 +30,7 @@ func convertMessage(msg *pb.GroupMessage) *mytype.GroupMessage {
 		MsgType:   msg.CoreMessage.MsgType,
 		MimeType:  msg.CoreMessage.MimeType,
 		Payload:   msg.CoreMessage.Payload,
+		IsDeposit: msg.IsDeposit,
 		State:     msgState,
 		Timestamp: msg.CreateTime,
 	}

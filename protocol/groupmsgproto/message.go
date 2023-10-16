@@ -44,9 +44,10 @@ type MessageProto struct {
 	groupConns map[string]map[peer.ID]struct{}
 
 	emitters struct {
-		evtReceiveGroupMessage event.Emitter
-		evtGetResourceData     event.Emitter
-		evtSaveResourceData    event.Emitter
+		evtGetResourceData         event.Emitter
+		evtSaveResourceData        event.Emitter
+		evtReceiveGroupMessage     event.Emitter
+		evtPullDepositGroupMessage event.Emitter
 	}
 }
 
@@ -75,7 +76,11 @@ func NewMessageProto(h myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*M
 		return nil, fmt.Errorf("set save resource data emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
+	if msgsvc.emitters.evtPullDepositGroupMessage, err = eventBus.Emitter(&myevent.EvtPullDepositGroupMessage{}); err != nil {
+		return nil, fmt.Errorf("set save resource data emitter error: %v", err)
+	}
+
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtSyncGroupMessage), new(myevent.EvtGroupConnectChange)}, eventbus.Name("syncmsg"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 
@@ -86,95 +91,104 @@ func NewMessageProto(h myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (*M
 	return msgsvc, nil
 }
 
-func (m *MessageProto) messageHandler(s network.Stream) {
+func (m *MessageProto) messageHandler(stream network.Stream) {
 
-	remotePeerID := s.Conn().RemotePeer()
+	remotePeerID := stream.Conn().RemotePeer()
 
-	if err := s.Scope().SetService(ServiceName); err != nil {
+	if err := stream.Scope().SetService(ServiceName); err != nil {
 		log.Errorf("failed to attaching stream to identify service: %v", err)
-		s.Reset()
+		stream.Reset()
 		return
 	}
 
-	rd := pbio.NewDelimitedReader(s, mytype.PbioReaderMaxSizeMessage)
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	defer rd.Close()
 
-	s.SetDeadline(time.Now().Add(StreamTimeout))
+	stream.SetDeadline(time.Now().Add(StreamTimeout))
 
-	var msg pb.MessageEnvelope
-	if err := rd.ReadMsg(&msg); err != nil {
+	var switchMsg pb.MessageEnvelope
+	if err := rd.ReadMsg(&switchMsg); err != nil {
 		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
-		s.Reset()
+		stream.Reset()
 		return
 	}
 
-	s.SetReadDeadline(time.Time{})
+	stream.SetReadDeadline(time.Time{})
 
 	// 检查本地是否存在
 	ctx := context.Background()
-	exists, err := m.data.HasMessage(ctx, msg.CoreMessage.GroupId, msg.CoreMessage.Id)
+	coreMsg := switchMsg.CoreMessage
+	exists, err := m.data.HasMessage(ctx, coreMsg.GroupId, coreMsg.Id)
 	if err != nil {
 		log.Errorf("data.HasMessage error: %v", err)
-		s.Reset()
+		stream.Reset()
 		return
 
 	} else if exists {
 		return
 	}
 
-	if msg.CoreMessage.AttachmentId != "" {
-		if len(msg.Attachment) <= 0 {
+	// 更新本地lamptime
+	err = m.data.MergeLamportTime(ctx, coreMsg.GroupId, coreMsg.Lamportime)
+	if err != nil {
+		log.Errorf("update lamport time error: %v", err)
+	}
+
+	if coreMsg.AttachmentId != "" {
+		if len(switchMsg.Attachment) <= 0 {
 			log.Errorf("msg attachment empty")
-			s.Reset()
+			stream.Reset()
 			return
 		}
 
 		// 触发接收消息
 		resultCh := make(chan error, 1)
 		if err = m.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
-			ResourceID: msg.CoreMessage.AttachmentId,
-			Data:       msg.Attachment,
+			ResourceID: coreMsg.AttachmentId,
+			Data:       switchMsg.Attachment,
 			Result:     resultCh,
 		}); err != nil {
 			log.Errorf("emit receive group msg error: %w", err)
-			s.Reset()
+			stream.Reset()
 			return
 		}
 
 		if err := <-resultCh; err != nil {
 			log.Errorf("save resource data error: %w", err)
-			s.Reset()
+			stream.Reset()
 			return
 		}
 	}
 
 	// 保存消息
-	err = m.saveCoreMessage(ctx, msg.CoreMessage.GroupId, msg.CoreMessage)
+	err = m.saveCoreMessage(ctx, coreMsg.GroupId, coreMsg, false)
 	if err != nil {
 		log.Errorf("save group message error: %v", err)
 	}
 
-	// 更新本地lamptime
-	err = m.data.MergeLamportTime(ctx, msg.CoreMessage.GroupId, msg.CoreMessage.Lamportime)
-	if err != nil {
-		log.Errorf("update lamport time error: %v", err)
+	// Ack确认
+	wt := pbio.NewDelimitedWriter(stream)
+	if err := wt.WriteMsg(&pb.GroupMessageAck{}); err != nil {
+		log.Errorf("pbio write ack msg error: %w", err)
+		stream.Reset()
+		return
 	}
 
 	// 触发接收消息
 	if err = m.emitters.evtReceiveGroupMessage.Emit(myevent.EvtReceiveGroupMessage{
-		MsgID:      msg.Id,
-		GroupID:    msg.CoreMessage.GroupId,
-		FromPeerID: peer.ID(msg.CoreMessage.Member.Id),
-		MsgType:    msg.CoreMessage.MsgType,
-		MimeType:   msg.CoreMessage.MimeType,
-		Payload:    msg.CoreMessage.Payload,
-		Timestamp:  msg.CoreMessage.Timestamp,
+		MsgID:      coreMsg.Id,
+		GroupID:    coreMsg.GroupId,
+		FromPeerID: peer.ID(coreMsg.Member.Id),
+		MsgType:    coreMsg.MsgType,
+		MimeType:   coreMsg.MimeType,
+		Payload:    coreMsg.Payload,
+		Timestamp:  coreMsg.Timestamp,
 	}); err != nil {
 		log.Errorln("emit receive group msg error: %w", err)
 	}
 
 	// 转发消息
-	err = m.broadcastMessage(ctx, msg.CoreMessage.GroupId, &msg, remotePeerID)
+	err = m.broadcastMessage(ctx, coreMsg.GroupId, &switchMsg, remotePeerID)
 	if err != nil {
 		log.Errorf("emit forward group msg error: %v", err)
 	}
@@ -253,12 +267,76 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 					log.Debugln("event disconnect peer: ", evt.PeerID.String())
 					delete(m.groupConns[evt.GroupID], evt.PeerID)
 				}
+			case myevent.EvtSyncGroupMessage:
+				if err := m.emitters.evtPullDepositGroupMessage.Emit(myevent.EvtPullDepositGroupMessage{
+					GroupID:        evt.GroupID,
+					DepositAddress: evt.DepositAddress,
+					MessageHandler: m.SaveDepositMessage,
+				}); err != nil {
+					log.Errorf("emit EvtPullDepositGroupMessage error: %w", err)
+				} else {
+					log.Debugln("emit EvtPullDepositGroupMessage ", evt.GroupID)
+				}
 			}
 
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (m *MessageProto) SaveDepositMessage(ctx context.Context, groupID string, msgID string, msgData []byte) error {
+
+	// 检查本地是否存在
+	exists, err := m.data.HasMessage(ctx, groupID, msgID)
+	if err != nil {
+		return fmt.Errorf("data.HasMessage error: %w", err)
+
+	} else if exists {
+		return nil
+	}
+
+	var switchMsg pb.MessageEnvelope
+	if err := proto.Unmarshal(msgData, &switchMsg); err != nil {
+		return fmt.Errorf("proto.Unmarshal error: %w", err)
+	}
+
+	coreMsg := switchMsg.CoreMessage
+
+	// 更新本地lamptime
+	err = m.data.MergeLamportTime(ctx, coreMsg.GroupId, coreMsg.Lamportime)
+	if err != nil {
+		return fmt.Errorf("data.MergeLamportTime error: %w", err)
+	}
+
+	// 保存消息的资源
+	if coreMsg.AttachmentId != "" {
+		if len(switchMsg.Attachment) <= 0 {
+			return fmt.Errorf("attachment data is empty")
+		}
+
+		resultCh := make(chan error, 1)
+		if err = m.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			ResourceID: coreMsg.AttachmentId,
+			Data:       switchMsg.Attachment,
+			Result:     resultCh,
+		}); err != nil {
+			return fmt.Errorf("emit EvtSaveResourceData error: %w", err)
+		}
+
+		if err := <-resultCh; err != nil {
+			return fmt.Errorf("save resource data error: %w", err)
+		}
+	}
+
+	// 保存消息
+	err = m.saveCoreMessage(ctx, coreMsg.GroupId, coreMsg, true)
+	if err != nil {
+		log.Errorf("save group message error: %v", err)
+		return fmt.Errorf("save core msg error: %w", err)
+	}
+
+	return nil
 }
 
 func (m *MessageProto) GetMessage(ctx context.Context, groupID string, msgID string) (*pb.GroupMessage, error) {
@@ -374,11 +452,11 @@ func (m *MessageProto) CreateMessage(ctx context.Context, account *mytype.Accoun
 	return &msg, nil
 }
 
-func (m *MessageProto) SendGroupMessage(ctx context.Context, groupID string, msgID string) error {
+func (m *MessageProto) SendGroupMessage(ctx context.Context, groupID string, msgID string) ([]byte, error) {
 
 	coreMsg, err := m.data.GetCoreMessage(ctx, groupID, msgID)
 	if err != nil {
-		return fmt.Errorf("data.GetMessage error: %w", err)
+		return nil, fmt.Errorf("data.GetMessage error: %w", err)
 	}
 
 	var attachment []byte
@@ -389,15 +467,15 @@ func (m *MessageProto) SendGroupMessage(ctx context.Context, groupID string, msg
 			ResourceID: coreMsg.AttachmentId,
 			Result:     resultCh,
 		}); err != nil {
-			return fmt.Errorf("emit evtGetResourceData error: %w", err)
+			return nil, fmt.Errorf("emit evtGetResourceData error: %w", err)
 		}
 
 		result := <-resultCh
 		if result == nil {
-			return fmt.Errorf("GetResourceDataResult is nil")
+			return nil, fmt.Errorf("GetResourceDataResult is nil")
 
 		} else if result.Error != nil {
-			return fmt.Errorf("GetResourceDataResult error: %w", result.Error)
+			return nil, fmt.Errorf("GetResourceDataResult error: %w", result.Error)
 		}
 
 		attachment = result.Data
@@ -409,16 +487,20 @@ func (m *MessageProto) SendGroupMessage(ctx context.Context, groupID string, msg
 		Attachment:  attachment,
 	}
 
-	err = m.broadcastMessage(ctx, groupID, &switchMsg)
-	if err != nil {
-		return fmt.Errorf("broadcast message error: %w", err)
+	if err1 := m.broadcastMessage(ctx, groupID, &switchMsg); err1 != nil {
+		if bs, err2 := proto.Marshal(&switchMsg); err2 != nil {
+			return nil, fmt.Errorf("proto.Marshal error2: %w, error1: %v", err2, err1)
+
+		} else {
+			return bs, err1
+		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (m *MessageProto) UpdateMessageState(ctx context.Context, groupID string, msgID string, isSucc bool) (*pb.GroupMessage, error) {
-	return m.data.UpdateMessageSendState(ctx, groupID, msgID, isSucc)
+func (m *MessageProto) UpdateMessageState(ctx context.Context, groupID string, msgID string, isDeposit bool, isSucc bool) (*pb.GroupMessage, error) {
+	return m.data.UpdateMessageSendState(ctx, groupID, msgID, isDeposit, isSucc)
 }
 
 func (m *MessageProto) ClearGroupMessage(ctx context.Context, groupID string) error {
@@ -433,7 +515,7 @@ func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg
 		return fmt.Errorf("no connect peers: %w", myerror.ErrSendGroupMessageFailed)
 	}
 
-	isSended := false
+	var forwardPeerIDs []peer.ID
 	for _, peerID := range peerIDs {
 		if len(excludePeerIDs) > 0 {
 			isExcluded := false
@@ -446,17 +528,23 @@ func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg
 				continue
 			}
 		}
-
-		if err := m.sendPeerMessage(ctx, groupID, peerID, msg); err != nil {
-			log.Errorf("sendPeerMessage error: %w", err)
-
-		} else {
-			isSended = true
-		}
+		forwardPeerIDs = append(forwardPeerIDs, peerID)
 	}
 
-	if !isSended {
-		return myerror.ErrSendGroupMessageFailed
+	if len(forwardPeerIDs) > 0 {
+		isSended := false
+		for _, peerID := range forwardPeerIDs {
+			if err := m.sendPeerMessage(ctx, groupID, peerID, msg); err != nil {
+				log.Errorf("sendPeerMessage error: %w", err)
+
+			} else {
+				isSended = true
+			}
+
+		}
+		if !isSended {
+			return myerror.ErrSendGroupMessageFailed
+		}
 	}
 
 	return nil
@@ -464,6 +552,7 @@ func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg
 
 // 发送消息（指定peerID）
 func (m *MessageProto) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.MessageEnvelope) error {
+
 	stream, err := m.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, MSG_ID)
 	if err != nil {
 		return err
@@ -475,7 +564,13 @@ func (m *MessageProto) sendPeerMessage(ctx context.Context, groupID string, peer
 	defer wt.Close()
 
 	if err := wt.WriteMsg(msg); err != nil {
-		return err
+		return fmt.Errorf("pbio write group msg error: %w", err)
+	}
+
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	var ackMsg pb.GroupMessageAck
+	if err := rd.ReadMsg(&ackMsg); err != nil {
+		return fmt.Errorf("pbio read ack msg error: %w", err)
 	}
 
 	return nil
@@ -489,7 +584,7 @@ func (m *MessageProto) getConnectPeers(groupID string) []peer.ID {
 	return peerIDs
 }
 
-func (m *MessageProto) saveCoreMessage(ctx context.Context, groupID string, coreMsg *pb.CoreMessage) error {
+func (m *MessageProto) saveCoreMessage(ctx context.Context, groupID string, coreMsg *pb.CoreMessage, isDeposit bool) error {
 
 	exists, err := m.data.HasMessage(ctx, groupID, coreMsg.Id)
 	if err != nil {
@@ -503,6 +598,7 @@ func (m *MessageProto) saveCoreMessage(ctx context.Context, groupID string, core
 		Id:          coreMsg.Id,
 		GroupId:     coreMsg.GroupId,
 		CoreMessage: coreMsg,
+		IsDeposit:   isDeposit,
 		SendState:   pb.GroupMessage_SendSucc,
 		CreateTime:  time.Now().Unix(),
 		UpdateTime:  time.Now().Unix(),

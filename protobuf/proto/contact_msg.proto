@@ -25,8 +25,10 @@ message ContactMessage {
     string      id = 1;
     CoreMessage coreMessage = 2;
     SendState   sendState = 3;
-    int64       createTime = 4;
-    int64       updateTime = 5;
+    // directly or deposit
+    bool        isDeposit = 4;
+    int64       createTime = 5;
+    int64       updateTime = 6;
 }
 
 message MessageEnvelope {

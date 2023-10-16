@@ -11,7 +11,6 @@ import (
 	"github.com/jianbo-zh/dchat/protocol/groupadminproto"
 	"github.com/jianbo-zh/dchat/protocol/groupmsgproto"
 	"github.com/jianbo-zh/dchat/protocol/groupnetworkproto"
-	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/sessionsvc"
 	logging "github.com/jianbo-zh/go-log"
@@ -27,25 +26,26 @@ type GroupService struct {
 	adminProto   *groupadminproto.AdminProto
 	messageProto *groupmsgproto.MessageProto
 
-	accountSvc accountsvc.AccountServiceIface
 	contactSvc contactsvc.ContactServiceIface
 
+	accountGetter mytype.AccountGetter
+
 	emitters struct {
-		evtGroupsInit           event.Emitter
-		evtLogSessionAttachment event.Emitter
-		evtUploadResource       event.Emitter
+		evtGroupsInit              event.Emitter
+		evtLogSessionAttachment    event.Emitter
+		evtPushDepositGroupMessage event.Emitter
 	}
 }
 
 func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
-	rdiscvry *drouting.RoutingDiscovery, accountSvc accountsvc.AccountServiceIface,
+	rdiscvry *drouting.RoutingDiscovery, accountGetter mytype.AccountGetter,
 	contactSvc contactsvc.ContactServiceIface, sessionSvc sessionsvc.SessionServiceIface) (*GroupService, error) {
 
 	var err error
 
 	groupsvc := &GroupService{
-		accountSvc: accountSvc,
-		contactSvc: contactSvc,
+		contactSvc:    contactSvc,
+		accountGetter: accountGetter,
 	}
 
 	groupsvc.adminProto, err = groupadminproto.NewAdminProto(lhost, ids, ebus)
@@ -73,8 +73,9 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
-	if groupsvc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtSendResource{}); err != nil {
-		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	// 触发器：发送离线消息
+	if groupsvc.emitters.evtPushDepositGroupMessage, err = ebus.Emitter(&myevent.EvtPushDepositGroupMessage{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
 	// 订阅器
@@ -145,7 +146,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 // 创建群
 func (g *GroupService) CreateGroup(ctx context.Context, name string, avatarID string, memberIDs []peer.ID) (*mytype.Group, error) {
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("svc get account error: %w", err)
 	}
@@ -206,7 +207,7 @@ func (g *GroupService) GetGroupOnlineMemberIDs(ctx context.Context, groupID stri
 // AgreeJoinGroup 同意加入群
 func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error {
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("svc get account error: %w", err)
 	}
@@ -223,7 +224,7 @@ func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, group
 // 退出群
 func (g *GroupService) ExitGroup(ctx context.Context, groupID string) error {
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("svc get account error: %w", err)
 	}
@@ -238,7 +239,7 @@ func (g *GroupService) ExitGroup(ctx context.Context, groupID string) error {
 // 退出并删除群
 func (g *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("svc get account error: %w", err)
 	}
@@ -254,7 +255,7 @@ func (g *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
 // 解散群
 func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return fmt.Errorf("svc get account error: %w", err)
 	}
@@ -341,7 +342,7 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 		}
 	}
 
-	account, err := g.accountSvc.GetAccount(ctx)
+	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("accountSvc.GetAccount error: %w", err)
 	}
@@ -361,13 +362,14 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 		}()
 
 		isSucc := true
-		if err := g.messageProto.SendGroupMessage(ctx, groupID, msgID); err != nil {
+		isDeposit, err := g.sendGroupMessage(ctx, groupID, msgID)
+		if err != nil {
 			isSucc = false
 			// log error
 			log.Error("send message error: %v", err)
 		}
 
-		msg, err := g.messageProto.UpdateMessageState(ctx, groupID, msgID, isSucc)
+		msg, err := g.messageProto.UpdateMessageState(ctx, groupID, msgID, isDeposit, isSucc)
 		if err != nil {
 			// log error
 			log.Errorf("msgProto.UpdateMessageState error: %w", err)
@@ -379,6 +381,49 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 	}(msg.Id)
 
 	return resultCh, nil
+}
+
+func (g *GroupService) sendGroupMessage(ctx context.Context, groupID string, msgID string) (isDeposit bool, err error) {
+
+	if msgData, err1 := g.messageProto.SendGroupMessage(ctx, groupID, msgID); err1 != nil {
+		// 发送失败
+		if len(msgData) > 0 {
+			// 可能对方不在线
+			if account, err2 := g.accountGetter.GetAccount(ctx); err2 != nil {
+				return false, fmt.Errorf("get account error: %w", err2)
+
+			} else if account.AutoDepositMessage {
+				// 开启了自动寄存
+				if group, err3 := g.adminProto.GetGroup(ctx, groupID); err3 != nil {
+					return false, fmt.Errorf("proto.GetGroup error: %w", err3)
+
+				} else if group.DepositAddress != peer.ID("") {
+					// 群组设置了自动寄存
+					resultCh := make(chan error, 1)
+					if err4 := g.emitters.evtPushDepositGroupMessage.Emit(myevent.EvtPushDepositGroupMessage{
+						DepositAddress: group.DepositAddress,
+						ToGroupID:      group.ID,
+						MsgID:          msgID,
+						MsgData:        msgData,
+						Result:         resultCh,
+					}); err4 != nil {
+						return false, fmt.Errorf("emit EvtPushDepositGroupMessage error: %w", err4)
+					}
+
+					if err5 := <-resultCh; err5 != nil {
+						// 发送寄存信息失败
+						return false, fmt.Errorf("push deposit msg error: %w", err5)
+					} else {
+						return true, nil
+					}
+				}
+			}
+		}
+
+		return false, fmt.Errorf("proto.SendGroupMessage error: %w", err1)
+	}
+
+	return false, nil
 }
 
 // 获取消息消息

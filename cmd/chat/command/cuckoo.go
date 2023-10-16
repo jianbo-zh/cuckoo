@@ -19,12 +19,12 @@ func init() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "datadir",
-				Value: "./.datadir",
+				Value: "./.storage/datadir",
 				Usage: "set storage dir",
 			},
 			&cli.StringFlag{
 				Name:  "resdir",
-				Value: "./.resdir",
+				Value: "./.storage/resdir",
 				Usage: "set resource dir",
 			},
 			&cli.StringFlag{
@@ -52,7 +52,7 @@ func init() {
 				return fmt.Errorf("filepath.Abs error: %w", err)
 			}
 
-			conf, err := cuckoo.LoadConfig(dataDir, resourceDir)
+			conf, err := cuckoo.LoadConfig(dataDir, resourceDir, resourceDir, resourceDir)
 			if err != nil {
 				return fmt.Errorf("cuckoo.LoadConfig error: %w", err)
 			}

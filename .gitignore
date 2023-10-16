@@ -1,4 +1,3 @@
-/.dchat*
 /backup
 .DS_Store
-/.datadir
+/.storage

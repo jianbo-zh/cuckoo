@@ -20,12 +20,14 @@ var log = logging.Logger("contact-svc")
 var _ ContactServiceIface = (*ContactSvc)(nil)
 
 type ContactSvc struct {
+	accountGetter mytype.AccountGetter
+
 	msgProto     *contactmsgproto.PeerMessageProto
 	contactProto *contactproto.ContactProto
 
 	emitters struct {
-		evtUploadResource       event.Emitter
-		evtLogSessionAttachment event.Emitter
+		evtLogSessionAttachment      event.Emitter
+		evtPushDepositContactMessage event.Emitter
 	}
 }
 
@@ -33,7 +35,9 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 
 	var err error
 
-	svc := &ContactSvc{}
+	svc := &ContactSvc{
+		accountGetter: accountGetter,
+	}
 
 	if svc.contactProto, err = contactproto.NewContactProto(lhost, ids, ebus, accountGetter); err != nil {
 		return nil, fmt.Errorf("contactproto.NewContactProto error: %w", err)
@@ -43,12 +47,13 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 		return nil, fmt.Errorf("contactmsgproto.NewMessageSvc error: %w", err)
 	}
 
-	if svc.emitters.evtUploadResource, err = ebus.Emitter(&myevent.EvtSendResource{}); err != nil {
+	if svc.emitters.evtLogSessionAttachment, err = ebus.Emitter(&myevent.EvtLogSessionAttachment{}); err != nil {
 		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
 
-	if svc.emitters.evtLogSessionAttachment, err = ebus.Emitter(&myevent.EvtLogSessionAttachment{}); err != nil {
-		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	// 触发器：发送离线消息
+	if svc.emitters.evtPushDepositContactMessage, err = ebus.Emitter(&myevent.EvtPushDepositContactMessage{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
 	}
 
 	return svc, nil
