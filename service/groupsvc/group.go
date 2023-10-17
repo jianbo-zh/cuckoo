@@ -22,6 +22,8 @@ import (
 var log = logging.Logger("group-service")
 
 type GroupService struct {
+	host myhost.Host
+
 	networkProto *groupnetworkproto.NetworkProto
 	adminProto   *groupadminproto.AdminProto
 	messageProto *groupmsgproto.MessageProto
@@ -44,6 +46,7 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 	var err error
 
 	groupsvc := &GroupService{
+		host:          lhost,
 		contactSvc:    contactSvc,
 		accountGetter: accountGetter,
 	}
@@ -144,7 +147,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 }
 
 // 创建群
-func (g *GroupService) CreateGroup(ctx context.Context, name string, avatarID string, memberIDs []peer.ID) (*mytype.Group, error) {
+func (g *GroupService) CreateGroup(ctx context.Context, name string, avatar string, content string, memberIDs []peer.ID) (*mytype.Group, error) {
 
 	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
@@ -156,7 +159,7 @@ func (g *GroupService) CreateGroup(ctx context.Context, name string, avatarID st
 		return nil, fmt.Errorf("get contacts by ids error: %w", err)
 	}
 
-	return g.adminProto.CreateGroup(ctx, account, name, avatarID, contacts)
+	return g.adminProto.CreateGroup(ctx, account, name, avatar, content, contacts)
 }
 
 // GetGroup 获取群信息

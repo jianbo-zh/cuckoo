@@ -26,8 +26,8 @@ var log = logging.Logger("account-protocol")
 var StreamTimeout = 1 * time.Minute
 
 const (
-	ID        = myprotocol.AccountID_v100
-	ONLINE_ID = myprotocol.AccountOnlineID_v100
+	ACCOUNT_ID = myprotocol.AccountID_v100
+	ONLINE_ID  = myprotocol.AccountOnlineID_v100
 )
 
 type AccountProto struct {
@@ -39,6 +39,7 @@ type AccountProto struct {
 		evtAccountBaseChange   event.Emitter
 		evtOnlineStateDiscover event.Emitter
 		evtSyncAccountMessage  event.Emitter
+		evtSyncSystemMessage   event.Emitter
 	}
 }
 
@@ -50,10 +51,14 @@ func NewAccountProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 		avatarDir: avatarDir,
 	}
 
-	lhost.SetStreamHandler(ID, accountProto.GetPeerHandler)
+	lhost.SetStreamHandler(ACCOUNT_ID, accountProto.GetPeerHandler)
 	lhost.SetStreamHandler(ONLINE_ID, accountProto.onlineHandler)
 
 	if accountProto.emitter.evtSyncAccountMessage, err = eventBus.Emitter(&myevent.EvtSyncAccountMessage{}); err != nil {
+		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
+	}
+
+	if accountProto.emitter.evtSyncSystemMessage, err = eventBus.Emitter(&myevent.EvtSyncSystemMessage{}); err != nil {
 		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
 	}
 
@@ -95,7 +100,18 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 					}
 
 					if len(account.DepositAddress) > 0 {
+						// 拉取联系人消息
 						if err := a.emitter.evtSyncAccountMessage.Emit(myevent.EvtSyncAccountMessage{
+							DepositAddress: peer.ID(account.DepositAddress),
+						}); err != nil {
+							log.Errorf("emit sync account message error: %w", err)
+
+						} else {
+							log.Debugln("emit sync account message: ", peer.ID(account.DepositAddress).String())
+						}
+
+						// 拉取系统消息
+						if err := a.emitter.evtSyncSystemMessage.Emit(myevent.EvtSyncSystemMessage{
 							DepositAddress: peer.ID(account.DepositAddress),
 						}); err != nil {
 							log.Errorf("emit sync account message error: %w", err)
@@ -370,7 +386,7 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*pb.AccountPeer, error) {
 	log.Debugln("do get peer")
 
-	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), peerID, ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), peerID, ACCOUNT_ID)
 	if err != nil {
 		return nil, fmt.Errorf("new stream error: %w", err)
 	}
@@ -402,9 +418,10 @@ func (a *AccountProto) GetPeerHandler(stream network.Stream) {
 	}
 
 	if err := wt.WriteMsg(&pb.AccountPeer{
-		Id:     account.Id,
-		Name:   account.Name,
-		Avatar: account.Avatar,
+		Id:             account.Id,
+		Name:           account.Name,
+		Avatar:         account.Avatar,
+		DepositAddress: account.DepositAddress,
 	}); err != nil {
 		log.Errorf("pbio write peer msg error: %s", err.Error())
 		return

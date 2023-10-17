@@ -30,8 +30,12 @@ const (
 const (
 	DepositSaveContactMsgID_v100 = "/dchat/deposit/contact/save/1.0.0"
 	DepositGetContactMsgID_v100  = "/dchat/deposit/contact/get/1.0.0"
-	DepositSaveGroupMsgID_v100   = "/dchat/deposit/group/save/1.0.0"
-	DepositGetGroupMsgID_v100    = "/dchat/deposit/group/get/1.0.0"
+
+	DepositSaveGroupMsgID_v100 = "/dchat/deposit/group/save/1.0.0"
+	DepositGetGroupMsgID_v100  = "/dchat/deposit/group/get/1.0.0"
+
+	DepositSaveSystemMsgID_v100 = "/dchat/deposit/system/save/1.0.0"
+	DepositGetSystemMsgID_v100  = "/dchat/deposit/system/get/1.0.0"
 )
 
 const (

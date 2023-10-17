@@ -2,22 +2,24 @@ package systemsvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/systempb"
 	"github.com/jianbo-zh/dchat/protocol/systemproto"
-	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
+	"google.golang.org/protobuf/proto"
 )
 
 var log = logging.Logger("system")
@@ -27,24 +29,30 @@ type SystemSvc struct {
 
 	systemProto *systemproto.SystemProto
 
-	accountSvc accountsvc.AccountServiceIface
+	accountGetter mytype.AccountGetter
+
 	contactSvc contactsvc.ContactServiceIface
 	groupSvc   groupsvc.GroupServiceIface
 
 	msgCh chan *pb.SystemMessage
+
+	emitters struct {
+		evtPushDepositSystemMessage event.Emitter
+		evtPullDepositSystemMessage event.Emitter
+	}
 }
 
 func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus,
-	accountSvc accountsvc.AccountServiceIface, contactSvc contactsvc.ContactServiceIface, groupSvc groupsvc.GroupServiceIface) (*SystemSvc, error) {
+	accountGetter mytype.AccountGetter, contactSvc contactsvc.ContactServiceIface, groupSvc groupsvc.GroupServiceIface) (*SystemSvc, error) {
 
 	var err error
 
 	systemsvc := &SystemSvc{
-		host:       lhost,
-		msgCh:      make(chan *pb.SystemMessage, 5),
-		accountSvc: accountSvc,
-		contactSvc: contactSvc,
-		groupSvc:   groupSvc,
+		host:          lhost,
+		msgCh:         make(chan *pb.SystemMessage, 5),
+		accountGetter: accountGetter,
+		contactSvc:    contactSvc,
+		groupSvc:      groupSvc,
 	}
 
 	systemsvc.systemProto, err = systemproto.NewSystemProto(lhost, ids, systemsvc.msgCh)
@@ -52,7 +60,15 @@ func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchin
 		return nil, fmt.Errorf("peerpeer.NewAccountSvc error: %s", err.Error())
 	}
 
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtInviteJoinGroup), new(myevent.EvtApplyAddContact)}, eventbus.Name("send_system_message"))
+	if systemsvc.emitters.evtPushDepositSystemMessage, err = ebus.Emitter(&myevent.EvtPushDepositSystemMessage{}); err != nil {
+		return nil, fmt.Errorf("set send deposit system msg emitter error: %w", err)
+	}
+
+	if systemsvc.emitters.evtPullDepositSystemMessage, err = ebus.Emitter(&myevent.EvtPullDepositSystemMessage{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit system msg emitter error: %w", err)
+	}
+
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtInviteJoinGroup), new(myevent.EvtApplyAddContact), new(myevent.EvtSyncSystemMessage)}, eventbus.Name("send_system_message"))
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 	}
@@ -77,76 +93,208 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 			}
 
 			switch evt := e.(type) {
-			case myevent.EvtApplyAddContact: // 申请添加联系人
-				account, err := s.accountSvc.GetAccount(ctx)
-				if err != nil {
-					log.Errorf("get account error: %s", err.Error())
-					continue
-				}
+			case myevent.EvtApplyAddContact:
+				go s.handleApplyAddContactEvent(ctx, evt)
 
-				msg := pb.SystemMessage{
-					Id:         GenMsgID(account.ID),
-					SystemType: mytype.SystemTypeApplyAddContact,
-					Group:      nil,
-					FromPeer: &pb.SystemMessage_Peer{
-						PeerId: []byte(account.ID),
-						Name:   account.Name,
-						Avatar: account.Avatar,
-					},
-					ToPeerId:    []byte(evt.PeerID),
-					Content:     evt.Content,
-					SystemState: mytype.SystemStateSended,
-					CreateTime:  time.Now().Unix(),
-					UpdateTime:  time.Now().Unix(),
-				}
+			case myevent.EvtInviteJoinGroup:
+				go s.handleInviteJoinGroupEvent(ctx, evt)
 
-				if err = s.systemProto.SendMessage(ctx, &msg); err != nil {
-					log.Errorf("systemProto.SendMessage error: %v", err)
-					continue
-				}
-
-			case myevent.EvtInviteJoinGroup: // 邀请加入群组
-				account, err := s.accountSvc.GetAccount(ctx)
-				if err != nil {
-					log.Errorf("get account error: %s", err.Error())
-					continue
-				}
-
-				for _, peerID := range evt.PeerIDs {
-					msg := pb.SystemMessage{
-						Id:         GenMsgID(account.ID),
-						SystemType: mytype.SystemTypeInviteJoinGroup,
-						Group: &pb.SystemMessage_Group{
-							Id:       evt.GroupID,
-							Name:     evt.GroupName,
-							Avatar:   evt.GroupAvatar,
-							Lamptime: evt.GroupLamptime,
-						},
-						FromPeer: &pb.SystemMessage_Peer{
-							PeerId: []byte(account.ID),
-							Name:   account.Name,
-							Avatar: account.Avatar,
-						},
-						ToPeerId:    []byte(peerID),
-						Content:     "",
-						SystemState: mytype.SystemStateSended,
-						CreateTime:  time.Now().Unix(),
-						UpdateTime:  time.Now().Unix(),
-					}
-
-					fmt.Println("send system message: ", msg.String())
-
-					err = s.systemProto.SendMessage(ctx, &msg)
-					if err != nil {
-						log.Errorf("systemProto.SendMessage error: %v", err)
-						continue
-					}
-				}
+			case myevent.EvtSyncSystemMessage:
+				go s.handleSyncSystemMessage(ctx, evt)
 			}
 
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func (s *SystemSvc) handleSyncSystemMessage(ctx context.Context, evt myevent.EvtSyncSystemMessage) {
+	if err := s.emitters.evtPullDepositSystemMessage.Emit(myevent.EvtPullDepositSystemMessage{
+		DepositAddress: evt.DepositAddress,
+		MessageHandler: s.SaveDepositMessage,
+	}); err != nil {
+		log.Errorf("emit pull deposit system msg error: %v", err)
+		return
+	}
+}
+
+func (s *SystemSvc) SaveDepositMessage(ctx context.Context, fromPeerID peer.ID, msgID string, msgData []byte) error {
+
+	hostID := s.host.ID()
+
+	var msg pb.SystemMessage
+	if err := proto.Unmarshal(msgData, &msg); err != nil {
+		return fmt.Errorf("proto.Unmarshal deposit system error: %w", err)
+	}
+	if fromPeerID != peer.ID(msg.FromPeer.PeerId) || hostID != peer.ID(msg.ToPeerId) {
+		return fmt.Errorf("from or to peer error")
+	}
+
+	log.Debugln("push system msg to msgCh")
+	s.msgCh <- &msg
+
+	return nil
+}
+
+func (s *SystemSvc) handleApplyAddContactEvent(ctx context.Context, evt myevent.EvtApplyAddContact) {
+	var resultErr error
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	account, err := s.accountGetter.GetAccount(ctx)
+	if err != nil {
+		resultErr = fmt.Errorf("get account error: %w", err)
+		return
+	}
+
+	msg := pb.SystemMessage{
+		Id:         GenMsgID(account.ID),
+		SystemType: mytype.SystemTypeApplyAddContact,
+		Group:      nil,
+		FromPeer: &pb.SystemMessage_Peer{
+			PeerId: []byte(account.ID),
+			Name:   account.Name,
+			Avatar: account.Avatar,
+		},
+		ToPeerId:    []byte(evt.PeerID),
+		Content:     evt.Content,
+		SystemState: mytype.SystemStateSended,
+		CreateTime:  time.Now().Unix(),
+		UpdateTime:  time.Now().Unix(),
+	}
+
+	if err = s.sendSystemMessage(ctx, evt.PeerID, evt.DepositAddr, &msg); err != nil {
+		resultErr = fmt.Errorf("sendSystemMessage error: %w", err)
+		return
+	}
+}
+
+func (s *SystemSvc) handleInviteJoinGroupEvent(ctx context.Context, evt myevent.EvtInviteJoinGroup) {
+	account, err := s.accountGetter.GetAccount(ctx)
+	if err != nil {
+		log.Errorf("get account error: %s", err.Error())
+		return
+	}
+
+	for _, contact := range evt.Contacts {
+		msg := pb.SystemMessage{
+			Id:         GenMsgID(account.ID),
+			SystemType: mytype.SystemTypeInviteJoinGroup,
+			Group: &pb.SystemMessage_Group{
+				Id:       evt.GroupID,
+				Name:     evt.GroupName,
+				Avatar:   evt.GroupAvatar,
+				Lamptime: evt.GroupLamptime,
+			},
+			FromPeer: &pb.SystemMessage_Peer{
+				PeerId: []byte(account.ID),
+				Name:   account.Name,
+				Avatar: account.Avatar,
+			},
+			ToPeerId:    []byte(contact.ID),
+			Content:     evt.Content,
+			SystemState: mytype.SystemStateSended,
+			CreateTime:  time.Now().Unix(),
+			UpdateTime:  time.Now().Unix(),
+		}
+
+		fmt.Println("send system message: ", msg.String())
+
+		err = s.sendSystemMessage(ctx, contact.ID, contact.DepositAddress, &msg)
+		if err != nil {
+			log.Errorf("systemProto.SendMessage error: %v", err)
+			return
+		}
+	}
+}
+
+func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, depositAddr peer.ID, msg *pb.SystemMessage) error {
+
+	onlineState := s.host.OnlineState(toPeerID, 60*time.Second)
+
+	switch onlineState {
+	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:
+		if err := s.systemProto.SendMessage(ctx, msg); err != nil {
+			// 发送离线消息
+			if errors.As(err, &myerror.StreamErr{}) && depositAddr != peer.ID("") {
+				account, err := s.accountGetter.GetAccount(ctx)
+				if err != nil {
+					return fmt.Errorf("get account error: %w", err)
+				}
+
+				if account.AutoDepositMessage {
+					msgData, err := proto.Marshal(msg)
+					if err != nil {
+						return fmt.Errorf("proto.Marshal msg error: %w", err)
+					}
+
+					log.Debugln("start deposit ", depositAddr.String())
+
+					resultCh := make(chan error, 1)
+					if err := s.emitters.evtPushDepositSystemMessage.Emit(myevent.EvtPushDepositSystemMessage{
+						DepositAddress: depositAddr,
+						ToPeerID:       toPeerID,
+						MsgID:          msg.Id,
+						MsgData:        msgData,
+						Result:         resultCh,
+					}); err != nil {
+						return fmt.Errorf("emit push deposit system msg error: %w", err)
+					}
+
+					if err := <-resultCh; err != nil {
+
+						log.Debugln("start deposit error")
+						return fmt.Errorf("send deposit msg error: %w", err)
+					}
+
+					log.Debugln("start deposit end")
+					return nil
+				}
+			}
+
+			return fmt.Errorf("proto.SendMessage error")
+		}
+
+		return nil
+
+	case mytype.OnlineStateOffline:
+		if depositAddr != peer.ID("") {
+			account, err := s.accountGetter.GetAccount(ctx)
+			if err != nil {
+				return fmt.Errorf("get account error: %w", err)
+			}
+
+			if account.AutoDepositMessage {
+				msgData, err := proto.Marshal(msg)
+				if err != nil {
+					return fmt.Errorf("proto.Marshal msg error: %w", err)
+				}
+
+				resultCh := make(chan error, 1)
+				if err := s.emitters.evtPushDepositSystemMessage.Emit(myevent.EvtPushDepositSystemMessage{
+					DepositAddress: depositAddr,
+					ToPeerID:       toPeerID,
+					MsgID:          msg.Id,
+					MsgData:        msgData,
+					Result:         resultCh,
+				}); err != nil {
+					return fmt.Errorf("emit push deposit system msg error: %w", err)
+				}
+
+				if err := <-resultCh; err != nil {
+					return fmt.Errorf("send deposit msg error: %w", err)
+				}
+				return nil
+			}
+		}
+
+		return fmt.Errorf("peer is offline")
+
+	default:
+		return fmt.Errorf("unsupport online state")
 	}
 }
 
@@ -170,7 +318,7 @@ func (s *SystemSvc) goHandleMessage() {
 			}
 
 			// 判断是否自动加好友
-			account, err := s.accountSvc.GetAccount(ctx)
+			account, err := s.accountGetter.GetAccount(ctx)
 			if err != nil {
 				log.Errorf("get account error: %s", err.Error())
 				continue
@@ -203,7 +351,7 @@ func (s *SystemSvc) goHandleMessage() {
 			}
 
 			// 判断是否自动加好友
-			account, err := s.accountSvc.GetAccount(ctx)
+			account, err := s.accountGetter.GetAccount(ctx)
 			if err != nil {
 				log.Errorf("get account error: %s", err.Error())
 				continue

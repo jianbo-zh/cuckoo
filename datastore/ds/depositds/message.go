@@ -107,6 +107,46 @@ func (pds *DepositPeerDataStore) GetGroupMessages(groupID string, startID string
 	return msgs, nil
 }
 
+func (pds *DepositPeerDataStore) SaveSystemMessage(msg *pb.DepositSystemMessage) error {
+
+	msg.Id = systemMsgID(peer.ID(msg.FromPeerId))
+	key := depositDsKey.SystemMsgLogKey(peer.ID(msg.ToPeerId), msg.Id)
+
+	bs, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	return pds.Put(context.Background(), key, bs)
+}
+
+func (pds *DepositPeerDataStore) GetSystemMessages(peerID peer.ID, startID string, limit int) (msgs []*pb.DepositSystemMessage, err error) {
+	results, err := pds.Query(context.Background(), query.Query{
+		Prefix:  depositDsKey.SystemMsgLogPrefix(peerID),
+		Filters: []query.Filter{filter.NewFromKeyFilter(startID)},
+		Orders:  []query.Order{query.OrderByKey{}},
+		Limit:   limit,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for result := range results.Next() {
+		if result.Error != nil {
+			return nil, result.Error
+		}
+
+		var msg pb.DepositSystemMessage
+		if err := proto.Unmarshal(result.Entry.Value, &msg); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, &msg)
+	}
+
+	return msgs, nil
+}
+
 func (pds *DepositPeerDataStore) SetContactLastID(peerID peer.ID, depositID string) error {
 	return pds.Put(context.Background(), depositDsKey.PeerLastIDKey(peerID), []byte(depositID))
 }
@@ -133,10 +173,27 @@ func (pds *DepositPeerDataStore) GetGroupLastID(groupID string) (string, error) 
 	return string(ackbs), nil
 }
 
+func (pds *DepositPeerDataStore) SetSystemLastID(peerID peer.ID, depositID string) error {
+	return pds.Put(context.Background(), depositDsKey.SystemLastIDKey(peerID), []byte(depositID))
+}
+
+func (pds *DepositPeerDataStore) GetSystemLastID(peerID peer.ID) (string, error) {
+	ackbs, err := pds.Get(context.Background(), depositDsKey.SystemLastIDKey(peerID))
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return "", err
+	}
+
+	return string(ackbs), nil
+}
+
 func contactMsgID(peerID peer.ID) string {
 	return fmt.Sprintf("%019d_%s", time.Now().Unix(), peerID.String())
 }
 
 func groupMsgID(groupID string) string {
 	return fmt.Sprintf("%019d_%s", time.Now().Unix(), groupID)
+}
+
+func systemMsgID(peerID peer.ID) string {
+	return fmt.Sprintf("%019d_%s", time.Now().Unix(), peerID.String())
 }

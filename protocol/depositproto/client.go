@@ -34,7 +34,8 @@ func NewDepositClientProto(ctx context.Context, h myhost.Host, ids ipfsds.Batchi
 	// 订阅push、pull
 	sub, err := eventBus.Subscribe([]any{
 		new(myevent.EvtPushDepositContactMessage), new(myevent.EvtPushDepositGroupMessage),
-		new(myevent.EvtPullDepositContactMessage), new(myevent.EvtPullDepositGroupMessage)}, eventbus.Name("deposit"))
+		new(myevent.EvtPullDepositContactMessage), new(myevent.EvtPullDepositGroupMessage),
+		new(myevent.EvtPushDepositSystemMessage), new(myevent.EvtPullDepositSystemMessage)}, eventbus.Name("deposit"))
 	if err != nil {
 		return nil, err
 
@@ -71,6 +72,13 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 
 			case myevent.EvtPullDepositGroupMessage:
 				go d.handlePullGroupMessageEvent(evt)
+
+			case myevent.EvtPushDepositSystemMessage:
+				go d.handlePushSystemEvent(evt)
+
+			case myevent.EvtPullDepositSystemMessage:
+				go d.handlePullSystemMessageEvent(evt)
+
 			default:
 				log.Warnf("undefined event type: %T", evt)
 			}
@@ -111,6 +119,21 @@ func (d *DepositClientProto) handlePushGroupEvent(evt myevent.EvtPushDepositGrou
 	}
 }
 
+func (d *DepositClientProto) handlePushSystemEvent(evt myevent.EvtPushDepositSystemMessage) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	log.Debugf("handle push system msg event: %s", evt.MsgID)
+	err := d.PushSystemMessage(evt.DepositAddress, evt.ToPeerID, evt.MsgID, evt.MsgData)
+	if err != nil {
+		resultErr = fmt.Errorf("push contact msg error: %w", err)
+	}
+}
+
 func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDepositContactMessage) {
 	log.Debugf("receive pull offline event")
 
@@ -122,9 +145,9 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 		return
 	}
 
-	depositPeerID := evt.DepositAddress
+	depositAddr := evt.DepositAddress
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PULL_CONTACT_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_CONTACT_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
@@ -169,7 +192,7 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 	log.Debugf("receive pull offline event")
 
 	groupID := evt.GroupID
-	depositPeerID := evt.DepositAddress
+	depositAddr := evt.DepositAddress
 
 	lastDepositID, err := d.datastore.GetGroupLastID(evt.GroupID)
 	if err != nil {
@@ -177,9 +200,9 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 		return
 	}
 
-	fmt.Println("deposit peerID: ", depositPeerID.String())
+	fmt.Println("deposit peerID: ", depositAddr.String())
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PULL_GROUP_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_GROUP_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
@@ -220,13 +243,67 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 	}
 }
 
-func (d *DepositClientProto) PushContactMessage(depositPeerID peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
+func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDepositSystemMessage) {
+	log.Debugf("receive pull offline event")
+
 	hostID := d.host.ID()
 
-	log.Debugf("get deposit service peer: %s", depositPeerID.String())
+	lastDepositID, err := d.datastore.GetSystemLastID(hostID)
+	if err != nil {
+		log.Errorf("data contact last id error: %v", err)
+		return
+	}
+
+	depositAddr := evt.DepositAddress
+	ctx := context.Background()
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_SYSTEM_MSG_ID)
+	if err != nil {
+		log.Errorf("new stream to deposit error: %v", err)
+		return
+	}
+	defer stream.Close()
+
+	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	pw := pbio.NewDelimitedWriter(stream)
+
+	if err = pw.WriteMsg(&pb.DepositSystemMessagePull{StartId: lastDepositID}); err != nil {
+		log.Errorf("pbio read msg error: %w", err)
+		stream.Reset()
+		return
+	}
+
+	var dmsg pb.DepositSystemMessage
+	for {
+		dmsg.Reset()
+		if err = pr.ReadMsg(&dmsg); err != nil {
+			log.Errorf("receive deposit msg error: %v", err)
+			stream.Reset()
+			return
+		}
+
+		if evt.MessageHandler != nil {
+			if err = evt.MessageHandler(context.Background(), peer.ID(dmsg.FromPeerId), dmsg.MsgId, dmsg.MsgData); err != nil {
+				log.Errorf("handle deposit msg error: %v", err)
+				stream.Reset()
+				return
+			}
+		}
+
+		if err = d.datastore.SetSystemLastID(hostID, dmsg.Id); err != nil {
+			log.Errorf("set system last id error: %v", err)
+			stream.Reset()
+			return
+		}
+	}
+}
+
+func (d *DepositClientProto) PushContactMessage(depositAddr peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
+	hostID := d.host.ID()
+
+	log.Debugf("get deposit service peer: %s", depositAddr.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PUSH_CONTACT_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_CONTACT_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
@@ -259,13 +336,13 @@ func (d *DepositClientProto) PushContactMessage(depositPeerID peer.ID, toPeerID 
 	return nil
 }
 
-func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID string, msgID string, msgData []byte) error {
+func (d *DepositClientProto) PushGroupMessage(depositAddr peer.ID, groupID string, msgID string, msgData []byte) error {
 	hostID := d.host.ID()
 
-	log.Debugf("get deposit service peer: %s", depositPeerID.String())
+	log.Debugf("get deposit service peer: %s", depositAddr.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositPeerID, PUSH_GROUP_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_GROUP_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
@@ -291,6 +368,45 @@ func (d *DepositClientProto) PushGroupMessage(depositPeerID peer.ID, groupID str
 	if err = rd.ReadMsg(&msgAck); err != nil {
 		stream.Reset()
 		return myerror.WrapStreamError("pbio read ack msg error: %w", err)
+
+	} else if msgAck.MsgId != msgID {
+		stream.Reset()
+		return myerror.WrapStreamError("msg ack id error", nil)
+	}
+
+	return nil
+}
+
+func (d *DepositClientProto) PushSystemMessage(depositAddr peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
+	hostID := d.host.ID()
+
+	log.Debugf("get deposit service peer: %s", depositAddr.String())
+
+	ctx := context.Background()
+	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_SYSTEM_MSG_ID)
+	if err != nil {
+		return myerror.WrapStreamError("new stream to deposit peer error", err)
+	}
+	defer stream.Close()
+
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	wt := pbio.NewDelimitedWriter(stream)
+
+	if err = wt.WriteMsg(&pb.DepositSystemMessage{
+		FromPeerId:  []byte(hostID),
+		ToPeerId:    []byte(toPeerID),
+		MsgId:       msgID,
+		MsgData:     msgData,
+		DepositTime: time.Now().Unix(),
+	}); err != nil {
+		stream.Reset()
+		return myerror.WrapStreamError("write msg error", err)
+	}
+
+	var msgAck pb.DepositMessageAck
+	if err = rd.ReadMsg(&msgAck); err != nil {
+		stream.Reset()
+		return myerror.WrapStreamError("read ack msg error", err)
 
 	} else if msgAck.MsgId != msgID {
 		stream.Reset()

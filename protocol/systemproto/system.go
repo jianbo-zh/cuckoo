@@ -7,6 +7,7 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	ds "github.com/jianbo-zh/dchat/datastore/ds/systemds"
+	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/myprotocol"
 	"github.com/jianbo-zh/dchat/internal/mytype"
@@ -99,16 +100,18 @@ func (s *SystemProto) DeleteSystemMessage(ctx context.Context, msgIDs []string) 
 
 func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMessage) error {
 
+	log.Debugln("start new stream ", peer.ID(msg.ToPeerId).String())
 	stream, err := s.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peer.ID(msg.ToPeerId), ID)
 	if err != nil {
-		return fmt.Errorf("a.host.NewStream error: %w,%s", err, peer.ID(msg.ToPeerId).String())
+		log.Debugln("start new stream error")
+		return myerror.WrapStreamError("host new stream error", err)
 	}
 
 	wt := pbio.NewDelimitedWriter(stream)
 	defer wt.Close()
 
 	if err = wt.WriteMsg(msg); err != nil {
-		return fmt.Errorf("wt.WriteMsg error: %w", err)
+		return myerror.WrapStreamError("wt.WriteMsg error", err)
 	}
 
 	return nil

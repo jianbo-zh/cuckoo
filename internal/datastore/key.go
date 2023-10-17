@@ -259,10 +259,13 @@ deposit 寄存Key
 /cuckoo/deposit/peer/<peerID>/message/logs/<logID>
 /cuckoo/deposit/group/<groupID>/lastid
 /cuckoo/deposit/group/<groupID>/message/logs/<logID>
+/cuckoo/deposit/system/<peerID>/lastid
+/cuckoo/deposit/system/<peerID>/message/logs/<logID>
 ---------------------------------------
 */
 const depositPeerPrefix = "/cuckoo/deposit/peer/"
 const depositGroupPrefix = "/cuckoo/deposit/group/"
+const depositSystemPrefix = "/cuckoo/deposit/system/"
 
 type DepositDsKey struct{}
 
@@ -274,20 +277,32 @@ func (d *DepositDsKey) GroupMsgLogPrefix(groupID string) string {
 	return depositGroupPrefix + groupID + "/message/logs/"
 }
 
-func (d *DepositDsKey) PeerMsgLogKey(peerID peer.ID, msgID string) ipfsds.Key {
-	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/message/logs/" + msgID)
+func (d *DepositDsKey) SystemMsgLogPrefix(peerID peer.ID) string {
+	return depositSystemPrefix + peerID.String() + "/message/logs/"
 }
 
-func (d *DepositDsKey) PeerLastIDKey(peerID peer.ID) ipfsds.Key {
-	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/lastid")
+func (d *DepositDsKey) PeerMsgLogKey(peerID peer.ID, msgID string) ipfsds.Key {
+	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/message/logs/" + msgID)
 }
 
 func (d *DepositDsKey) GroupMsgLogKey(groupID string, msgID string) ipfsds.Key {
 	return ipfsds.NewKey(depositGroupPrefix + groupID + "/message/logs/" + msgID)
 }
 
+func (d *DepositDsKey) SystemMsgLogKey(peerID peer.ID, msgID string) ipfsds.Key {
+	return ipfsds.NewKey(depositSystemPrefix + peerID.String() + "/message/logs/" + msgID)
+}
+
+func (d *DepositDsKey) PeerLastIDKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(depositPeerPrefix + peerID.String() + "/lastid")
+}
+
 func (d *DepositDsKey) GroupLastIDKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(depositGroupPrefix + groupID + "/lastid")
+}
+
+func (d *DepositDsKey) SystemLastIDKey(peerID peer.ID) ipfsds.Key {
+	return ipfsds.NewKey(depositSystemPrefix + peerID.String() + "/lastid")
 }
 
 /*

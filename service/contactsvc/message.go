@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
@@ -22,15 +23,6 @@ func (c *ContactSvc) GetMessage(ctx context.Context, peerID peer.ID, msgID strin
 
 func (c *ContactSvc) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
 	return c.msgProto.DeleteMessage(ctx, peerID, msgID)
-}
-
-func (c *ContactSvc) GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
-	bs, err := c.msgProto.GetMessageData(ctx, peerID, msgID)
-	if err != nil {
-		return nil, fmt.Errorf("proto get msg data error: %w", err)
-	}
-
-	return bs, nil
 }
 
 func (c *ContactSvc) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]mytype.ContactMessage, error) {
@@ -103,48 +95,108 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 	return msgCh, nil
 }
 
+func (c *ContactSvc) checkDepositAddr(ctx context.Context, contactID peer.ID) (peer.ID, error) {
+	if account, err := c.accountGetter.GetAccount(ctx); err != nil {
+		return peer.ID(""), fmt.Errorf("get account error: %w", err)
+
+	} else if !account.AutoDepositMessage {
+		return peer.ID(""), nil
+	}
+
+	contact, err := c.contactProto.GetContact(ctx, contactID)
+	if err != nil {
+		return peer.ID(""), fmt.Errorf("proto.GetContact error: %w", err)
+
+	}
+	return contact.DepositAddress, nil
+}
+
 func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID string) (isDeposit bool, err error) {
 
-	if msgData, err1 := c.msgProto.SendMessage(ctx, contactID, msgID); err1 != nil {
-		// 发送失败
-		if errors.As(err1, &myerror.StreamErr{}) && len(msgData) > 0 {
-			// 可能对方不在线
-			if account, err2 := c.accountGetter.GetAccount(ctx); err2 != nil {
-				return false, fmt.Errorf("get account error: %w", err2)
+	onlineState := c.host.OnlineState(contactID, 60*time.Second)
 
-			} else if account.AutoDepositMessage {
-				// 开启了消息自动寄存
-				if contact, err3 := c.contactProto.GetContact(ctx, contactID); err3 != nil {
-					return false, fmt.Errorf("proto.GetContact error: %w", err3)
-
-				} else if contact.DepositAddress != peer.ID("") {
-					// 对方设置了寄存地址
-					resultCh := make(chan error, 1)
-					if err4 := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
-						DepositAddress: contact.DepositAddress,
-						ToPeerID:       contact.ID,
-						MsgID:          msgID,
-						MsgData:        msgData,
-						Result:         resultCh,
-					}); err4 != nil {
-						return false, fmt.Errorf("emit EvtPushDepositContactMessage error: %w", err4)
-					}
-
-					if err5 := <-resultCh; err5 != nil {
-						// 发送寄存信息失败
-						return false, fmt.Errorf("push deposit msg error: %w", err5)
-
-					} else {
-						return true, nil
-					}
+	switch onlineState {
+	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:
+		fmt.Println("online msg")
+		// 在线消息
+		msgData, err := c.msgProto.SendMessage(ctx, contactID, msgID)
+		if err != nil {
+			fmt.Println("online msg failed")
+			// 在线消息失败
+			if errors.As(err, &myerror.StreamErr{}) && msgData != nil {
+				// 流错误，可能是不在线
+				depositAddr, err := c.checkDepositAddr(ctx, contactID)
+				if err != nil {
+					return false, fmt.Errorf("check deposit addr error: %w", err)
 				}
+
+				if depositAddr == peer.ID("") {
+					return false, fmt.Errorf("send message failed")
+				}
+
+				// 发送寄存信息
+				resultCh := make(chan error, 1)
+				if err := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
+					DepositAddress: depositAddr,
+					ToPeerID:       contactID,
+					MsgID:          msgID,
+					MsgData:        msgData,
+					Result:         resultCh,
+				}); err != nil {
+					return false, fmt.Errorf("emit EvtPushDepositContactMessage error: %w", err)
+				}
+
+				if err := <-resultCh; err != nil {
+					// 发送寄存信息失败
+					return false, fmt.Errorf("push deposit msg error: %w", err)
+				}
+
+				return true, nil
+
+			} else {
+				return false, fmt.Errorf("proto.SendMessage error: %w", err)
 			}
 		}
 
-		return false, fmt.Errorf("msgProto.SendMessage error: %w", err1)
-	}
+		return false, nil
 
-	return false, nil
+	case mytype.OnlineStateOffline:
+		depositAddr, err := c.checkDepositAddr(ctx, contactID)
+		if err != nil {
+			return false, fmt.Errorf("check deposit addr error: %w", err)
+		}
+
+		if depositAddr == peer.ID("") {
+			return false, fmt.Errorf("peer offline")
+		}
+
+		msgData, err := c.msgProto.GetMessageEnvelope(ctx, contactID, msgID)
+		if err != nil {
+			return false, fmt.Errorf("proto.GetMessageEnvelope error: %w", err)
+		}
+
+		// 发送寄存信息
+		resultCh := make(chan error, 1)
+		if err := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
+			DepositAddress: depositAddr,
+			ToPeerID:       contactID,
+			MsgID:          msgID,
+			MsgData:        msgData,
+			Result:         resultCh,
+		}); err != nil {
+			return false, fmt.Errorf("emit EvtPushDepositContactMessage error: %w", err)
+		}
+
+		if err := <-resultCh; err != nil {
+			// 发送寄存信息失败
+			return false, fmt.Errorf("push deposit msg error: %w", err)
+		}
+
+		return true, nil
+
+	default:
+		return false, fmt.Errorf("unsupport online state")
+	}
 }
 
 func (c *ContactSvc) ClearMessage(ctx context.Context, peerID peer.ID) error {

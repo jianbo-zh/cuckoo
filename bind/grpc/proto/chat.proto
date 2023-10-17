@@ -26,6 +26,8 @@ service AccountSvc {
   rpc SetAutoDepositMessage(SetAutoDepositMessageRequest) returns (SetAutoDepositMessageReply) {}
   // 设置我不在线时，消息寄存地址
   rpc SetAccountDepositAddress(SetAccountDepositAddressRequest) returns (SetAccountDepositAddressReply) {}
+  // 获取二维码Token
+  rpc GetAccountQRCodeToken(GetAccountQRCodeTokenRequest) returns (GetAccountQRCodeTokenReply) {}
 }
 
 // 联系人服务
@@ -50,6 +52,8 @@ service ContactSvc {
   rpc DeleteContact(DeleteContactRequest) returns (DeleteContactReply) {}
   // 申请添加联系人
   rpc ApplyAddContact(ApplyAddContactRequest) returns (ApplyAddContactReply) {}
+  // 获取二维码Token
+  rpc GetContactQRCodeToken(GetContactQRCodeTokenRequest) returns (GetContactQRCodeTokenReply) {}
 
   // 发送文本消息
   rpc SendContactTextMessage(SendContactTextMessageRequest) returns (stream SendContactMessageReply) {}
@@ -101,6 +105,8 @@ service GroupSvc {
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesReply) {}
   // 清空聊天记录
   rpc ClearGroupMessage(ClearGroupMessageRequest) returns (ClearGroupMessageReply) {}
+  // 获取二维码Token
+  rpc GetGroupQRCodeToken(GetGroupQRCodeTokenRequest) returns (GetGroupQRCodeTokenReply) {}
 
   // 发送消息
   rpc SendGroupTextMessage(SendGroupTextMessageRequest) returns (stream SendGroupMessageReply) {}
@@ -159,6 +165,11 @@ service FileSvc {
 // 消息订阅服务
 service SubscribeSvc {
   rpc SubscribeCommonEvent(SubscribeCommonEventRequest) returns (stream SubscribeCommonEventReply) {}
+}
+
+// 其他公共服务
+service CommonSvc {
+  rpc DecodeQRCodeToken(DecodeQRCodeTokenRequest) returns (DecodeQRCodeTokenReply) {}
 }
 
 // -------------------- 分隔符 --------------------
@@ -252,6 +263,12 @@ message SetAccountDepositAddressRequest {
 message SetAccountDepositAddressReply {
   Result result = 1;
   string depositAddress = 2;
+}
+
+message GetAccountQRCodeTokenRequest {}
+message GetAccountQRCodeTokenReply {
+  Result result = 1;
+  string token = 2;
 }
 
 // -------------------- 分隔符 --------------------
@@ -382,12 +399,22 @@ message DeleteContactReply {
   Result result = 1;
 }
 
+message GetContactQRCodeTokenRequest {
+  string contactId = 1;
+}
+message GetContactQRCodeTokenReply {
+  Result result = 1;
+  string token = 2;
+}
+
+
 // -------------------- 分隔符 --------------------
 
 message CreateGroupRequest {
   string name = 1;
   string imagePath = 2;
-  repeated string memberIds = 3;
+  string content = 3;
+  repeated string memberIds = 4;
 }
 message CreateGroupReply {
   Result result = 1;
@@ -587,6 +614,14 @@ message DisbandGroupReply {
   Result result = 1;
 }
 
+message GetGroupQRCodeTokenRequest {
+  string groupId = 1;
+}
+message GetGroupQRCodeTokenReply {
+  Result result = 1;
+  string token = 2;
+}
+
 // -------------------- 分隔符 --------------------
 
 message GetSessionsRequest {
@@ -617,9 +652,10 @@ message DeleteSystemMessageReply {
 
 message ApplyAddContactRequest {
   string peerId = 1;
-  string name = 2;
-  string avatar = 3;
-  string content = 4;
+  string depositAddress = 2;
+  string name = 3;
+  string avatar = 4;
+  string content = 5;
 }
 message ApplyAddContactReply {
   Result result = 1;
@@ -748,6 +784,16 @@ message SubscribeCommonEventReply {
 
 // -------------------- 分隔符 --------------------
 
+message DecodeQRCodeTokenRequest {
+  string token = 1;
+}
+message DecodeQRCodeTokenReply {
+  Result result = 1;
+  QRCodeToken token = 2;
+}
+
+// -------------------- 分隔符 --------------------
+
 message Config {
   bool enableDepositService = 1;
   string depositServiceAddress = 2;
@@ -778,6 +824,8 @@ message Peer {
   string name = 2;
   // 头像SHA1
   string avatar = 3;
+  // 离线消息寄存地址
+  string depositAddress = 4;
 }
 
 // 联系人
@@ -1026,4 +1074,18 @@ message FileInfo {
   int32     width = 7;
   int32     height = 8;
   int32     duration = 9;
+}
+
+message QRCodeToken {
+  enum TokenType {
+    Unknown = 0;
+    Peer = 1;
+    Group = 2;
+  }
+
+  TokenType tokenType = 1;
+  string id = 2;
+  string name = 3;
+  string avatar = 4;
+  string depositAddress = 5;
 }

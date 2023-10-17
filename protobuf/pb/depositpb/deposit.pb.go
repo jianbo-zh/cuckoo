@@ -296,6 +296,140 @@ func (x *DepositGroupMessage) GetDepositTime() int64 {
 	return 0
 }
 
+type DepositSystemMessagePull struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	StartId string `protobuf:"bytes,1,opt,name=startId,proto3" json:"startId,omitempty"`
+}
+
+func (x *DepositSystemMessagePull) Reset() {
+	*x = DepositSystemMessagePull{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_deposit_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DepositSystemMessagePull) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DepositSystemMessagePull) ProtoMessage() {}
+
+func (x *DepositSystemMessagePull) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_deposit_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DepositSystemMessagePull.ProtoReflect.Descriptor instead.
+func (*DepositSystemMessagePull) Descriptor() ([]byte, []int) {
+	return file_proto_deposit_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DepositSystemMessagePull) GetStartId() string {
+	if x != nil {
+		return x.StartId
+	}
+	return ""
+}
+
+type DepositSystemMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id          string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	FromPeerId  []byte `protobuf:"bytes,2,opt,name=fromPeerId,proto3" json:"fromPeerId,omitempty"`
+	ToPeerId    []byte `protobuf:"bytes,3,opt,name=toPeerId,proto3" json:"toPeerId,omitempty"`
+	MsgId       string `protobuf:"bytes,4,opt,name=msgId,proto3" json:"msgId,omitempty"`
+	MsgData     []byte `protobuf:"bytes,5,opt,name=msgData,proto3" json:"msgData,omitempty"`
+	DepositTime int64  `protobuf:"varint,6,opt,name=depositTime,proto3" json:"depositTime,omitempty"`
+}
+
+func (x *DepositSystemMessage) Reset() {
+	*x = DepositSystemMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_deposit_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DepositSystemMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DepositSystemMessage) ProtoMessage() {}
+
+func (x *DepositSystemMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_deposit_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DepositSystemMessage.ProtoReflect.Descriptor instead.
+func (*DepositSystemMessage) Descriptor() ([]byte, []int) {
+	return file_proto_deposit_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DepositSystemMessage) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DepositSystemMessage) GetFromPeerId() []byte {
+	if x != nil {
+		return x.FromPeerId
+	}
+	return nil
+}
+
+func (x *DepositSystemMessage) GetToPeerId() []byte {
+	if x != nil {
+		return x.ToPeerId
+	}
+	return nil
+}
+
+func (x *DepositSystemMessage) GetMsgId() string {
+	if x != nil {
+		return x.MsgId
+	}
+	return ""
+}
+
+func (x *DepositSystemMessage) GetMsgData() []byte {
+	if x != nil {
+		return x.MsgData
+	}
+	return nil
+}
+
+func (x *DepositSystemMessage) GetDepositTime() int64 {
+	if x != nil {
+		return x.DepositTime
+	}
+	return 0
+}
+
 type DepositMessageAck struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -307,7 +441,7 @@ type DepositMessageAck struct {
 func (x *DepositMessageAck) Reset() {
 	*x = DepositMessageAck{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_deposit_proto_msgTypes[4]
+		mi := &file_proto_deposit_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -320,7 +454,7 @@ func (x *DepositMessageAck) String() string {
 func (*DepositMessageAck) ProtoMessage() {}
 
 func (x *DepositMessageAck) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_deposit_proto_msgTypes[4]
+	mi := &file_proto_deposit_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +467,7 @@ func (x *DepositMessageAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DepositMessageAck.ProtoReflect.Descriptor instead.
 func (*DepositMessageAck) Descriptor() ([]byte, []int) {
-	return file_proto_deposit_proto_rawDescGZIP(), []int{4}
+	return file_proto_deposit_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DepositMessageAck) GetMsgId() string {
@@ -379,10 +513,25 @@ var file_proto_deposit_proto_rawDesc = []byte{
 	0x74, 0x61, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6d, 0x73, 0x67, 0x44, 0x61, 0x74,
 	0x61, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65,
 	0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54,
-	0x69, 0x6d, 0x65, 0x22, 0x29, 0x0a, 0x11, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x4d, 0x65,
-	0x73, 0x73, 0x61, 0x67, 0x65, 0x41, 0x63, 0x6b, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x73, 0x67, 0x49,
-	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x73, 0x67, 0x49, 0x64, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6d, 0x65, 0x22, 0x34, 0x0a, 0x18, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x79,
+	0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x50, 0x75, 0x6c, 0x6c, 0x12,
+	0x18, 0x0a, 0x07, 0x73, 0x74, 0x61, 0x72, 0x74, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x07, 0x73, 0x74, 0x61, 0x72, 0x74, 0x49, 0x64, 0x22, 0xb4, 0x01, 0x0a, 0x14, 0x44, 0x65,
+	0x70, 0x6f, 0x73, 0x69, 0x74, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02,
+	0x69, 0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x66, 0x72, 0x6f, 0x6d, 0x50, 0x65, 0x65, 0x72, 0x49, 0x64,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x66, 0x72, 0x6f, 0x6d, 0x50, 0x65, 0x65, 0x72,
+	0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x6f, 0x50, 0x65, 0x65, 0x72, 0x49, 0x64, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x74, 0x6f, 0x50, 0x65, 0x65, 0x72, 0x49, 0x64, 0x12, 0x14,
+	0x0a, 0x05, 0x6d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d,
+	0x73, 0x67, 0x49, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x73, 0x67, 0x44, 0x61, 0x74, 0x61, 0x18,
+	0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x6d, 0x73, 0x67, 0x44, 0x61, 0x74, 0x61, 0x12, 0x20,
+	0x0a, 0x0b, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x18, 0x06, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x0b, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65,
+	0x22, 0x29, 0x0a, 0x11, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x41, 0x63, 0x6b, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x73, 0x67, 0x49, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x73, 0x67, 0x49, 0x64, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -397,13 +546,15 @@ func file_proto_deposit_proto_rawDescGZIP() []byte {
 	return file_proto_deposit_proto_rawDescData
 }
 
-var file_proto_deposit_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_deposit_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_deposit_proto_goTypes = []interface{}{
 	(*DepositContactMessagePull)(nil), // 0: deposit.pb.DepositContactMessagePull
 	(*DepositContactMessage)(nil),     // 1: deposit.pb.DepositContactMessage
 	(*DepositGroupMessagePull)(nil),   // 2: deposit.pb.DepositGroupMessagePull
 	(*DepositGroupMessage)(nil),       // 3: deposit.pb.DepositGroupMessage
-	(*DepositMessageAck)(nil),         // 4: deposit.pb.DepositMessageAck
+	(*DepositSystemMessagePull)(nil),  // 4: deposit.pb.DepositSystemMessagePull
+	(*DepositSystemMessage)(nil),      // 5: deposit.pb.DepositSystemMessage
+	(*DepositMessageAck)(nil),         // 6: deposit.pb.DepositMessageAck
 }
 var file_proto_deposit_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -468,6 +619,30 @@ func file_proto_deposit_proto_init() {
 			}
 		}
 		file_proto_deposit_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DepositSystemMessagePull); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_deposit_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DepositSystemMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_deposit_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DepositMessageAck); i {
 			case 0:
 				return &v.state
@@ -486,7 +661,7 @@ func file_proto_deposit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_deposit_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

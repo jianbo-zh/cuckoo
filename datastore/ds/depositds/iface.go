@@ -15,9 +15,15 @@ type DepositMessageIface interface {
 	SaveGroupMessage(msg *pb.DepositGroupMessage) error
 	GetGroupMessages(groupID string, startID string, limit int) (msgs []*pb.DepositGroupMessage, err error)
 
+	SaveSystemMessage(msg *pb.DepositSystemMessage) error
+	GetSystemMessages(peerID peer.ID, startID string, limit int) (msgs []*pb.DepositSystemMessage, err error)
+
 	SetContactLastID(peerID peer.ID, depositID string) error
 	GetContactLastID(peerID peer.ID) (string, error)
 
 	SetGroupLastID(groupID string, depositID string) error
 	GetGroupLastID(groupID string) (string, error)
+
+	SetSystemLastID(peerID peer.ID, depositID string) error
+	GetSystemLastID(peerID peer.ID) (string, error)
 }

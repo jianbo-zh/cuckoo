@@ -385,7 +385,7 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *mytype.Account
 	return nil
 }
 
-func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, name string, avatar string, members []mytype.Contact) (*mytype.Group, error) {
+func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, name string, avatar string, content string, members []mytype.Contact) (*mytype.Group, error) {
 
 	hostID := a.host.ID()
 	groupID := uuid.NewString()
@@ -459,6 +459,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, n
 	}
 
 	var memberIDs []peer.ID
+	var inviteContacts []mytype.Contact
 	memberIDs = append(memberIDs, account.ID)
 
 	// 设置创建者
@@ -491,6 +492,12 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, n
 	// 设置其他成员
 	for _, member := range members {
 		memberIDs = append(memberIDs, member.ID)
+		inviteContacts = append(inviteContacts, mytype.Contact{
+			ID:             member.ID,
+			Name:           member.Name,
+			Avatar:         member.Avatar,
+			DepositAddress: member.DepositAddress,
+		})
 
 		lamptime, err = a.data.TickLamptime(ctx, groupID)
 		if err != nil {
@@ -551,11 +558,12 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, n
 		return nil, err
 	}
 	if err = a.emitters.evtInviteJoinGroup.Emit(myevent.EvtInviteJoinGroup{
-		PeerIDs:       memberIDs,
 		GroupID:       groupID,
 		GroupName:     name,
 		GroupAvatar:   avatar,
 		GroupLamptime: lamptime,
+		Content:       content,
+		Contacts:      inviteContacts,
 	}); err != nil {
 		return nil, fmt.Errorf("emit invite join group error: %w", err)
 	}

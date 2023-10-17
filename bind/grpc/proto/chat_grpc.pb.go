@@ -27,6 +27,7 @@ const (
 	AccountSvc_SetAutoJoinGroup_FullMethodName         = "/chat.AccountSvc/SetAutoJoinGroup"
 	AccountSvc_SetAutoDepositMessage_FullMethodName    = "/chat.AccountSvc/SetAutoDepositMessage"
 	AccountSvc_SetAccountDepositAddress_FullMethodName = "/chat.AccountSvc/SetAccountDepositAddress"
+	AccountSvc_GetAccountQRCodeToken_FullMethodName    = "/chat.AccountSvc/GetAccountQRCodeToken"
 )
 
 // AccountSvcClient is the client API for AccountSvc service.
@@ -49,6 +50,8 @@ type AccountSvcClient interface {
 	SetAutoDepositMessage(ctx context.Context, in *SetAutoDepositMessageRequest, opts ...grpc.CallOption) (*SetAutoDepositMessageReply, error)
 	// 设置我不在线时，消息寄存地址
 	SetAccountDepositAddress(ctx context.Context, in *SetAccountDepositAddressRequest, opts ...grpc.CallOption) (*SetAccountDepositAddressReply, error)
+	// 获取二维码Token
+	GetAccountQRCodeToken(ctx context.Context, in *GetAccountQRCodeTokenRequest, opts ...grpc.CallOption) (*GetAccountQRCodeTokenReply, error)
 }
 
 type accountSvcClient struct {
@@ -131,6 +134,15 @@ func (c *accountSvcClient) SetAccountDepositAddress(ctx context.Context, in *Set
 	return out, nil
 }
 
+func (c *accountSvcClient) GetAccountQRCodeToken(ctx context.Context, in *GetAccountQRCodeTokenRequest, opts ...grpc.CallOption) (*GetAccountQRCodeTokenReply, error) {
+	out := new(GetAccountQRCodeTokenReply)
+	err := c.cc.Invoke(ctx, AccountSvc_GetAccountQRCodeToken_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountSvcServer is the server API for AccountSvc service.
 // All implementations must embed UnimplementedAccountSvcServer
 // for forward compatibility
@@ -151,6 +163,8 @@ type AccountSvcServer interface {
 	SetAutoDepositMessage(context.Context, *SetAutoDepositMessageRequest) (*SetAutoDepositMessageReply, error)
 	// 设置我不在线时，消息寄存地址
 	SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error)
+	// 获取二维码Token
+	GetAccountQRCodeToken(context.Context, *GetAccountQRCodeTokenRequest) (*GetAccountQRCodeTokenReply, error)
 	mustEmbedUnimplementedAccountSvcServer()
 }
 
@@ -181,6 +195,9 @@ func (UnimplementedAccountSvcServer) SetAutoDepositMessage(context.Context, *Set
 }
 func (UnimplementedAccountSvcServer) SetAccountDepositAddress(context.Context, *SetAccountDepositAddressRequest) (*SetAccountDepositAddressReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAccountDepositAddress not implemented")
+}
+func (UnimplementedAccountSvcServer) GetAccountQRCodeToken(context.Context, *GetAccountQRCodeTokenRequest) (*GetAccountQRCodeTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountQRCodeToken not implemented")
 }
 func (UnimplementedAccountSvcServer) mustEmbedUnimplementedAccountSvcServer() {}
 
@@ -339,6 +356,24 @@ func _AccountSvc_SetAccountDepositAddress_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountSvc_GetAccountQRCodeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountQRCodeTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountSvcServer).GetAccountQRCodeToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountSvc_GetAccountQRCodeToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountSvcServer).GetAccountQRCodeToken(ctx, req.(*GetAccountQRCodeTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountSvc_ServiceDesc is the grpc.ServiceDesc for AccountSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -378,6 +413,10 @@ var AccountSvc_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SetAccountDepositAddress",
 			Handler:    _AccountSvc_SetAccountDepositAddress_Handler,
 		},
+		{
+			MethodName: "GetAccountQRCodeToken",
+			Handler:    _AccountSvc_GetAccountQRCodeToken_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "bind/grpc/proto/chat.proto",
@@ -394,6 +433,7 @@ const (
 	ContactSvc_SetContactName_FullMethodName          = "/chat.ContactSvc/SetContactName"
 	ContactSvc_DeleteContact_FullMethodName           = "/chat.ContactSvc/DeleteContact"
 	ContactSvc_ApplyAddContact_FullMethodName         = "/chat.ContactSvc/ApplyAddContact"
+	ContactSvc_GetContactQRCodeToken_FullMethodName   = "/chat.ContactSvc/GetContactQRCodeToken"
 	ContactSvc_SendContactTextMessage_FullMethodName  = "/chat.ContactSvc/SendContactTextMessage"
 	ContactSvc_SendContactImageMessage_FullMethodName = "/chat.ContactSvc/SendContactImageMessage"
 	ContactSvc_SendContactVoiceMessage_FullMethodName = "/chat.ContactSvc/SendContactVoiceMessage"
@@ -426,6 +466,8 @@ type ContactSvcClient interface {
 	DeleteContact(ctx context.Context, in *DeleteContactRequest, opts ...grpc.CallOption) (*DeleteContactReply, error)
 	// 申请添加联系人
 	ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error)
+	// 获取二维码Token
+	GetContactQRCodeToken(ctx context.Context, in *GetContactQRCodeTokenRequest, opts ...grpc.CallOption) (*GetContactQRCodeTokenReply, error)
 	// 发送文本消息
 	SendContactTextMessage(ctx context.Context, in *SendContactTextMessageRequest, opts ...grpc.CallOption) (ContactSvc_SendContactTextMessageClient, error)
 	// 发送图片消息
@@ -555,6 +597,15 @@ func (c *contactSvcClient) DeleteContact(ctx context.Context, in *DeleteContactR
 func (c *contactSvcClient) ApplyAddContact(ctx context.Context, in *ApplyAddContactRequest, opts ...grpc.CallOption) (*ApplyAddContactReply, error) {
 	out := new(ApplyAddContactReply)
 	err := c.cc.Invoke(ctx, ContactSvc_ApplyAddContact_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactSvcClient) GetContactQRCodeToken(ctx context.Context, in *GetContactQRCodeTokenRequest, opts ...grpc.CallOption) (*GetContactQRCodeTokenReply, error) {
+	out := new(GetContactQRCodeTokenReply)
+	err := c.cc.Invoke(ctx, ContactSvc_GetContactQRCodeToken_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -777,6 +828,8 @@ type ContactSvcServer interface {
 	DeleteContact(context.Context, *DeleteContactRequest) (*DeleteContactReply, error)
 	// 申请添加联系人
 	ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error)
+	// 获取二维码Token
+	GetContactQRCodeToken(context.Context, *GetContactQRCodeTokenRequest) (*GetContactQRCodeTokenReply, error)
 	// 发送文本消息
 	SendContactTextMessage(*SendContactTextMessageRequest, ContactSvc_SendContactTextMessageServer) error
 	// 发送图片消息
@@ -825,6 +878,9 @@ func (UnimplementedContactSvcServer) DeleteContact(context.Context, *DeleteConta
 }
 func (UnimplementedContactSvcServer) ApplyAddContact(context.Context, *ApplyAddContactRequest) (*ApplyAddContactReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApplyAddContact not implemented")
+}
+func (UnimplementedContactSvcServer) GetContactQRCodeToken(context.Context, *GetContactQRCodeTokenRequest) (*GetContactQRCodeTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactQRCodeToken not implemented")
 }
 func (UnimplementedContactSvcServer) SendContactTextMessage(*SendContactTextMessageRequest, ContactSvc_SendContactTextMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendContactTextMessage not implemented")
@@ -1040,6 +1096,24 @@ func _ContactSvc_ApplyAddContact_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContactSvc_GetContactQRCodeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactQRCodeTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactSvcServer).GetContactQRCodeToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactSvc_GetContactQRCodeToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactSvcServer).GetContactQRCodeToken(ctx, req.(*GetContactQRCodeTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ContactSvc_SendContactTextMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SendContactTextMessageRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -1209,6 +1283,10 @@ var ContactSvc_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ApplyAddContact",
 			Handler:    _ContactSvc_ApplyAddContact_Handler,
 		},
+		{
+			MethodName: "GetContactQRCodeToken",
+			Handler:    _ContactSvc_GetContactQRCodeToken_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -1268,6 +1346,7 @@ const (
 	GroupSvc_GetGroupMessage_FullMethodName        = "/chat.GroupSvc/GetGroupMessage"
 	GroupSvc_GetGroupMessages_FullMethodName       = "/chat.GroupSvc/GetGroupMessages"
 	GroupSvc_ClearGroupMessage_FullMethodName      = "/chat.GroupSvc/ClearGroupMessage"
+	GroupSvc_GetGroupQRCodeToken_FullMethodName    = "/chat.GroupSvc/GetGroupQRCodeToken"
 	GroupSvc_SendGroupTextMessage_FullMethodName   = "/chat.GroupSvc/SendGroupTextMessage"
 	GroupSvc_SendGroupImageMessage_FullMethodName  = "/chat.GroupSvc/SendGroupImageMessage"
 	GroupSvc_SendGroupVoiceMessage_FullMethodName  = "/chat.GroupSvc/SendGroupVoiceMessage"
@@ -1314,6 +1393,8 @@ type GroupSvcClient interface {
 	GetGroupMessages(ctx context.Context, in *GetGroupMessagesRequest, opts ...grpc.CallOption) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
 	ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error)
+	// 获取二维码Token
+	GetGroupQRCodeToken(ctx context.Context, in *GetGroupQRCodeTokenRequest, opts ...grpc.CallOption) (*GetGroupQRCodeTokenReply, error)
 	// 发送消息
 	SendGroupTextMessage(ctx context.Context, in *SendGroupTextMessageRequest, opts ...grpc.CallOption) (GroupSvc_SendGroupTextMessageClient, error)
 	// 发送图片消息
@@ -1483,6 +1564,15 @@ func (c *groupSvcClient) GetGroupMessages(ctx context.Context, in *GetGroupMessa
 func (c *groupSvcClient) ClearGroupMessage(ctx context.Context, in *ClearGroupMessageRequest, opts ...grpc.CallOption) (*ClearGroupMessageReply, error) {
 	out := new(ClearGroupMessageReply)
 	err := c.cc.Invoke(ctx, GroupSvc_ClearGroupMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) GetGroupQRCodeToken(ctx context.Context, in *GetGroupQRCodeTokenRequest, opts ...grpc.CallOption) (*GetGroupQRCodeTokenReply, error) {
+	out := new(GetGroupQRCodeTokenReply)
+	err := c.cc.Invoke(ctx, GroupSvc_GetGroupQRCodeToken_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1719,6 +1809,8 @@ type GroupSvcServer interface {
 	GetGroupMessages(context.Context, *GetGroupMessagesRequest) (*GetGroupMessagesReply, error)
 	// 清空聊天记录
 	ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error)
+	// 获取二维码Token
+	GetGroupQRCodeToken(context.Context, *GetGroupQRCodeTokenRequest) (*GetGroupQRCodeTokenReply, error)
 	// 发送消息
 	SendGroupTextMessage(*SendGroupTextMessageRequest, GroupSvc_SendGroupTextMessageServer) error
 	// 发送图片消息
@@ -1788,6 +1880,9 @@ func (UnimplementedGroupSvcServer) GetGroupMessages(context.Context, *GetGroupMe
 }
 func (UnimplementedGroupSvcServer) ClearGroupMessage(context.Context, *ClearGroupMessageRequest) (*ClearGroupMessageReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearGroupMessage not implemented")
+}
+func (UnimplementedGroupSvcServer) GetGroupQRCodeToken(context.Context, *GetGroupQRCodeTokenRequest) (*GetGroupQRCodeTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupQRCodeToken not implemented")
 }
 func (UnimplementedGroupSvcServer) SendGroupTextMessage(*SendGroupTextMessageRequest, GroupSvc_SendGroupTextMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendGroupTextMessage not implemented")
@@ -2126,6 +2221,24 @@ func _GroupSvc_ClearGroupMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupSvc_GetGroupQRCodeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupQRCodeTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).GetGroupQRCodeToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_GetGroupQRCodeToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).GetGroupQRCodeToken(ctx, req.(*GetGroupQRCodeTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GroupSvc_SendGroupTextMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SendGroupTextMessageRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -2326,6 +2439,10 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClearGroupMessage",
 			Handler:    _GroupSvc_ClearGroupMessage_Handler,
+		},
+		{
+			MethodName: "GetGroupQRCodeToken",
+			Handler:    _GroupSvc_GetGroupQRCodeToken_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -3299,5 +3416,95 @@ var SubscribeSvc_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
+	Metadata: "bind/grpc/proto/chat.proto",
+}
+
+const (
+	CommonSvc_DecodeQRCodeToken_FullMethodName = "/chat.CommonSvc/DecodeQRCodeToken"
+)
+
+// CommonSvcClient is the client API for CommonSvc service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CommonSvcClient interface {
+	DecodeQRCodeToken(ctx context.Context, in *DecodeQRCodeTokenRequest, opts ...grpc.CallOption) (*DecodeQRCodeTokenReply, error)
+}
+
+type commonSvcClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCommonSvcClient(cc grpc.ClientConnInterface) CommonSvcClient {
+	return &commonSvcClient{cc}
+}
+
+func (c *commonSvcClient) DecodeQRCodeToken(ctx context.Context, in *DecodeQRCodeTokenRequest, opts ...grpc.CallOption) (*DecodeQRCodeTokenReply, error) {
+	out := new(DecodeQRCodeTokenReply)
+	err := c.cc.Invoke(ctx, CommonSvc_DecodeQRCodeToken_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CommonSvcServer is the server API for CommonSvc service.
+// All implementations must embed UnimplementedCommonSvcServer
+// for forward compatibility
+type CommonSvcServer interface {
+	DecodeQRCodeToken(context.Context, *DecodeQRCodeTokenRequest) (*DecodeQRCodeTokenReply, error)
+	mustEmbedUnimplementedCommonSvcServer()
+}
+
+// UnimplementedCommonSvcServer must be embedded to have forward compatible implementations.
+type UnimplementedCommonSvcServer struct {
+}
+
+func (UnimplementedCommonSvcServer) DecodeQRCodeToken(context.Context, *DecodeQRCodeTokenRequest) (*DecodeQRCodeTokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DecodeQRCodeToken not implemented")
+}
+func (UnimplementedCommonSvcServer) mustEmbedUnimplementedCommonSvcServer() {}
+
+// UnsafeCommonSvcServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CommonSvcServer will
+// result in compilation errors.
+type UnsafeCommonSvcServer interface {
+	mustEmbedUnimplementedCommonSvcServer()
+}
+
+func RegisterCommonSvcServer(s grpc.ServiceRegistrar, srv CommonSvcServer) {
+	s.RegisterService(&CommonSvc_ServiceDesc, srv)
+}
+
+func _CommonSvc_DecodeQRCodeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecodeQRCodeTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommonSvcServer).DecodeQRCodeToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CommonSvc_DecodeQRCodeToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommonSvcServer).DecodeQRCodeToken(ctx, req.(*DecodeQRCodeTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// CommonSvc_ServiceDesc is the grpc.ServiceDesc for CommonSvc service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CommonSvc_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "chat.CommonSvc",
+	HandlerType: (*CommonSvcServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "DecodeQRCodeToken",
+			Handler:    _CommonSvc_DecodeQRCodeToken_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "bind/grpc/proto/chat.proto",
 }

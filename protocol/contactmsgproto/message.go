@@ -330,12 +330,24 @@ func (p *PeerMessageProto) CreateMessage(ctx context.Context, contactID peer.ID,
 	return &msg, nil
 }
 
-// SendMessage 发送消息
-func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
+func (p *PeerMessageProto) GetMessageEnvelope(ctx context.Context, contactID peer.ID, msgID string) ([]byte, error) {
+	msgEnvelop, err := p.getMessageEnvelope(ctx, contactID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("getMessageEnvelope error: %w", err)
+	}
 
+	bs, err := proto.Marshal(msgEnvelop)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Marshal error: %w", err)
+	}
+
+	return bs, nil
+}
+
+func (p *PeerMessageProto) getMessageEnvelope(ctx context.Context, contactID peer.ID, msgID string) (*pb.MessageEnvelope, error) {
 	hostID := p.host.ID()
 
-	coreMsg, err := p.data.GetCoreMessage(ctx, peerID, msgID)
+	coreMsg, err := p.data.GetCoreMessage(ctx, contactID, msgID)
 	if err != nil {
 		return nil, fmt.Errorf("data.GetMessage error: %w", err)
 	}
@@ -366,22 +378,32 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, peerID peer.ID, msgI
 		attachment = result.Data
 	}
 
-	switchMsg := pb.MessageEnvelope{
+	return &pb.MessageEnvelope{
 		Id:          coreMsg.Id,
 		CoreMessage: coreMsg,
 		Attachment:  attachment,
+	}, nil
+}
+
+// SendMessage 发送消息
+func (p *PeerMessageProto) SendMessage(ctx context.Context, contactID peer.ID, msgID string) ([]byte, error) {
+
+	switchMsg, err := p.getMessageEnvelope(ctx, contactID, msgID)
+	if err != nil {
+		return nil, fmt.Errorf("get message envelope error: %w", err)
 	}
 
-	if err1 := p.sendMessage(ctx, peerID, &switchMsg); err1 != nil {
-		if errors.As(err1, &myerror.StreamErr{}) {
-			if bs, err2 := proto.Marshal(&switchMsg); err2 != nil {
-				return nil, fmt.Errorf("proto.Marshal error2: %w, error1: %v", err2, err1)
-
-			} else {
-				return bs, err1
+	if err := p.sendMessage(ctx, contactID, switchMsg); err != nil {
+		if errors.As(err, &myerror.StreamErr{}) {
+			// 流错误，表示可能对方不在线
+			bs, err2 := proto.Marshal(switchMsg)
+			if err2 != nil {
+				return nil, fmt.Errorf("proto.Marshal error: %w", err2)
 			}
+
+			return bs, fmt.Errorf("send message stream error: %w", err)
 		}
-		return nil, err1
+		return nil, err
 	}
 
 	return nil, nil
@@ -402,8 +424,8 @@ func (p *PeerMessageProto) sendMessage(ctx context.Context, peerID peer.ID, msg 
 		return myerror.WrapStreamError("pbio write msg error", err)
 	}
 
-	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	var msgAck pb.ContactMessageAck
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&msgAck); err != nil {
 		return myerror.WrapStreamError("pbio read ack msg error", err)
 
@@ -424,10 +446,6 @@ func (p *PeerMessageProto) UpdateMessageState(ctx context.Context, peerID peer.I
 
 func (p *PeerMessageProto) DeleteMessage(ctx context.Context, peerID peer.ID, msgID string) error {
 	return p.data.DeleteMessage(ctx, peerID, msgID)
-}
-
-func (p *PeerMessageProto) GetMessageData(ctx context.Context, peerID peer.ID, msgID string) ([]byte, error) {
-	return p.data.GetMessageData(ctx, peerID, msgID)
 }
 
 func (p *PeerMessageProto) GetMessages(ctx context.Context, peerID peer.ID, offset int, limit int) ([]*pb.ContactMessage, error) {

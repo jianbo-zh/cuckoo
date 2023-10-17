@@ -14,3 +14,8 @@ type EvtAccountBaseChange struct {
 type EvtSyncAccountMessage struct {
 	DepositAddress peer.ID
 }
+
+// EvtSyncSystemMessage 同步系统消息
+type EvtSyncSystemMessage struct {
+	DepositAddress peer.ID
+}

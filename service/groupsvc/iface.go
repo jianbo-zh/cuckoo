@@ -8,12 +8,12 @@ import (
 )
 
 type GroupServiceIface interface {
-	CreateGroup(ctx context.Context, name string, avatarID string, memberIDs []peer.ID) (*mytype.Group, error)       // 创建群
-	AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error // 同意加入群
-	DisbandGroup(ctx context.Context, groupID string) error                                                          // 解散群
-	ExitGroup(ctx context.Context, groupID string) error                                                             // 退出群
-	DeleteGroup(ctx context.Context, groupID string) error                                                           // 删除群
-	GetGroups(ctx context.Context) ([]mytype.Group, error)                                                           // 群列表
+	CreateGroup(ctx context.Context, name string, avatarID string, content string, memberIDs []peer.ID) (*mytype.Group, error) // 创建群
+	AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error           // 同意加入群
+	DisbandGroup(ctx context.Context, groupID string) error                                                                    // 解散群
+	ExitGroup(ctx context.Context, groupID string) error                                                                       // 退出群
+	DeleteGroup(ctx context.Context, groupID string) error                                                                     // 删除群
+	GetGroups(ctx context.Context) ([]mytype.Group, error)                                                                     // 群列表
 
 	GetGroup(ctx context.Context, groupID string) (*mytype.Group, error)             // 获取群组
 	GetGroupDetail(ctx context.Context, groupID string) (*mytype.GroupDetail, error) // 获取群组

@@ -464,11 +464,18 @@ func (c *ContactProto) ApplyAddContact(ctx context.Context, peer0 *mytype.Peer, 
 		return fmt.Errorf("data.SetApply error: %w", err)
 	}
 
+	resultCh := make(chan error, 1)
 	if err := c.emitters.evtApplyAddContact.Emit(myevent.EvtApplyAddContact{
-		PeerID:  peer0.ID,
-		Content: content,
+		PeerID:      peer0.ID,
+		DepositAddr: peer0.DepositAddress,
+		Content:     content,
+		Result:      resultCh,
 	}); err != nil {
 		return fmt.Errorf("emit apply add contact error: %w", err)
+	}
+
+	if err := <-resultCh; err != nil {
+		return fmt.Errorf("send apply add contact error: %w", err)
 	}
 
 	return nil
@@ -541,9 +548,10 @@ func (c *ContactProto) GetContacts(ctx context.Context) ([]*mytype.Contact, erro
 	var peers []*mytype.Contact
 	for _, peeri := range contacts {
 		peers = append(peers, &mytype.Contact{
-			ID:     peer.ID(peeri.Id),
-			Name:   peeri.Name,
-			Avatar: peeri.Avatar,
+			ID:             peer.ID(peeri.Id),
+			Name:           peeri.Name,
+			Avatar:         peeri.Avatar,
+			DepositAddress: peer.ID(peeri.DepositAddress),
 		})
 	}
 

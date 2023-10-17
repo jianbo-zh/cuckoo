@@ -8,6 +8,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/mytype"
+	"github.com/jianbo-zh/dchat/internal/util"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
 	"github.com/jianbo-zh/dchat/service/filesvc"
@@ -127,7 +128,7 @@ func (g *GroupSvc) CreateGroup(ctx context.Context, request *proto.CreateGroupRe
 		memberIDs = append(memberIDs, peerID)
 	}
 
-	_, err = groupSvc.CreateGroup(ctx, request.Name, avatarID, memberIDs)
+	_, err = groupSvc.CreateGroup(ctx, request.Name, avatarID, request.Content, memberIDs)
 	if err != nil {
 		return nil, fmt.Errorf("groupSvc.CreateGroup error: %w", err)
 	}
@@ -1088,6 +1089,41 @@ func (g *GroupSvc) ClearGroupMessage(ctx context.Context, request *proto.ClearGr
 			Code:    0,
 			Message: "ok",
 		},
+	}
+	return reply, nil
+}
+
+func (g *GroupSvc) GetGroupQRCodeToken(ctx context.Context, request *proto.GetGroupQRCodeTokenRequest) (reply *proto.GetGroupQRCodeTokenReply, err error) {
+
+	log.Infoln("GetGroupQRCodeToken request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetGroupQRCodeToken panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetGroupQRCodeToken error: ", err.Error())
+		} else {
+			log.Infoln("GetGroupQRCodeToken reply: ", reply.String())
+		}
+	}()
+
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
+	group, err := groupSvc.GetGroup(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetContact error: %w", err)
+	}
+
+	QRCodeToken := util.EncodeGroupToken(group.ID, group.DepositAddress, group.Name, group.Avatar)
+
+	reply = &proto.GetGroupQRCodeTokenReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Token: QRCodeToken,
 	}
 	return reply, nil
 }

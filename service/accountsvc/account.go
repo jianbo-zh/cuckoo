@@ -112,9 +112,10 @@ func (a *AccountSvc) GetPeer(ctx context.Context, peerID peer.ID) (*mytype.Peer,
 	}
 
 	return &mytype.Peer{
-		ID:     peer.ID(pbPeer.Id),
-		Name:   pbPeer.Name,
-		Avatar: pbPeer.Avatar,
+		ID:             peer.ID(pbPeer.Id),
+		Name:           pbPeer.Name,
+		Avatar:         pbPeer.Avatar,
+		DepositAddress: peer.ID(pbPeer.DepositAddress),
 	}, nil
 }
 

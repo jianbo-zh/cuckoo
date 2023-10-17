@@ -7,6 +7,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/mytype"
+	"github.com/jianbo-zh/dchat/internal/util"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/depositsvc"
@@ -367,9 +368,10 @@ func (c *ContactSvc) GetNearbyPeers(request *proto.GetNearbyPeersRequest, server
 					Message: "ok",
 				},
 				Peer: &proto.Peer{
-					Id:     peerAccount.ID.String(),
-					Name:   peerAccount.Name,
-					Avatar: peerAccount.Avatar,
+					Id:             peerAccount.ID.String(),
+					Name:           peerAccount.Name,
+					Avatar:         peerAccount.Avatar,
+					DepositAddress: peerAccount.DepositAddress.String(),
 				},
 			}
 			if err = server.Send(reply); err != nil {
@@ -996,10 +998,19 @@ func (c *ContactSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAd
 		return nil, fmt.Errorf("peer.Decode error: %s", err.Error())
 	}
 
+	var DepositAddress peer.ID
+	if request.DepositAddress != "" {
+		DepositAddress, err = peer.Decode(request.DepositAddress)
+		if err != nil {
+			return nil, fmt.Errorf("peer.Decode deposit addr error: %w", err)
+		}
+	}
+
 	peer0 := &mytype.Peer{
-		ID:     peerID,
-		Name:   request.Name,
-		Avatar: request.Avatar,
+		ID:             peerID,
+		Name:           request.Name,
+		Avatar:         request.Avatar,
+		DepositAddress: DepositAddress,
 	}
 
 	err = contactSvc.ApplyAddContact(ctx, peer0, request.Content)
@@ -1012,6 +1023,46 @@ func (c *ContactSvc) ApplyAddContact(ctx context.Context, request *proto.ApplyAd
 			Code:    0,
 			Message: "ok",
 		},
+	}
+	return reply, nil
+}
+
+func (c *ContactSvc) GetContactQRCodeToken(ctx context.Context, request *proto.GetContactQRCodeTokenRequest) (reply *proto.GetContactQRCodeTokenReply, err error) {
+
+	log.Infoln("GetContactQRCodeToken request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetContactQRCodeToken panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetContactQRCodeToken error: ", err.Error())
+		} else {
+			log.Infoln("GetContactQRCodeToken reply: ", reply.String())
+		}
+	}()
+
+	contactSvc, err := c.getContactSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
+	contactID, err := peer.Decode(request.ContactId)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %w", err)
+	}
+
+	contact, err := contactSvc.GetContact(ctx, contactID)
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetContact error: %w", err)
+	}
+
+	QRCodeToken := util.EncodePeerToken(contact.ID, contact.DepositAddress, contact.Name, contact.Avatar)
+
+	reply = &proto.GetContactQRCodeTokenReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Token: QRCodeToken,
 	}
 	return reply, nil
 }

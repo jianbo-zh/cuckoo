@@ -8,6 +8,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	"github.com/jianbo-zh/dchat/internal/mytype"
+	"github.com/jianbo-zh/dchat/internal/util"
 	"github.com/jianbo-zh/dchat/service/accountsvc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -37,6 +38,41 @@ func (a *AccountSvc) getAccountSvc() (accountsvc.AccountServiceIface, error) {
 	}
 
 	return accountSvc, nil
+}
+
+func (a *AccountSvc) GetAccountQRCodeToken(ctx context.Context, request *proto.GetAccountQRCodeTokenRequest) (reply *proto.GetAccountQRCodeTokenReply, err error) {
+
+	log.Infoln("GetAccountQRCodeToken request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetAccountQRCodeToken panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetAccountQRCodeToken error: ", err.Error())
+		} else {
+			log.Infoln("GetAccountQRCodeToken reply: ", reply.String())
+		}
+	}()
+
+	accountSvc, err := a.getAccountSvc()
+	if err != nil {
+		return nil, fmt.Errorf("get account svc error: %w", err)
+	}
+
+	account, err := accountSvc.GetAccount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetAccount error: %w", err)
+	}
+
+	QRCodeToken := util.EncodePeerToken(account.ID, account.DepositAddress, account.Name, account.Avatar)
+
+	reply = &proto.GetAccountQRCodeTokenReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+		Token: QRCodeToken,
+	}
+	return reply, nil
 }
 
 func (a *AccountSvc) CreateAccount(ctx context.Context, request *proto.CreateAccountRequest) (reply *proto.CreateAccountReply, err error) {

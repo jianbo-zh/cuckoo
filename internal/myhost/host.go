@@ -20,6 +20,8 @@ import (
 type Host interface {
 	host.Host
 
+	OnlineState(peerID peer.ID, onlineDuration time.Duration) mytype.OnlineState
+
 	// peer在线状态统计
 	OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState
 }

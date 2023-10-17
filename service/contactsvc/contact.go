@@ -20,6 +20,8 @@ var log = logging.Logger("contact-svc")
 var _ ContactServiceIface = (*ContactSvc)(nil)
 
 type ContactSvc struct {
+	host myhost.Host
+
 	accountGetter mytype.AccountGetter
 
 	msgProto     *contactmsgproto.PeerMessageProto
@@ -36,6 +38,7 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 	var err error
 
 	svc := &ContactSvc{
+		host:          lhost,
 		accountGetter: accountGetter,
 	}
 

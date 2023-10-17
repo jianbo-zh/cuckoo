@@ -17,6 +17,24 @@ const (
 // 清理统计缓存计数
 var ClearStatsCounting = 0
 
+func (h *MyHost) OnlineState(peerID peer.ID, onlineDuration time.Duration) mytype.OnlineState {
+	h.statsMutex.RLock()
+	nowtime := time.Now()
+	peerState := mytype.OnlineStateUnknown
+	if onlineTime, exists := h.onlineMap[peerID]; exists {
+		if nowtime.Sub(onlineTime) <= onlineDuration {
+			peerState = mytype.OnlineStateOnline
+		}
+
+	} else if onlineTime, exists = h.offlineMap[peerID]; exists {
+		if nowtime.Sub(onlineTime) <= onlineDuration {
+			peerState = mytype.OnlineStateOffline
+		}
+	}
+	h.statsMutex.RUnlock()
+	return peerState
+}
+
 // PeersOnlineStats 节点在线统计，onlineDuration 指定多少秒内算才在线，最长60秒
 func (h *MyHost) OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState {
 	nowtime := time.Now()
