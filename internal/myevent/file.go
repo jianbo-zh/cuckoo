@@ -24,6 +24,18 @@ type EvtLogSessionAttachment struct {
 	Result     chan<- error
 }
 
+// EvtClearSessionResources 删除会话关联的资源（删除会话消息时用）
+type EvtClearSessionResources struct {
+	SessionID string
+	Result    chan<- error
+}
+
+// EvtClearSessionFiles 删除会话关联的文件（删除会话时用）
+type EvtClearSessionFiles struct {
+	SessionID string
+	Result    chan<- error
+}
+
 // EvtGetResourceData 获取资源文件数据
 type EvtGetResourceData struct {
 	ResourceID string
@@ -32,6 +44,7 @@ type EvtGetResourceData struct {
 
 // EvtSaveResourceData 保存资源文件数据
 type EvtSaveResourceData struct {
+	SessionID  string
 	ResourceID string
 	Data       []byte
 	Result     chan<- error

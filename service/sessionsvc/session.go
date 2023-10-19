@@ -19,7 +19,7 @@ type SessionService struct {
 
 func NewSessionService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*SessionService, error) {
 
-	sessionProto, err := sessionproto.NewSessionProto(ids)
+	sessionProto, err := sessionproto.NewSessionProto(ids, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("new download client proto error: %w", err)
 	}

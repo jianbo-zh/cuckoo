@@ -199,6 +199,37 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 	}
 }
 
-func (c *ContactSvc) ClearMessage(ctx context.Context, peerID peer.ID) error {
-	return c.msgProto.ClearMessage(ctx, peerID)
+func (c *ContactSvc) ClearMessage(ctx context.Context, contactID peer.ID) error {
+
+	if err := c.msgProto.ClearMessage(ctx, contactID); err != nil {
+		return fmt.Errorf("proto.ClearMessage error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(contactID)
+
+	// 清空会话
+	resultCh := make(chan error, 1)
+	if err := c.emitters.evtClearSession.Emit(myevent.EvtClearSession{
+		SessionID: sessionID.String(),
+		Result:    resultCh,
+	}); err != nil {
+		return fmt.Errorf("emit clear session resources error: %w", err)
+	}
+	if err := <-resultCh; err != nil {
+		return fmt.Errorf("clear session resources error: %w", err)
+	}
+
+	// 删除会话资源
+	resultCh1 := make(chan error, 1)
+	if err := c.emitters.evtClearSessionResources.Emit(myevent.EvtClearSessionResources{
+		SessionID: sessionID.String(),
+		Result:    resultCh1,
+	}); err != nil {
+		return fmt.Errorf("emit clear session resources error: %w", err)
+	}
+	if err := <-resultCh1; err != nil {
+		return fmt.Errorf("clear session resources error: %w", err)
+	}
+
+	return nil
 }

@@ -165,7 +165,9 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 
 		// 触发接收消息
 		resultCh := make(chan error, 1)
+		sessionID := mytype.ContactSessionID(peer.ID(coreMsg.FromPeerId))
 		if err = p.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			SessionID:  sessionID.String(),
 			ResourceID: coreMsg.AttachmentId,
 			Data:       switchMsg.Attachment,
 			Result:     resultCh,
@@ -231,7 +233,9 @@ func (p *PeerMessageProto) SaveDepositMessage(ctx context.Context, fromPeerID pe
 
 		// 触发接收消息
 		resultCh := make(chan error, 1)
+		sessionID := mytype.ContactSessionID(peer.ID(coreMsg.FromPeerId))
 		if err := p.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			SessionID:  sessionID.String(),
 			ResourceID: coreMsg.AttachmentId,
 			Data:       switchMsg.Attachment,
 			Result:     resultCh,
@@ -452,8 +456,8 @@ func (p *PeerMessageProto) GetMessages(ctx context.Context, peerID peer.ID, offs
 	return p.data.GetMessages(ctx, peerID, offset, limit)
 }
 
-func (p *PeerMessageProto) ClearMessage(ctx context.Context, peerID peer.ID) error {
-	return p.data.ClearMessage(ctx, peerID)
+func (p *PeerMessageProto) ClearMessage(ctx context.Context, contactID peer.ID) error {
+	return p.data.ClearMessage(ctx, contactID)
 }
 
 func (p *PeerMessageProto) saveCoreMessage(ctx context.Context, contactID peer.ID, coreMsg *pb.CoreMessage, isDeposit bool) error {

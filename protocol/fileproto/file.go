@@ -69,9 +69,10 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 	lhost.SetStreamHandler(DOWNLOAD_ID, file.fileDownloadHandler)
 
 	// 订阅器
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtLogSessionAttachment),
-		new(myevent.EvSyncResource),
+	sub, err := ebus.Subscribe([]any{
+		new(myevent.EvtLogSessionAttachment), new(myevent.EvSyncResource),
 		new(myevent.EvtGetResourceData), new(myevent.EvtSaveResourceData),
+		new(myevent.EvtClearSessionResources), new(myevent.EvtClearSessionFiles),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ebus subscribe error: %w", err)
@@ -86,6 +87,26 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 
 func (f *FileProto) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error) {
 	return f.data.GetSessionFiles(ctx, sessionID, keywords, offset, limit)
+}
+
+// DeleteSessionResources 删除会话的资源文件
+func (f *FileProto) DeleteSessionResources(ctx context.Context, sessionID string, resourceIDs []string) error {
+	for _, resourceID := range resourceIDs {
+		if err := f.data.RemoveSessionResource(ctx, sessionID, resourceID); err != nil {
+			return fmt.Errorf("data.RemoveSessionFile error: %w", err)
+		}
+
+		if sessionIDs, err := f.data.GetFileSessionIDs(ctx, resourceID); err != nil {
+			return fmt.Errorf("data.GetFileSessionIDs error: %w", err)
+
+		} else if len(sessionIDs) == 0 { // 没有其他会话引用了，则可以删除
+			if err := os.Remove(filepath.Join(f.conf.ResourceDir, resourceID)); err != nil {
+				return fmt.Errorf("os.Remove error: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // DeleteSessionFiles 删除会话的文件

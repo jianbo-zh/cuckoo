@@ -143,7 +143,9 @@ func (m *MessageProto) messageHandler(stream network.Stream) {
 
 		// 触发接收消息
 		resultCh := make(chan error, 1)
+		sessionID := mytype.GroupSessionID(coreMsg.GroupId)
 		if err = m.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			SessionID:  sessionID.String(),
 			ResourceID: coreMsg.AttachmentId,
 			Data:       switchMsg.Attachment,
 			Result:     resultCh,
@@ -316,7 +318,9 @@ func (m *MessageProto) SaveDepositMessage(ctx context.Context, groupID string, m
 		}
 
 		resultCh := make(chan error, 1)
+		sessionID := mytype.GroupSessionID(coreMsg.GroupId)
 		if err = m.emitters.evtSaveResourceData.Emit(myevent.EvtSaveResourceData{
+			SessionID:  sessionID.String(),
 			ResourceID: coreMsg.AttachmentId,
 			Data:       switchMsg.Attachment,
 			Result:     resultCh,

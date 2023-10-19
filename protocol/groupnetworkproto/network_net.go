@@ -89,6 +89,7 @@ func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
 
 		peerChan, err := n.discv.FindPeers(ctx, rendezvous, discovery.Limit(10))
 		if err != nil {
+			log.Errorf("discv find peers error: %w", err)
 			return err
 		}
 
@@ -167,15 +168,18 @@ func (n *NetworkProto) handleFindPeers(ctx context.Context, groupID GroupID, pee
 
 	hostID := n.host.ID()
 	timeout := time.After(5 * time.Second)
+	timeoutTimes := 0
 Loop:
-	for i := 0; i < 5; i++ {
+	for len(foundPeerIDs) < 5 {
 		select {
 		case peer := <-peerCh:
 			if peer.ID == hostID {
+				log.Debugln("found self host")
 				continue
 			}
 
 			if peer.ID.String() == "" {
+				// log.Debugln("found empty: ", peer.String())
 				continue
 			}
 
@@ -187,9 +191,18 @@ Loop:
 			if err != nil {
 				log.Errorf("switch routing table error: %v", err)
 			}
+			log.Debugln("found peer +1")
 
 		case <-timeout:
-			break Loop
+			if len(foundPeerIDs) > 0 || timeoutTimes >= 60 {
+				log.Debugln("foundPeerIDs or timeout 300s, break loop")
+				// 找到或超时60s
+				break Loop
+			}
+
+			timeout = time.After(5 * time.Second)
+			timeoutTimes += 1
+			log.Debugln("timeout +1")
 		}
 	}
 
@@ -198,6 +211,7 @@ Loop:
 		log.Warnln("not found group peer", groupID)
 		return
 	}
+	log.Debugln("found peers: ", len(foundPeerIDs))
 
 	// 更新完路由后，需要组网了
 	onlinesMap := make(map[peer.ID]struct{})

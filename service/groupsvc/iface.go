@@ -35,9 +35,8 @@ type GroupServiceIface interface {
 
 	GetGroupMessage(ctx context.Context, groupID string, msgID string) (*mytype.GroupMessage, error)             // 获取消息
 	GetGroupMessageData(ctx context.Context, groupID string, msgID string) ([]byte, error)                       // 获取消息
-	DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error                                  // 删除消息
 	GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]*mytype.GroupMessage, error) // 消息列表
-	ClearGroupMessage(ctx context.Context, groupID string) error
+	ClearGroupMessage(ctx context.Context, groupID string) error                                                 // 清空消息
 
 	Close()
 }

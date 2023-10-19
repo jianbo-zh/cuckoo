@@ -36,6 +36,10 @@ type GroupService struct {
 		evtGroupsInit              event.Emitter
 		evtLogSessionAttachment    event.Emitter
 		evtPushDepositGroupMessage event.Emitter
+		evtClearSessionResources   event.Emitter
+		evtClearSessionFiles       event.Emitter
+		evtClearSession            event.Emitter
+		evtDeleteSession           event.Emitter
 	}
 }
 
@@ -79,6 +83,26 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 	// 触发器：发送离线消息
 	if groupsvc.emitters.evtPushDepositGroupMessage, err = ebus.Emitter(&myevent.EvtPushDepositGroupMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
+	}
+
+	// 触发器：删除会话资源
+	if groupsvc.emitters.evtClearSessionResources, err = ebus.Emitter(&myevent.EvtClearSessionResources{}); err != nil {
+		return nil, fmt.Errorf("set clear session resources emitter error: %w", err)
+	}
+
+	// 触发器：删除会话文件
+	if groupsvc.emitters.evtClearSessionFiles, err = ebus.Emitter(&myevent.EvtClearSessionFiles{}); err != nil {
+		return nil, fmt.Errorf("set clear session files emitter error: %w", err)
+	}
+
+	// 触发器：清空会话
+	if groupsvc.emitters.evtClearSession, err = ebus.Emitter(&myevent.EvtClearSession{}); err != nil {
+		return nil, fmt.Errorf("set clear session emitter error: %w", err)
+	}
+
+	// 触发器：删除会话
+	if groupsvc.emitters.evtDeleteSession, err = ebus.Emitter(&myevent.EvtDeleteSession{}); err != nil {
+		return nil, fmt.Errorf("set delete session emitter error: %w", err)
 	}
 
 	// 订阅器
@@ -247,8 +271,47 @@ func (g *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
 		return fmt.Errorf("svc get account error: %w", err)
 	}
 
+	// 删除群聊
 	if err := g.adminProto.DeleteGroup(ctx, account, groupID); err != nil {
 		return fmt.Errorf("adminSvc delete group error: %w", err)
+	}
+
+	sessionID := mytype.GroupSessionID(groupID)
+
+	// 删除会话
+	resultCh := make(chan error, 1)
+	if err := g.emitters.evtDeleteSession.Emit(myevent.EvtDeleteSession{
+		SessionID: sessionID.String(),
+		Result:    resultCh,
+	}); err != nil {
+		return fmt.Errorf("emit delete session error: %w", err)
+	}
+	if err := <-resultCh; err != nil {
+		return fmt.Errorf("clear delete session error: %w", err)
+	}
+
+	// 删除会话资源
+	resultCh1 := make(chan error, 1)
+	if err := g.emitters.evtClearSessionResources.Emit(myevent.EvtClearSessionResources{
+		SessionID: sessionID.String(),
+		Result:    resultCh1,
+	}); err != nil {
+		return fmt.Errorf("emit clear session resources error: %w", err)
+	}
+	if err := <-resultCh1; err != nil {
+		return fmt.Errorf("clear session resources error: %w", err)
+	}
+
+	// 删除会话文件
+	resultCh2 := make(chan error, 1)
+	if err := g.emitters.evtClearSessionFiles.Emit(myevent.EvtClearSessionFiles{
+		SessionID: sessionID.String(),
+		Result:    resultCh2,
+	}); err != nil {
+		return fmt.Errorf("emit clear session files error: %w", err)
+	}
+	if err := <-resultCh2; err != nil {
+		return fmt.Errorf("clear session files error: %w", err)
 	}
 
 	// todo: 广播其他节点
@@ -445,10 +508,6 @@ func (g *GroupService) GetGroupMessageData(ctx context.Context, groupID string, 
 	return g.messageProto.GetMessageData(ctx, groupID, msgID)
 }
 
-func (g *GroupService) DeleteGroupMessage(ctx context.Context, groupID string, msgID string) error {
-	return g.messageProto.DeleteMessage(ctx, groupID, msgID)
-}
-
 // 消息列表
 func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, offset int, limit int) ([]*mytype.GroupMessage, error) {
 	msgs, err := g.messageProto.GetMessageList(ctx, groupID, offset, limit)
@@ -466,5 +525,37 @@ func (g *GroupService) GetGroupMessages(ctx context.Context, groupID string, off
 
 // 消息列表
 func (g *GroupService) ClearGroupMessage(ctx context.Context, groupID string) error {
-	return g.messageProto.ClearGroupMessage(ctx, groupID)
+
+	sessionID := mytype.GroupSessionID(groupID)
+
+	// 删除消息记录
+	if err := g.messageProto.ClearGroupMessage(ctx, groupID); err != nil {
+		return fmt.Errorf("proto.ClearGroupMessage error: %w", err)
+	}
+
+	// 清空会话
+	resultCh := make(chan error, 1)
+	if err := g.emitters.evtClearSession.Emit(myevent.EvtClearSession{
+		SessionID: sessionID.String(),
+		Result:    resultCh,
+	}); err != nil {
+		return fmt.Errorf("emit clear session error: %w", err)
+	}
+	if err := <-resultCh; err != nil {
+		return fmt.Errorf("clear session error: %w", err)
+	}
+
+	// 删除会话资源
+	resultCh1 := make(chan error, 1)
+	if err := g.emitters.evtClearSessionResources.Emit(myevent.EvtClearSessionResources{
+		SessionID: sessionID.String(),
+		Result:    resultCh1,
+	}); err != nil {
+		return fmt.Errorf("emit clear session resources error: %w", err)
+	}
+	if err := <-resultCh1; err != nil {
+		return fmt.Errorf("clear session resources error: %w", err)
+	}
+
+	return nil
 }

@@ -30,6 +30,10 @@ type ContactSvc struct {
 	emitters struct {
 		evtLogSessionAttachment      event.Emitter
 		evtPushDepositContactMessage event.Emitter
+		evtClearSessionResources     event.Emitter
+		evtClearSessionFiles         event.Emitter
+		evtClearSession              event.Emitter
+		evtDeleteSession             event.Emitter
 	}
 }
 
@@ -50,6 +54,7 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 		return nil, fmt.Errorf("contactmsgproto.NewMessageSvc error: %w", err)
 	}
 
+	// 触发器：关联会话附件
 	if svc.emitters.evtLogSessionAttachment, err = ebus.Emitter(&myevent.EvtLogSessionAttachment{}); err != nil {
 		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
 	}
@@ -57,6 +62,26 @@ func NewContactService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchi
 	// 触发器：发送离线消息
 	if svc.emitters.evtPushDepositContactMessage, err = ebus.Emitter(&myevent.EvtPushDepositContactMessage{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit msg emitter error: %v", err)
+	}
+
+	// 触发器：删除会话资源
+	if svc.emitters.evtClearSessionResources, err = ebus.Emitter(&myevent.EvtClearSessionResources{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	}
+
+	// 触发器：删除会话文件
+	if svc.emitters.evtClearSessionFiles, err = ebus.Emitter(&myevent.EvtClearSessionFiles{}); err != nil {
+		return nil, fmt.Errorf("set send resource request emitter error: %w", err)
+	}
+
+	// 触发器：清空会话
+	if svc.emitters.evtClearSession, err = ebus.Emitter(&myevent.EvtClearSession{}); err != nil {
+		return nil, fmt.Errorf("set clear session emitter error: %w", err)
+	}
+
+	// 触发器：删除会话
+	if svc.emitters.evtDeleteSession, err = ebus.Emitter(&myevent.EvtDeleteSession{}); err != nil {
+		return nil, fmt.Errorf("set delete session emitter error: %w", err)
 	}
 
 	return svc, nil
@@ -118,6 +143,51 @@ func (c *ContactSvc) AgreeAddContact(ctx context.Context, peer0 *mytype.Peer) er
 	return c.contactProto.AgreeAddContact(ctx, peer0)
 }
 
-func (c *ContactSvc) DeleteContact(ctx context.Context, peerID peer.ID) error {
-	return c.contactProto.DeleteContact(ctx, peerID)
+// DeleteContact 删除联系人（附件、消息、会话）
+func (c *ContactSvc) DeleteContact(ctx context.Context, contactID peer.ID) error {
+
+	sessionID := mytype.ContactSessionID(contactID)
+
+	// 删除联系人会话
+	if err := c.contactProto.DeleteContact(ctx, contactID); err != nil {
+		return fmt.Errorf("proto.DeleteContact error: %w", err)
+	}
+
+	// 删除会话
+	resultCh := make(chan error, 1)
+	if err := c.emitters.evtDeleteSession.Emit(myevent.EvtDeleteSession{
+		SessionID: sessionID.String(),
+		Result:    resultCh,
+	}); err != nil {
+		return fmt.Errorf("emit delete session error: %w", err)
+	}
+	if err := <-resultCh; err != nil {
+		return fmt.Errorf("delete session error: %w", err)
+	}
+
+	// 删除会话资源
+	resultCh1 := make(chan error, 1)
+	if err := c.emitters.evtClearSessionResources.Emit(myevent.EvtClearSessionResources{
+		SessionID: sessionID.String(),
+		Result:    resultCh1,
+	}); err != nil {
+		return fmt.Errorf("emit clear session resources error: %w", err)
+	}
+	if err := <-resultCh1; err != nil {
+		return fmt.Errorf("clear session resources error: %w", err)
+	}
+
+	// 删除会话文件
+	resultCh2 := make(chan error, 1)
+	if err := c.emitters.evtClearSessionFiles.Emit(myevent.EvtClearSessionFiles{
+		SessionID: sessionID.String(),
+		Result:    resultCh2,
+	}); err != nil {
+		return fmt.Errorf("emit clear session files error: %w", err)
+	}
+	if err := <-resultCh2; err != nil {
+		return fmt.Errorf("clear session files error: %w", err)
+	}
+
+	return nil
 }

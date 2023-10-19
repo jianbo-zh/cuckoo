@@ -69,6 +69,23 @@ func (f *FileDataStore) SaveSessionResource(ctx context.Context, sessionID strin
 	return nil
 }
 
+func (f *FileDataStore) RemoveSessionResource(ctx context.Context, sessionID string, resourceID string) error {
+	batch, err := f.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("ds batch error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, fileDsKey.SessionResourceKey(sessionID, resourceID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, fileDsKey.FileSessionKey(resourceID, sessionID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
+	}
+
+	return batch.Commit(ctx)
+}
+
 func (f *FileDataStore) GetSessionResourceIDs(ctx context.Context, sessionID string) ([]string, error) {
 	prefix := fileDsKey.SessionResourcePrefix(sessionID)
 	results, err := f.Query(ctx, query.Query{
@@ -121,6 +138,49 @@ func (f *FileDataStore) SaveSessionFile(ctx context.Context, sessionID string, f
 	return nil
 }
 
+func (f *FileDataStore) RemoveSessionFile(ctx context.Context, sessionID string, fileID string) error {
+	batch, err := f.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("ds batch error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, fileDsKey.SessionFileKey(sessionID, fileID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, fileDsKey.FileSessionKey(fileID, sessionID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, fileDsKey.SessionFileTimeKey(sessionID, fileID)); err != nil {
+		return fmt.Errorf("batch.Delete error: %w", err)
+	}
+
+	return batch.Commit(ctx)
+}
+
+func (f *FileDataStore) GetSessionFileIDs(ctx context.Context, sessionID string) ([]string, error) {
+	prefix := fileDsKey.SessionFilePrefix(sessionID)
+	results, err := f.Query(ctx, query.Query{
+		Prefix:   prefix,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ds query error: %w", err)
+	}
+
+	var fileIDs []string
+	for result := range results.Next() {
+		if result.Error != nil {
+			return nil, fmt.Errorf("results.Next error: %w", result.Error)
+		}
+
+		fileIDs = append(fileIDs, strings.TrimPrefix(result.Key, prefix))
+	}
+
+	return fileIDs, nil
+}
+
 func (f *FileDataStore) GetSessionFiles(ctx context.Context, sessionID string, keywords string, offset int, limit int) ([]*pb.FileInfo, error) {
 	prefix := fileDsKey.SessionFileTimePrefix(sessionID)
 	results, err := f.Query(ctx, query.Query{
@@ -154,25 +214,4 @@ func (f *FileDataStore) GetSessionFiles(ctx context.Context, sessionID string, k
 	}
 
 	return files, nil
-}
-
-func (f *FileDataStore) RemoveSessionFile(ctx context.Context, sessionID string, fileID string) error {
-	batch, err := f.Batch(ctx)
-	if err != nil {
-		return fmt.Errorf("ds batch error: %w", err)
-	}
-
-	if err := batch.Delete(ctx, fileDsKey.SessionFileKey(sessionID, fileID)); err != nil {
-		return fmt.Errorf("batch.Delete error: %w", err)
-	}
-
-	if err := batch.Delete(ctx, fileDsKey.FileSessionKey(fileID, sessionID)); err != nil {
-		return fmt.Errorf("batch.Delete error: %w", err)
-	}
-
-	if err := batch.Delete(ctx, fileDsKey.SessionFileTimeKey(sessionID, fileID)); err != nil {
-		return fmt.Errorf("batch.Delete error: %w", err)
-	}
-
-	return batch.Commit(ctx)
 }

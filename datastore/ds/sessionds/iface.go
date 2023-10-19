@@ -8,6 +8,8 @@ import (
 
 type SessionIface interface {
 	SetSessionID(ctx context.Context, sessionID string) error
+	ClearSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID string) error
 	GetSessionIDs(ctx context.Context) ([]string, error)
 	GetLastMessage(ctx context.Context, sessionID string) (*pb.SessionLastMessage, error)
 	GetUnreads(ctx context.Context, sessionID string) (int, error)

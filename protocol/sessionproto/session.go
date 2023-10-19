@@ -7,20 +7,79 @@ import (
 
 	ipfsds "github.com/ipfs/go-datastore"
 	ds "github.com/jianbo-zh/dchat/datastore/ds/sessionds"
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/sessionpb"
+	"github.com/libp2p/go-libp2p/core/event"
 )
 
 type SessionProto struct {
 	data ds.SessionIface
 }
 
-func NewSessionProto(ids ipfsds.Batching) (*SessionProto, error) {
+func NewSessionProto(ids ipfsds.Batching, ebus event.Bus) (*SessionProto, error) {
 	sessionProto := SessionProto{
 		data: ds.SessionWrap(ids),
 	}
+	// 订阅器
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtClearSession), new(myevent.EvtDeleteSession)})
+	if err != nil {
+		return nil, fmt.Errorf("ebus subscribe error: %w", err)
+	}
+
+	go sessionProto.subscribeHandler(context.Background(), sub)
 
 	return &sessionProto, nil
+}
+
+func (s *SessionProto) subscribeHandler(ctx context.Context, sub event.Subscription) {
+	defer sub.Close()
+
+	for {
+		select {
+		case e, ok := <-sub.Out():
+			if !ok {
+				return
+			}
+
+			switch evt := e.(type) {
+			case myevent.EvtClearSession:
+				go s.handleClearSessionEvent(ctx, evt)
+
+			case myevent.EvtDeleteSession:
+				go s.handleDeleteSessionEvent(ctx, evt)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *SessionProto) handleClearSessionEvent(ctx context.Context, evt myevent.EvtClearSession) {
+	var resultErr error
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	if err := s.data.ClearSession(ctx, evt.SessionID); err != nil {
+		resultErr = fmt.Errorf("data.ClearSession error: %w", err)
+		return
+	}
+}
+
+func (s *SessionProto) handleDeleteSessionEvent(ctx context.Context, evt myevent.EvtDeleteSession) {
+	var resultErr error
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	if err := s.data.DeleteSession(ctx, evt.SessionID); err != nil {
+		resultErr = fmt.Errorf("data.DeleteSession error: %w", err)
+		return
+	}
 }
 
 func (s *SessionProto) SetSessionID(ctx context.Context, sessionID string) error {

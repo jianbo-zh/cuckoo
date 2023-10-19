@@ -38,6 +38,44 @@ func (s *SessionDataStore) SetSessionID(ctx context.Context, sessionID string) e
 	return nil
 }
 
+func (s *SessionDataStore) ClearSession(ctx context.Context, sessionID string) error {
+	batch, err := s.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("ds batch error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, sessionDsKey.LastMsgKey(sessionID)); err != nil {
+		return fmt.Errorf("ds delete session last msg key error: %w", err)
+	}
+
+	if err := batch.Put(ctx, sessionDsKey.UnreadsKey(sessionID), []byte(strconv.FormatInt(0, 10))); err != nil {
+		return fmt.Errorf("ds delete session unreads key error: %w", err)
+	}
+
+	return batch.Commit(ctx)
+}
+
+func (s *SessionDataStore) DeleteSession(ctx context.Context, sessionID string) error {
+	batch, err := s.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("ds batch error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, sessionDsKey.LastMsgKey(sessionID)); err != nil {
+		return fmt.Errorf("ds delete session last msg key error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, sessionDsKey.UnreadsKey(sessionID)); err != nil {
+		return fmt.Errorf("ds delete session unreads key error: %w", err)
+	}
+
+	if err := batch.Delete(ctx, sessionDsKey.ListKey(sessionID)); err != nil {
+		return fmt.Errorf("ds delete session key error: %w", err)
+	}
+
+	return batch.Commit(ctx)
+}
+
 func (s *SessionDataStore) GetSessionIDs(ctx context.Context) ([]string, error) {
 	results, err := s.Query(ctx, query.Query{
 		Prefix: sessionDsKey.ListPrefix(),

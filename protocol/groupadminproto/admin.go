@@ -268,6 +268,10 @@ func (a *AdminProto) broadcastMessage(groupID string, msg *pb.GroupLog, excludeP
 
 	connectPeerIDs := a.getConnectPeers(groupID)
 	fmt.Printf("get connect peers: %v\n", connectPeerIDs)
+	if len(connectPeerIDs) == 0 {
+		// 这里不要报错，报错也不能完全解决问题（比如：不退群直接把软件删除了呢），可以靠关联日志同步来弥补
+		return nil
+	}
 
 	for _, peerID := range connectPeerIDs {
 		if len(excludePeerIDs) > 0 {
@@ -604,12 +608,12 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *mytype.Account, gro
 		return fmt.Errorf("data save log error: %w", err)
 	}
 
-	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
-		return fmt.Errorf("broadcast msg error: %w", err)
-	}
-
 	if err = a.data.SetState(ctx, groupID, mytype.GroupStateExit); err != nil {
 		return fmt.Errorf("set state exit error: %w", err)
+	}
+
+	if err = a.broadcastMessage(groupID, &pbmsg); err != nil {
+		return fmt.Errorf("broadcast msg error: %w", err)
 	}
 
 	return nil

@@ -32,6 +32,12 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 
 			case myevent.EvtSaveResourceData:
 				go f.handleSaveResourceDataEvent(ctx, evt)
+
+			case myevent.EvtClearSessionResources:
+				go f.handleClearSessionResourcesEvent(ctx, evt)
+
+			case myevent.EvtClearSessionFiles:
+				go f.handleClearSessionFilesEvent(ctx, evt)
 			}
 
 		case <-ctx.Done():
@@ -63,6 +69,54 @@ func (f *FileProto) handleGetResourceDataEvent(ctx context.Context, evt myevent.
 	result.Data = bs
 }
 
+// handleClearSessionResourcesEvent 删除会话资源
+func (f *FileProto) handleClearSessionResourcesEvent(ctx context.Context, evt myevent.EvtClearSessionResources) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	// 查找资源
+	resourceIDs, err := f.data.GetSessionResourceIDs(ctx, evt.SessionID)
+	if err != nil {
+		resultErr = fmt.Errorf("data.GetSessionResourceIDs error: %w", err)
+		return
+	}
+	if len(resourceIDs) > 0 {
+		if err := f.DeleteSessionResources(ctx, evt.SessionID, resourceIDs); err != nil {
+			resultErr = fmt.Errorf("DeleteSessionResources error: %w", err)
+			return
+		}
+	}
+}
+
+// handleClearSessionFilesEvent 删除会话文件
+func (f *FileProto) handleClearSessionFilesEvent(ctx context.Context, evt myevent.EvtClearSessionFiles) {
+	var resultErr error
+
+	defer func() {
+		evt.Result <- resultErr
+		close(evt.Result)
+	}()
+
+	// 查找文件
+	fileIDs, err := f.data.GetSessionFileIDs(ctx, evt.SessionID)
+	if err != nil {
+		resultErr = fmt.Errorf("data.GetSessionFileIDs error: %w", err)
+		return
+	}
+
+	// 删除文件
+	if len(fileIDs) > 0 {
+		if err := f.DeleteSessionFiles(ctx, evt.SessionID, fileIDs); err != nil {
+			resultErr = fmt.Errorf("DeleteSessionFiles error: %w", err)
+			return
+		}
+	}
+}
+
 // handleSaveResourceDataEvent 保存资源
 func (f *FileProto) handleSaveResourceDataEvent(ctx context.Context, evt myevent.EvtSaveResourceData) {
 	var resultErr error
@@ -84,6 +138,11 @@ func (f *FileProto) handleSaveResourceDataEvent(ctx context.Context, evt myevent
 
 	if err := os.WriteFile(file, evt.Data, 0755); err != nil {
 		resultErr = fmt.Errorf("os.WriteFile error: %w", err)
+		return
+	}
+
+	if err := f.data.SaveSessionResource(ctx, evt.SessionID, evt.ResourceID); err != nil {
+		resultErr = fmt.Errorf("save session resource error: %w", err)
 		return
 	}
 }
