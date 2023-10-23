@@ -3,6 +3,7 @@ package myhost
 import (
 	"time"
 
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -63,8 +64,12 @@ func (h *MyHost) OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) ma
 }
 
 func (h *MyHost) online(peerID peer.ID) {
-	h.statsMutex.Lock()
+	isOnline := false
 
+	h.statsMutex.Lock()
+	if _, exists := h.onlineMap[peerID]; !exists {
+		isOnline = true
+	}
 	h.onlineMap[peerID] = time.Now()
 	delete(h.offlineMap, peerID)
 
@@ -83,13 +88,35 @@ func (h *MyHost) online(peerID peer.ID) {
 			}
 		}
 	}
-
 	h.statsMutex.Unlock()
+
+	if isOnline {
+		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
+			PeerID: peerID,
+			Online: true,
+		}); err != nil {
+			log.Errorf("emit EvtPeerStateChanged error: %w", err)
+		}
+	}
 }
 
 func (h *MyHost) offline(peerID peer.ID) {
+	isOffline := false
+
 	h.statsMutex.Lock()
+	if _, exists := h.offlineMap[peerID]; !exists {
+		isOffline = true
+	}
 	h.offlineMap[peerID] = time.Now()
 	delete(h.onlineMap, peerID)
 	h.statsMutex.Unlock()
+
+	if isOffline {
+		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
+			PeerID: peerID,
+			Online: false,
+		}); err != nil {
+			log.Errorf("emit EvtPeerStateChanged error: %w", err)
+		}
+	}
 }

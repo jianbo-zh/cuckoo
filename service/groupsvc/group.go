@@ -143,7 +143,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 						if err != nil {
 							log.Errorf("get member ids error: %v", err)
 						}
-						acptMemeberIDs, err := g.adminProto.GetAgreeMemberIDs(ctx, groupID)
+						acptPeerIDs, err := g.adminProto.GetAgreePeerIDs(ctx, groupID)
 						if err != nil {
 							log.Errorf("get accept member ids error: %v", err)
 							return
@@ -151,7 +151,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 						groups = append(groups, myevent.Groups{
 							GroupID:     groupID,
 							PeerIDs:     connMemberIDs,
-							AcptPeerIDs: acptMemeberIDs,
+							AcptPeerIDs: acptPeerIDs,
 						})
 					}
 
@@ -231,8 +231,26 @@ func (g *GroupService) GetGroupOnlineMemberIDs(ctx context.Context, groupID stri
 	return onlineMemberIDs, nil
 }
 
-// AgreeJoinGroup 同意加入群
-func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, lamptime uint64) error {
+// InviteJoinGroup 邀请进群
+func (g *GroupService) InviteJoinGroup(ctx context.Context, groupID string, contactIDs []peer.ID, content string) error {
+
+	account, err := g.accountGetter.GetAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("svc get account error: %w", err)
+	}
+
+	contacts, err := g.contactSvc.GetContactsByPeerIDs(ctx, contactIDs)
+	if err != nil {
+		return fmt.Errorf("svc.GetContact error: %w", err)
+	}
+
+	fmt.Println("222")
+
+	return g.adminProto.InviteJoinGroup(ctx, account, groupID, contacts, content)
+}
+
+// AgreeJoinGroup 同意进群
+func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, groupName string, groupAvatar string, groupLog []byte) error {
 
 	account, err := g.accountGetter.GetAccount(ctx)
 	if err != nil {
@@ -245,10 +263,10 @@ func (g *GroupService) AgreeJoinGroup(ctx context.Context, groupID string, group
 		Avatar: groupAvatar,
 	}
 
-	return g.adminProto.AgreeJoinGroup(ctx, account, group, lamptime)
+	return g.adminProto.AgreeJoinGroup(ctx, account, group, groupLog)
 }
 
-// 退出群
+// ExitGroup 退出群
 func (g *GroupService) ExitGroup(ctx context.Context, groupID string) error {
 
 	account, err := g.accountGetter.GetAccount(ctx)
@@ -333,11 +351,6 @@ func (g *GroupService) DisbandGroup(ctx context.Context, groupID string) error {
 	return nil
 }
 
-// 群列表
-func (g *GroupService) GetGroups(ctx context.Context) ([]mytype.Group, error) {
-	return g.adminProto.GetSessions(ctx)
-}
-
 // 设置群名称
 func (g *GroupService) SetGroupName(ctx context.Context, groupID string, name string) error {
 	return g.adminProto.SetGroupName(ctx, groupID, name)
@@ -378,8 +391,8 @@ func (g *GroupService) ReviewJoinGroup(ctx context.Context, groupID string, memb
 }
 
 // 移除成员
-func (g *GroupService) RemoveGroupMember(ctx context.Context, groupID string, memberID peer.ID) error {
-	return g.adminProto.RemoveMember(ctx, groupID, memberID)
+func (g *GroupService) RemoveGroupMember(ctx context.Context, groupID string, memberIDs []peer.ID) error {
+	return g.adminProto.RemoveGroupMember(ctx, groupID, memberIDs)
 }
 
 // 成员列表

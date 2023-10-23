@@ -2,9 +2,11 @@ package myhost
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -14,8 +16,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	logging "github.com/jianbo-zh/go-log"
 	ma "github.com/multiformats/go-multiaddr"
 )
+
+var log = logging.Logger("myhost")
 
 type Host interface {
 	host.Host
@@ -32,14 +37,27 @@ type MyHost struct {
 	statsMutex sync.RWMutex
 	onlineMap  map[peer.ID]time.Time
 	offlineMap map[peer.ID]time.Time
+
+	emitters struct {
+		evtPeerStateChanged event.Emitter
+	}
 }
 
-func NewHost(h host.Host) Host {
-	return &MyHost{
+func NewHost(h host.Host, ebus event.Bus) (Host, error) {
+	var err error
+
+	lhost := MyHost{
 		basehost:   h,
 		onlineMap:  make(map[peer.ID]time.Time),
 		offlineMap: make(map[peer.ID]time.Time),
 	}
+
+	if lhost.emitters.evtPeerStateChanged, err = ebus.Emitter(&myevent.EvtPeerStateChanged{}); err != nil {
+		return nil, fmt.Errorf("ebus.Emitter error: %w", err)
+	}
+
+	return &lhost, nil
+
 }
 
 func (h *MyHost) ID() peer.ID {

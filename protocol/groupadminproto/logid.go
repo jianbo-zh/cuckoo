@@ -9,7 +9,7 @@ import (
 )
 
 func logIdCreate(lamptime uint64, creator peer.ID) string {
-	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwCreate, creator.String())
+	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwCreator, creator.String())
 }
 func logIdName(lamptime uint64, creator peer.ID) string {
 	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwName, creator.String())
@@ -28,7 +28,7 @@ func logIdAutojoin(lamptime uint64, creator peer.ID) string {
 }
 
 func logIdDepositPeer(lamptime uint64, depositPeer peer.ID) string {
-	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwDepositPeer, depositPeer.String())
+	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwDepositAddress, depositPeer.String())
 }
 
 func logIdMember(lamptime uint64, creator peer.ID) string {

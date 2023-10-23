@@ -11,7 +11,7 @@ type GetResourceDataResult struct {
 }
 
 // EvSyncResource 同步资源文件
-type EvSyncResource struct {
+type EvtSyncResource struct {
 	ResourceID string
 	PeerIDs    []peer.ID
 }

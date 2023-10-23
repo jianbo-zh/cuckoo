@@ -1332,7 +1332,6 @@ const (
 	GroupSvc_CreateGroup_FullMethodName            = "/chat.GroupSvc/CreateGroup"
 	GroupSvc_GetGroup_FullMethodName               = "/chat.GroupSvc/GetGroup"
 	GroupSvc_GetGroupDetail_FullMethodName         = "/chat.GroupSvc/GetGroupDetail"
-	GroupSvc_GetGroups_FullMethodName              = "/chat.GroupSvc/GetGroups"
 	GroupSvc_SetGroupName_FullMethodName           = "/chat.GroupSvc/SetGroupName"
 	GroupSvc_SetGroupAvatar_FullMethodName         = "/chat.GroupSvc/SetGroupAvatar"
 	GroupSvc_SetGroupNotice_FullMethodName         = "/chat.GroupSvc/SetGroupNotice"
@@ -1342,6 +1341,7 @@ const (
 	GroupSvc_DeleteGroup_FullMethodName            = "/chat.GroupSvc/DeleteGroup"
 	GroupSvc_DisbandGroup_FullMethodName           = "/chat.GroupSvc/DisbandGroup"
 	GroupSvc_GetGroupMembers_FullMethodName        = "/chat.GroupSvc/GetGroupMembers"
+	GroupSvc_InviteJoinGroup_FullMethodName        = "/chat.GroupSvc/InviteJoinGroup"
 	GroupSvc_RemoveGroupMember_FullMethodName      = "/chat.GroupSvc/RemoveGroupMember"
 	GroupSvc_GetGroupMessage_FullMethodName        = "/chat.GroupSvc/GetGroupMessage"
 	GroupSvc_GetGroupMessages_FullMethodName       = "/chat.GroupSvc/GetGroupMessages"
@@ -1365,8 +1365,6 @@ type GroupSvcClient interface {
 	GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupReply, error)
 	// 获取群详情
 	GetGroupDetail(ctx context.Context, in *GetGroupDetailRequest, opts ...grpc.CallOption) (*GetGroupDetailReply, error)
-	// 获取群列表
-	GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error)
 	// 设置名称
 	SetGroupName(ctx context.Context, in *SetGroupNameRequest, opts ...grpc.CallOption) (*SetGroupNameReply, error)
 	// 设置头像（管理员操作）
@@ -1385,6 +1383,8 @@ type GroupSvcClient interface {
 	DisbandGroup(ctx context.Context, in *DisbandGroupRequest, opts ...grpc.CallOption) (*DisbandGroupReply, error)
 	// 群成员列表
 	GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error)
+	// 邀请加入群
+	InviteJoinGroup(ctx context.Context, in *InviteJoinGroupRequest, opts ...grpc.CallOption) (*InviteJoinGroupReply, error)
 	// 移除群成员
 	RemoveGroupMember(ctx context.Context, in *RemoveGroupMemberRequest, opts ...grpc.CallOption) (*RemoveGroupMemberReply, error)
 	// 获取聊天记录
@@ -1438,15 +1438,6 @@ func (c *groupSvcClient) GetGroup(ctx context.Context, in *GetGroupRequest, opts
 func (c *groupSvcClient) GetGroupDetail(ctx context.Context, in *GetGroupDetailRequest, opts ...grpc.CallOption) (*GetGroupDetailReply, error) {
 	out := new(GetGroupDetailReply)
 	err := c.cc.Invoke(ctx, GroupSvc_GetGroupDetail_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *groupSvcClient) GetGroups(ctx context.Context, in *GetGroupsRequest, opts ...grpc.CallOption) (*GetGroupsReply, error) {
-	out := new(GetGroupsReply)
-	err := c.cc.Invoke(ctx, GroupSvc_GetGroups_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1528,6 +1519,15 @@ func (c *groupSvcClient) DisbandGroup(ctx context.Context, in *DisbandGroupReque
 func (c *groupSvcClient) GetGroupMembers(ctx context.Context, in *GetGroupMembersRequest, opts ...grpc.CallOption) (*GetGroupMembersReply, error) {
 	out := new(GetGroupMembersReply)
 	err := c.cc.Invoke(ctx, GroupSvc_GetGroupMembers_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupSvcClient) InviteJoinGroup(ctx context.Context, in *InviteJoinGroupRequest, opts ...grpc.CallOption) (*InviteJoinGroupReply, error) {
+	out := new(InviteJoinGroupReply)
+	err := c.cc.Invoke(ctx, GroupSvc_InviteJoinGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1781,8 +1781,6 @@ type GroupSvcServer interface {
 	GetGroup(context.Context, *GetGroupRequest) (*GetGroupReply, error)
 	// 获取群详情
 	GetGroupDetail(context.Context, *GetGroupDetailRequest) (*GetGroupDetailReply, error)
-	// 获取群列表
-	GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error)
 	// 设置名称
 	SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error)
 	// 设置头像（管理员操作）
@@ -1801,6 +1799,8 @@ type GroupSvcServer interface {
 	DisbandGroup(context.Context, *DisbandGroupRequest) (*DisbandGroupReply, error)
 	// 群成员列表
 	GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error)
+	// 邀请加入群
+	InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error)
 	// 移除群成员
 	RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error)
 	// 获取聊天记录
@@ -1839,9 +1839,6 @@ func (UnimplementedGroupSvcServer) GetGroup(context.Context, *GetGroupRequest) (
 func (UnimplementedGroupSvcServer) GetGroupDetail(context.Context, *GetGroupDetailRequest) (*GetGroupDetailReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupDetail not implemented")
 }
-func (UnimplementedGroupSvcServer) GetGroups(context.Context, *GetGroupsRequest) (*GetGroupsReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetGroups not implemented")
-}
 func (UnimplementedGroupSvcServer) SetGroupName(context.Context, *SetGroupNameRequest) (*SetGroupNameReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetGroupName not implemented")
 }
@@ -1868,6 +1865,9 @@ func (UnimplementedGroupSvcServer) DisbandGroup(context.Context, *DisbandGroupRe
 }
 func (UnimplementedGroupSvcServer) GetGroupMembers(context.Context, *GetGroupMembersRequest) (*GetGroupMembersReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGroupMembers not implemented")
+}
+func (UnimplementedGroupSvcServer) InviteJoinGroup(context.Context, *InviteJoinGroupRequest) (*InviteJoinGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InviteJoinGroup not implemented")
 }
 func (UnimplementedGroupSvcServer) RemoveGroupMember(context.Context, *RemoveGroupMemberRequest) (*RemoveGroupMemberReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveGroupMember not implemented")
@@ -1965,24 +1965,6 @@ func _GroupSvc_GetGroupDetail_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GroupSvcServer).GetGroupDetail(ctx, req.(*GetGroupDetailRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GroupSvc_GetGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGroupsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GroupSvcServer).GetGroups(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GroupSvc_GetGroups_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GroupSvcServer).GetGroups(ctx, req.(*GetGroupsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2145,6 +2127,24 @@ func _GroupSvc_GetGroupMembers_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GroupSvcServer).GetGroupMembers(ctx, req.(*GetGroupMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupSvc_InviteJoinGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InviteJoinGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupSvcServer).InviteJoinGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupSvc_InviteJoinGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupSvcServer).InviteJoinGroup(ctx, req.(*InviteJoinGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2385,10 +2385,6 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GroupSvc_GetGroupDetail_Handler,
 		},
 		{
-			MethodName: "GetGroups",
-			Handler:    _GroupSvc_GetGroups_Handler,
-		},
-		{
 			MethodName: "SetGroupName",
 			Handler:    _GroupSvc_SetGroupName_Handler,
 		},
@@ -2423,6 +2419,10 @@ var GroupSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetGroupMembers",
 			Handler:    _GroupSvc_GetGroupMembers_Handler,
+		},
+		{
+			MethodName: "InviteJoinGroup",
+			Handler:    _GroupSvc_InviteJoinGroup_Handler,
 		},
 		{
 			MethodName: "RemoveGroupMember",
@@ -3133,21 +3133,30 @@ var ConfigSvc_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	FileSvc_DownloadSessionFile_FullMethodName = "/chat.FileSvc/DownloadSessionFile"
-	FileSvc_GetSessionFiles_FullMethodName     = "/chat.FileSvc/GetSessionFiles"
-	FileSvc_DeleteSessionFile_FullMethodName   = "/chat.FileSvc/DeleteSessionFile"
+	FileSvc_DownloadContactFile_FullMethodName = "/chat.FileSvc/DownloadContactFile"
+	FileSvc_DownloadGroupFile_FullMethodName   = "/chat.FileSvc/DownloadGroupFile"
+	FileSvc_GetContactFiles_FullMethodName     = "/chat.FileSvc/GetContactFiles"
+	FileSvc_GetGroupFiles_FullMethodName       = "/chat.FileSvc/GetGroupFiles"
+	FileSvc_DeleteContactFile_FullMethodName   = "/chat.FileSvc/DeleteContactFile"
+	FileSvc_DeleteGroupFile_FullMethodName     = "/chat.FileSvc/DeleteGroupFile"
 )
 
 // FileSvcClient is the client API for FileSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileSvcClient interface {
-	// 下载会话文件文件
-	DownloadSessionFile(ctx context.Context, in *DownloadSessionFileRequest, opts ...grpc.CallOption) (*DownloadSessionFileReply, error)
-	// 获取会话文件
-	GetSessionFiles(ctx context.Context, in *GetSessionFilesRequest, opts ...grpc.CallOption) (*GetSessionFilesReply, error)
-	// 删除会话文件
-	DeleteSessionFile(ctx context.Context, in *DeleteSessionFileRequest, opts ...grpc.CallOption) (*DeleteSessionFileReply, error)
+	// 下载联系人文件
+	DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadFileReply, error)
+	// 下载群组文件
+	DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadFileReply, error)
+	// 获取联系人文件
+	GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetFilesReply, error)
+	// 获取群组文件
+	GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetFilesReply, error)
+	// 删除联系人文件
+	DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteFileReply, error)
+	// 删除群组文件
+	DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteFileReply, error)
 }
 
 type fileSvcClient struct {
@@ -3158,27 +3167,54 @@ func NewFileSvcClient(cc grpc.ClientConnInterface) FileSvcClient {
 	return &fileSvcClient{cc}
 }
 
-func (c *fileSvcClient) DownloadSessionFile(ctx context.Context, in *DownloadSessionFileRequest, opts ...grpc.CallOption) (*DownloadSessionFileReply, error) {
-	out := new(DownloadSessionFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DownloadSessionFile_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) DownloadContactFile(ctx context.Context, in *DownloadContactFileRequest, opts ...grpc.CallOption) (*DownloadFileReply, error) {
+	out := new(DownloadFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DownloadContactFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileSvcClient) GetSessionFiles(ctx context.Context, in *GetSessionFilesRequest, opts ...grpc.CallOption) (*GetSessionFilesReply, error) {
-	out := new(GetSessionFilesReply)
-	err := c.cc.Invoke(ctx, FileSvc_GetSessionFiles_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) DownloadGroupFile(ctx context.Context, in *DownloadGroupFileRequest, opts ...grpc.CallOption) (*DownloadFileReply, error) {
+	out := new(DownloadFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DownloadGroupFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fileSvcClient) DeleteSessionFile(ctx context.Context, in *DeleteSessionFileRequest, opts ...grpc.CallOption) (*DeleteSessionFileReply, error) {
-	out := new(DeleteSessionFileReply)
-	err := c.cc.Invoke(ctx, FileSvc_DeleteSessionFile_FullMethodName, in, out, opts...)
+func (c *fileSvcClient) GetContactFiles(ctx context.Context, in *GetContactFilesRequest, opts ...grpc.CallOption) (*GetFilesReply, error) {
+	out := new(GetFilesReply)
+	err := c.cc.Invoke(ctx, FileSvc_GetContactFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) GetGroupFiles(ctx context.Context, in *GetGroupFilesRequest, opts ...grpc.CallOption) (*GetFilesReply, error) {
+	out := new(GetFilesReply)
+	err := c.cc.Invoke(ctx, FileSvc_GetGroupFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) DeleteContactFile(ctx context.Context, in *DeleteContactFileRequest, opts ...grpc.CallOption) (*DeleteFileReply, error) {
+	out := new(DeleteFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DeleteContactFile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fileSvcClient) DeleteGroupFile(ctx context.Context, in *DeleteGroupFileRequest, opts ...grpc.CallOption) (*DeleteFileReply, error) {
+	out := new(DeleteFileReply)
+	err := c.cc.Invoke(ctx, FileSvc_DeleteGroupFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3189,12 +3225,18 @@ func (c *fileSvcClient) DeleteSessionFile(ctx context.Context, in *DeleteSession
 // All implementations must embed UnimplementedFileSvcServer
 // for forward compatibility
 type FileSvcServer interface {
-	// 下载会话文件文件
-	DownloadSessionFile(context.Context, *DownloadSessionFileRequest) (*DownloadSessionFileReply, error)
-	// 获取会话文件
-	GetSessionFiles(context.Context, *GetSessionFilesRequest) (*GetSessionFilesReply, error)
-	// 删除会话文件
-	DeleteSessionFile(context.Context, *DeleteSessionFileRequest) (*DeleteSessionFileReply, error)
+	// 下载联系人文件
+	DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadFileReply, error)
+	// 下载群组文件
+	DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadFileReply, error)
+	// 获取联系人文件
+	GetContactFiles(context.Context, *GetContactFilesRequest) (*GetFilesReply, error)
+	// 获取群组文件
+	GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetFilesReply, error)
+	// 删除联系人文件
+	DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteFileReply, error)
+	// 删除群组文件
+	DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteFileReply, error)
 	mustEmbedUnimplementedFileSvcServer()
 }
 
@@ -3202,14 +3244,23 @@ type FileSvcServer interface {
 type UnimplementedFileSvcServer struct {
 }
 
-func (UnimplementedFileSvcServer) DownloadSessionFile(context.Context, *DownloadSessionFileRequest) (*DownloadSessionFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadSessionFile not implemented")
+func (UnimplementedFileSvcServer) DownloadContactFile(context.Context, *DownloadContactFileRequest) (*DownloadFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadContactFile not implemented")
 }
-func (UnimplementedFileSvcServer) GetSessionFiles(context.Context, *GetSessionFilesRequest) (*GetSessionFilesReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSessionFiles not implemented")
+func (UnimplementedFileSvcServer) DownloadGroupFile(context.Context, *DownloadGroupFileRequest) (*DownloadFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadGroupFile not implemented")
 }
-func (UnimplementedFileSvcServer) DeleteSessionFile(context.Context, *DeleteSessionFileRequest) (*DeleteSessionFileReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSessionFile not implemented")
+func (UnimplementedFileSvcServer) GetContactFiles(context.Context, *GetContactFilesRequest) (*GetFilesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContactFiles not implemented")
+}
+func (UnimplementedFileSvcServer) GetGroupFiles(context.Context, *GetGroupFilesRequest) (*GetFilesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupFiles not implemented")
+}
+func (UnimplementedFileSvcServer) DeleteContactFile(context.Context, *DeleteContactFileRequest) (*DeleteFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteContactFile not implemented")
+}
+func (UnimplementedFileSvcServer) DeleteGroupFile(context.Context, *DeleteGroupFileRequest) (*DeleteFileReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteGroupFile not implemented")
 }
 func (UnimplementedFileSvcServer) mustEmbedUnimplementedFileSvcServer() {}
 
@@ -3224,56 +3275,110 @@ func RegisterFileSvcServer(s grpc.ServiceRegistrar, srv FileSvcServer) {
 	s.RegisterService(&FileSvc_ServiceDesc, srv)
 }
 
-func _FileSvc_DownloadSessionFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DownloadSessionFileRequest)
+func _FileSvc_DownloadContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadContactFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).DownloadSessionFile(ctx, in)
+		return srv.(FileSvcServer).DownloadContactFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_DownloadSessionFile_FullMethodName,
+		FullMethod: FileSvc_DownloadContactFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DownloadSessionFile(ctx, req.(*DownloadSessionFileRequest))
+		return srv.(FileSvcServer).DownloadContactFile(ctx, req.(*DownloadContactFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FileSvc_GetSessionFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSessionFilesRequest)
+func _FileSvc_DownloadGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadGroupFileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).GetSessionFiles(ctx, in)
+		return srv.(FileSvcServer).DownloadGroupFile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_GetSessionFiles_FullMethodName,
+		FullMethod: FileSvc_DownloadGroupFile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).GetSessionFiles(ctx, req.(*GetSessionFilesRequest))
+		return srv.(FileSvcServer).DownloadGroupFile(ctx, req.(*DownloadGroupFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FileSvc_DeleteSessionFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSessionFileRequest)
+func _FileSvc_GetContactFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContactFilesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FileSvcServer).DeleteSessionFile(ctx, in)
+		return srv.(FileSvcServer).GetContactFiles(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FileSvc_DeleteSessionFile_FullMethodName,
+		FullMethod: FileSvc_GetContactFiles_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FileSvcServer).DeleteSessionFile(ctx, req.(*DeleteSessionFileRequest))
+		return srv.(FileSvcServer).GetContactFiles(ctx, req.(*GetContactFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_GetGroupFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).GetGroupFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_GetGroupFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).GetGroupFiles(ctx, req.(*GetGroupFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_DeleteContactFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteContactFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DeleteContactFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DeleteContactFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DeleteContactFile(ctx, req.(*DeleteContactFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FileSvc_DeleteGroupFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteGroupFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FileSvcServer).DeleteGroupFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FileSvc_DeleteGroupFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FileSvcServer).DeleteGroupFile(ctx, req.(*DeleteGroupFileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3286,16 +3391,28 @@ var FileSvc_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*FileSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "DownloadSessionFile",
-			Handler:    _FileSvc_DownloadSessionFile_Handler,
+			MethodName: "DownloadContactFile",
+			Handler:    _FileSvc_DownloadContactFile_Handler,
 		},
 		{
-			MethodName: "GetSessionFiles",
-			Handler:    _FileSvc_GetSessionFiles_Handler,
+			MethodName: "DownloadGroupFile",
+			Handler:    _FileSvc_DownloadGroupFile_Handler,
 		},
 		{
-			MethodName: "DeleteSessionFile",
-			Handler:    _FileSvc_DeleteSessionFile_Handler,
+			MethodName: "GetContactFiles",
+			Handler:    _FileSvc_GetContactFiles_Handler,
+		},
+		{
+			MethodName: "GetGroupFiles",
+			Handler:    _FileSvc_GetGroupFiles_Handler,
+		},
+		{
+			MethodName: "DeleteContactFile",
+			Handler:    _FileSvc_DeleteContactFile_Handler,
+		},
+		{
+			MethodName: "DeleteGroupFile",
+			Handler:    _FileSvc_DeleteGroupFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

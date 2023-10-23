@@ -5,9 +5,17 @@ import (
 )
 
 type Groups struct {
-	GroupID     string
-	PeerIDs     []peer.ID
-	AcptPeerIDs []peer.ID
+	GroupID       string
+	PeerIDs       []peer.ID
+	AcptPeerIDs   []peer.ID
+	RefusePeerIDs map[peer.ID]string
+}
+
+type EvtGroupAdded struct {
+	ID             string
+	Name           string
+	Avatar         string
+	DepositAddress peer.ID
 }
 
 // EvtGroupConnectChange 成员连接状态改变
@@ -42,7 +50,8 @@ type EvtGroupsChange struct {
 
 // EvtGroupMemberChange 群成员发生改变
 type EvtGroupMemberChange struct {
-	GroupID     string
-	PeerIDs     []peer.ID
-	AcptPeerIDs []peer.ID
+	GroupID       string
+	PeerIDs       []peer.ID
+	AcptPeerIDs   []peer.ID
+	RefusePeerIDs map[peer.ID]string
 }

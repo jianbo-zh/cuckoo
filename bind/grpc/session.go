@@ -89,13 +89,13 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 			}
 			sessionList = append(sessionList, &proto.Session{
 				Id:      session.ID.String(),
-				Type:    proto.Session_ContactSession,
+				Type:    proto.SessionType_ContactSessionType,
 				RelId:   contactID.String(),
 				Name:    contact.Name,
 				Avatar:  contact.Avatar,
 				State:   encodeOnlineState(onlineStateMap[contactID]),
 				Lastmsg: session.Content,
-				Unreads: int64(session.Unreads),
+				Unreads: int32(session.Unreads),
 			})
 
 		case mytype.GroupSession:
@@ -106,13 +106,13 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 			}
 			sessionList = append(sessionList, &proto.Session{
 				Id:      session.ID.String(),
-				Type:    proto.Session_GroupSession,
+				Type:    proto.SessionType_GroupSessionType,
 				RelId:   groupID,
 				Name:    group.Name,
 				Avatar:  group.Avatar,
-				State:   proto.ConnState_UnknownState,
+				State:   proto.OnlineState_UnknownOnlineState,
 				Lastmsg: session.Username + ": " + session.Content,
-				Unreads: int64(session.Unreads),
+				Unreads: int32(session.Unreads),
 			})
 		default:
 			// nothing

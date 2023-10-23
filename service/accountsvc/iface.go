@@ -20,6 +20,7 @@ type AccountServiceIface interface {
 
 	// 获取在线状态
 	GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState
+	AsyncCheckOnlineState(peerID peer.ID)
 
 	// peer is stranger no contact
 	GetPeer(ctx context.Context, peerID peer.ID) (*mytype.Peer, error)

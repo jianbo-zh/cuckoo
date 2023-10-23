@@ -6,6 +6,7 @@ import (
 	"github.com/jianbo-zh/dchat/bind/grpc/proto"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/mytype"
 	goproto "google.golang.org/protobuf/proto"
 )
 
@@ -43,7 +44,13 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 		return fmt.Errorf("cuckoo.GetEbus error: %w", err)
 	}
 
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtReceiveContactMessage), new(myevent.EvtReceiveGroupMessage), new(myevent.EvtOnlineStateDiscover)})
+	sub, err := ebus.Subscribe([]any{
+		new(myevent.EvtReceiveContactMessage),
+		new(myevent.EvtReceiveGroupMessage),
+		new(myevent.EvtPeerStateChanged),
+		new(myevent.EvtSessionAdded),
+		new(myevent.EvtSessionUpdated),
+	})
 	if err != nil {
 		return fmt.Errorf("ebus.Subscribe error: %w", err)
 	}
@@ -62,7 +69,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 
 			reply := proto.SubscribeCommonEventReply{
 				Event: &proto.CommonEvent{
-					Type:    proto.CommonEvent_PeerMessage,
+					Type:    proto.CommonEvent_PeerMessageReceived,
 					Payload: payload,
 				},
 			}
@@ -85,7 +92,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 
 			reply := proto.SubscribeCommonEventReply{
 				Event: &proto.CommonEvent{
-					Type:    proto.CommonEvent_GroupMessage,
+					Type:    proto.CommonEvent_GroupMessageReceived,
 					Payload: payload,
 				},
 			}
@@ -97,20 +104,10 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 
 			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
 
-		case myevent.EvtOnlineStateDiscover:
-
-			var onlines []string
-			var offlines []string
-			for peerID, isOnline := range evt.OnlineState {
-				if isOnline {
-					onlines = append(onlines, peerID.String())
-				} else {
-					offlines = append(offlines, peerID.String())
-				}
-			}
-			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadOnlineState{
-				OnlinePeerIds:  onlines,
-				OfflinePeerIds: offlines,
+		case myevent.EvtPeerStateChanged:
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadPeerState{
+				PeerId: evt.PeerID.String(),
+				Online: evt.Online,
 			})
 			if err != nil {
 				return fmt.Errorf("proto.Marshal error: %w", err)
@@ -118,7 +115,76 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 
 			reply := proto.SubscribeCommonEventReply{
 				Event: &proto.CommonEvent{
-					Type:    proto.CommonEvent_OnlineState,
+					Type:    proto.CommonEvent_PeerStateChanged,
+					Payload: payload,
+				},
+			}
+
+			err = server.Send(&reply)
+			if err != nil {
+				return fmt.Errorf("server.Send error: %w", err)
+			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
+
+		case myevent.EvtSessionAdded:
+
+			var sessionType proto.SessionType
+			switch evt.Type {
+			case mytype.ContactSession:
+				sessionType = proto.SessionType_ContactSessionType
+			case mytype.GroupSession:
+				sessionType = proto.SessionType_GroupSessionType
+			default:
+				return fmt.Errorf("unknown session type")
+			}
+
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadSessionAdd{
+				Session: &proto.CommonEvent_AddSession{
+					SessionType: sessionType,
+					Id:          evt.ID,
+					Name:        evt.Name,
+					Avatar:      evt.Avatar,
+					RelId:       evt.RelID,
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("proto.Marshal error: %w", err)
+			}
+
+			reply := proto.SubscribeCommonEventReply{
+				Event: &proto.CommonEvent{
+					Type:    proto.CommonEvent_SessionAdded,
+					Payload: payload,
+				},
+			}
+
+			err = server.Send(&reply)
+			if err != nil {
+				return fmt.Errorf("server.Send error: %w", err)
+			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
+
+		case myevent.EvtSessionUpdated:
+			var sessionStates []*proto.CommonEvent_SessionState
+			for _, session := range evt.Sessions {
+				sessionStates = append(sessionStates, &proto.CommonEvent_SessionState{
+					Id:      session.ID,
+					LastMsg: session.LastMsg,
+					Unreads: int32(session.Unreads),
+				})
+			}
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadSessionUpdate{
+				SessionStates: sessionStates,
+			})
+			if err != nil {
+				return fmt.Errorf("proto.Marshal error: %w", err)
+			}
+
+			reply := proto.SubscribeCommonEventReply{
+				Event: &proto.CommonEvent{
+					Type:    proto.CommonEvent_SessionUpdated,
 					Payload: payload,
 				},
 			}

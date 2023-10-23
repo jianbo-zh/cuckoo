@@ -64,7 +64,7 @@ func NewCuckoo(ctx context.Context, conf *config.Config) (*Cuckoo, error) {
 	}
 	cuckoo.ebus = ebus
 
-	localhost, ddht, err := NewHost(ctx, bootEmitter, conf)
+	localhost, ddht, err := NewHost(ctx, bootEmitter, conf, ebus)
 	if err != nil {
 		return nil, fmt.Errorf("NewHost error: %s", err.Error())
 	}

@@ -42,6 +42,7 @@ type ContactProto struct {
 		evtSyncPeerMessage event.Emitter
 		evtApplyAddContact event.Emitter
 		evtSyncResource    event.Emitter
+		evtContactAdded    event.Emitter
 	}
 }
 
@@ -65,7 +66,11 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 		return nil, fmt.Errorf("set apply add contact emitter error: %w", err)
 	}
 
-	if contactsvc.emitters.evtSyncResource, err = eventBus.Emitter(&myevent.EvSyncResource{}); err != nil {
+	if contactsvc.emitters.evtSyncResource, err = eventBus.Emitter(&myevent.EvtSyncResource{}); err != nil {
+		return nil, fmt.Errorf("set check avatar emitter error: %w", err)
+	}
+
+	if contactsvc.emitters.evtContactAdded, err = eventBus.Emitter(&myevent.EvtContactAdded{}); err != nil {
 		return nil, fmt.Errorf("set check avatar emitter error: %w", err)
 	}
 
@@ -105,7 +110,7 @@ func (c *ContactProto) handler(stream network.Stream) {
 
 	if contact.Avatar != msg.Avatar {
 		// 触发检查是否需要同步头像
-		if err = c.emitters.evtSyncResource.Emit(myevent.EvSyncResource{
+		if err = c.emitters.evtSyncResource.Emit(myevent.EvtSyncResource{
 			ResourceID: msg.Avatar,
 			PeerIDs:    []peer.ID{remotePeerID},
 		}); err != nil {
@@ -131,6 +136,15 @@ func (c *ContactProto) handler(stream network.Stream) {
 			stream.Reset()
 			return
 		}
+
+		// 触发新联系人
+		c.emitters.evtContactAdded.Emit(myevent.EvtContactAdded{
+			ID:             peer.ID(contact.Id),
+			Name:           contact.Name,
+			Avatar:         contact.Avatar,
+			DepositAddress: peer.ID(contact.DepositAddress),
+		})
+
 	}
 
 	if err := c.data.UpdateContact(ctx, contact); err != nil {
@@ -292,7 +306,7 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 	}
 
 	// 触发检查是否需要同步头像
-	if err = c.emitters.evtSyncResource.Emit(myevent.EvSyncResource{
+	if err = c.emitters.evtSyncResource.Emit(myevent.EvtSyncResource{
 		ResourceID: recvmsg.Avatar,
 		PeerIDs:    []peer.ID{contactID},
 	}); err != nil {

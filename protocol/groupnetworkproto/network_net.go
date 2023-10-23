@@ -21,8 +21,9 @@ func (n *NetworkProto) initNetwork(groups []myevent.Groups) error {
 		for _, peerID := range group.PeerIDs {
 			if _, exists := n.groupPeers[group.GroupID]; !exists {
 				n.groupPeers[group.GroupID] = GroupPeer{
-					PeerIDs:     make(map[peer.ID]struct{}),
-					AcptPeerIDs: make(map[peer.ID]struct{}),
+					PeerIDs:       make(map[peer.ID]struct{}),
+					AcptPeerIDs:   make(map[peer.ID]struct{}),
+					RefusePeerIDs: make(map[peer.ID]struct{}),
 				}
 			}
 			n.groupPeers[group.GroupID].PeerIDs[peerID] = struct{}{}
@@ -60,6 +61,8 @@ func (n *NetworkProto) initNetwork(groups []myevent.Groups) error {
 }
 
 func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
+
+	fmt.Println("addNetwork...")
 
 	n.groupPeersMutex.Lock()
 	for _, group := range groups {
@@ -100,6 +103,7 @@ func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
 }
 
 func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
+	fmt.Println("delete network...")
 
 	n.groupPeersMutex.Lock()
 	for _, groupID := range groupIDs {
@@ -123,6 +127,7 @@ func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
 }
 
 func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPeerIDs []peer.ID) {
+	fmt.Println("update network...")
 
 	peerIDsMap := make(map[peer.ID]struct{}, len(peerIDs))
 	for _, peerID := range peerIDs {
@@ -230,8 +235,18 @@ Loop:
 
 	n.groupPeersMutex.RLock()
 	var onlinePeerIDs []peer.ID
+	var isOnlySelf bool
+	if len(n.groupPeers[groupID].PeerIDs) == 1 {
+		if _, exists := n.groupPeers[groupID].PeerIDs[hostID]; exists {
+			isOnlySelf = true
+		}
+	}
+
+	fmt.Println(n.groupPeers[groupID].PeerIDs)
+	fmt.Println(isOnlySelf)
+
 	for peerID := range onlinesMap {
-		if len(n.groupPeers[groupID].PeerIDs) == 0 { // 如果无主动连接Peer，则所有都可以连
+		if isOnlySelf { // 如果无主动连接Peer，则所有都可以连
 			onlinePeerIDs = append(onlinePeerIDs, peerID)
 
 		} else if _, exists := n.groupPeers[groupID].PeerIDs[peerID]; exists { // 有主动连接Peer，则检查是否在其中

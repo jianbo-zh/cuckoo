@@ -26,8 +26,9 @@ type ConnectPair struct {
 }
 
 type GroupPeer struct {
-	PeerIDs     map[peer.ID]struct{} // 正式成员，主动连接
-	AcptPeerIDs map[peer.ID]struct{} // 包含正式成员及准成员，（群主邀请，但可能还未接受）
+	PeerIDs       map[peer.ID]struct{} // 正式成员，主动连接
+	AcptPeerIDs   map[peer.ID]struct{} // 包含正式成员及准成员，（群主邀请，但可能还未接受）
+	RefusePeerIDs map[peer.ID]struct{} // 包含拒绝的成员（移除，退出，拒绝的成员）
 }
 
 type RoutingTable = map[GroupID]GroupRoutingTable

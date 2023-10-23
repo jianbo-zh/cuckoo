@@ -70,7 +70,7 @@ func NewFileProto(conf config.FileServiceConfig, lhost myhost.Host, ids ipfsds.B
 
 	// 订阅器
 	sub, err := ebus.Subscribe([]any{
-		new(myevent.EvtLogSessionAttachment), new(myevent.EvSyncResource),
+		new(myevent.EvtLogSessionAttachment), new(myevent.EvtSyncResource),
 		new(myevent.EvtGetResourceData), new(myevent.EvtSaveResourceData),
 		new(myevent.EvtClearSessionResources), new(myevent.EvtClearSessionFiles),
 	})

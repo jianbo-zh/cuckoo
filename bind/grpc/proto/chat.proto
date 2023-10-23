@@ -77,8 +77,6 @@ service GroupSvc {
   rpc GetGroup(GetGroupRequest) returns (GetGroupReply) {}
   // 获取群详情
   rpc GetGroupDetail(GetGroupDetailRequest) returns (GetGroupDetailReply) {}
-  // 获取群列表
-  rpc GetGroups(GetGroupsRequest) returns (GetGroupsReply) {}
   // 设置名称
   rpc SetGroupName(SetGroupNameRequest) returns (SetGroupNameReply) {}
   // 设置头像（管理员操作）
@@ -97,6 +95,8 @@ service GroupSvc {
   rpc DisbandGroup(DisbandGroupRequest) returns (DisbandGroupReply) {}
   // 群成员列表
   rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersReply) {}
+  // 邀请加入群
+  rpc InviteJoinGroup(InviteJoinGroupRequest) returns (InviteJoinGroupReply) {}
   // 移除群成员
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberReply) {}
   // 获取聊天记录
@@ -154,12 +154,18 @@ service ConfigSvc {
 
 // 文件服务
 service FileSvc {
-  // 下载会话文件文件
-  rpc DownloadSessionFile(DownloadSessionFileRequest) returns (DownloadSessionFileReply) {}
-  // 获取会话文件
-  rpc GetSessionFiles(GetSessionFilesRequest) returns (GetSessionFilesReply) {}
-  // 删除会话文件
-  rpc DeleteSessionFile(DeleteSessionFileRequest) returns (DeleteSessionFileReply) {}
+  // 下载联系人文件
+  rpc DownloadContactFile(DownloadContactFileRequest) returns (DownloadFileReply) {}
+  // 下载群组文件
+  rpc DownloadGroupFile(DownloadGroupFileRequest) returns (DownloadFileReply) {}
+  // 获取联系人文件
+  rpc GetContactFiles(GetContactFilesRequest) returns (GetFilesReply) {}
+  // 获取群组文件
+  rpc GetGroupFiles(GetGroupFilesRequest) returns (GetFilesReply) {}
+  // 删除联系人文件
+  rpc DeleteContactFile(DeleteContactFileRequest) returns (DeleteFileReply) {}
+  // 删除群组文件
+  rpc DeleteGroupFile(DeleteGroupFileRequest) returns (DeleteFileReply) {}
 }
 
 // 消息订阅服务
@@ -190,10 +196,10 @@ enum MsgState {
   SendFail = 2;
 }
 
-enum ConnState {
-  OnlineState = 0;
-  OfflineState = 1;
-  UnknownState = 2;
+enum OnlineState {
+  UnknownOnlineState = 0;
+  IsOnlineState = 1;
+  IsOfflineState = 2;
 }
 
 message Result {
@@ -437,12 +443,6 @@ message GetGroupDetailReply {
   GroupDetail group = 2;
 }
 
-message GetGroupsRequest {}
-message GetGroupsReply {
-  Result result = 1;
-  repeated Group groups = 2;
-}
-
 message GetGroupMessageRequest {
   string groupId = 1;
   string msgId = 2;
@@ -542,7 +542,8 @@ message SetGroupNoticeReply {
 
 message InviteJoinGroupRequest {
   string groupId = 1;
-  string contactId = 2;
+  repeated string contactIds = 2;
+  string content = 3;
 }
 message InviteJoinGroupReply {
   Result result = 1;
@@ -561,7 +562,7 @@ message GetGroupMembersReply {
 
 message RemoveGroupMemberRequest {
   string groupId = 1;
-  string memberId = 2;
+  repeated string memberIds = 2;
 }
 message RemoveGroupMemberReply {
   Result result = 1;
@@ -746,32 +747,47 @@ message SetDownloadDirReply {
 }
 
 // -------------------- 分隔符 --------------------
-message DownloadSessionFileRequest {
-  string sessionId = 1;
+message DownloadContactFileRequest {
+  string id = 1;
   string msgId = 2;
   string fileId = 3;
 }
-message DownloadSessionFileReply {
+message DownloadGroupFileRequest {
+  string id = 1;
+  string msgId = 2;
+  string fileId = 3;
+}
+message DownloadFileReply {
   Result result = 1;
   string fileId = 2;
 }
 
-message GetSessionFilesRequest {
-  string sessionId = 1;
+message GetContactFilesRequest {
+  string id = 1;
   string keywords = 2;
   int32  offset = 3;
   int32  limit = 4;
 }
-message GetSessionFilesReply {
+message GetGroupFilesRequest {
+  string id = 1;
+  string keywords = 2;
+  int32  offset = 3;
+  int32  limit = 4;
+}
+message GetFilesReply {
   Result result = 1;
   repeated FileInfo files = 2;
 }
 
-message DeleteSessionFileRequest {
-  string sessionId = 1;
+message DeleteContactFileRequest {
+  string id = 1;
   repeated string fileIds = 2;
 }
-message DeleteSessionFileReply {
+message DeleteGroupFileRequest {
+  string id = 1;
+  repeated string fileIds = 2;
+}
+message DeleteFileReply {
   Result result = 1;
 }
 
@@ -828,6 +844,12 @@ message Peer {
   string depositAddress = 4;
 }
 
+// ContactState 联系人状态
+enum ContactState {
+  UnknownContactState = 0;
+  NormalContactState = 1;
+}
+
 // 联系人
 message Contact {
   // PeerId
@@ -838,8 +860,10 @@ message Contact {
   string avatar = 3;
   // 消息寄存地址
   string depositAddress = 4;
+  // 状态
+  ContactState state = 5;
   // 是否在线
-  ConnState onlineState = 5;
+  OnlineState onlineState = 6;
 }
 
 // 联系人消息
@@ -898,6 +922,12 @@ message FileMessagePayload {
   int64  size = 4;
 }
 
+enum GroupState {
+  UnknownGroupState = 0;
+  NormalGroupState = 1;
+  ExitedGroupState = 2;
+}
+
 // 群
 message Group {
   // ID
@@ -908,40 +938,32 @@ message Group {
   string avatar = 3;
   // 寄存PeerID
   string depositAddress = 4;
+  // 状态
+  GroupState state = 5;
 }
 
-// 群会话
-message GroupSession {
-  // ID
-  string groupId = 1;
-  // 名称
-  string name = 2;
-  // Avatar
-  string avatar = 3;
-  // 最新消息
-  string lastMessage = 4;
-  // 更新时间
-  int64 updateTime = 5;
-}
-
-// 群
+// 群详情
 message GroupDetail {
   // ID
   string groupId = 1;
+  // 创建者
+  string creatorId = 2;
   // 名称
-  string name = 2;
+  string name = 3;
   // Avatar
-  string avatar = 3;
+  string avatar = 4;
   // 通知公告
-  string notice = 4;
+  string notice = 5;
   // 是否需要审核入群
-  bool autoJoinGroup = 5;
+  bool autoJoinGroup = 6;
   // 寄存PeerID
-  string depositAddress = 6;
+  string depositAddress = 7;
+  // 状态
+  GroupState state = 8;
   // 创建时间
-  int64 createTime = 7;
+  int64 createTime = 9;
   // 更新时间
-  int64 updateTime = 8;
+  int64 updateTime = 10;
 }
 
 // 群消息
@@ -953,7 +975,7 @@ message  GroupMember {
   // 头像SHA1
   string avatar = 3;
   // 是否在线
-  ConnState onlineState = 4;
+  OnlineState onlineState = 4;
 }
 
 // 群消息
@@ -978,16 +1000,16 @@ message  GroupMessage {
   int64 createTime = 9;
 }
 
+// 会话类型
+enum SessionType {
+  // 联系人会话类型
+  ContactSessionType = 0;
+  // 群会话类型
+  GroupSessionType = 1;
+}
+
 // 会话信息
 message Session {
-  // 会话类型
-  enum SessionType {
-    // 联系人会话
-    ContactSession = 0;
-    // 群会话
-    GroupSession = 1;
-  }
-
   // 会话类型
   SessionType type = 1;
   // 会话id
@@ -999,11 +1021,11 @@ message Session {
   // 头像 SHA1
   string avatar = 5;
   // 在线状态
-  ConnState state = 6;
+  OnlineState state = 6;
   // 最新消息
   string lastmsg = 7;
   // 有未读消息
-  int64 unreads = 8;
+  int32 unreads = 8;
 }
 
 // 系统消息
@@ -1031,9 +1053,11 @@ message SystemMessage {
 message CommonEvent {
 
   enum EventType {
-    PeerMessage = 0;
-    GroupMessage = 1;
-    OnlineState = 2;
+    PeerMessageReceived = 0;
+    GroupMessageReceived = 1;
+    PeerStateChanged = 2;
+    SessionAdded = 3;
+    SessionUpdated = 4;
   }
 
   message PayloadPeerMessage {
@@ -1046,9 +1070,31 @@ message CommonEvent {
     string groupId = 2;
   }
 
-  message PayloadOnlineState {
-    repeated string onlinePeerIds = 1;
-    repeated string offlinePeerIds = 2;
+  message PayloadPeerState {
+    string peerId = 1;
+    bool   online = 2;
+  }
+
+  message AddSession {
+    SessionType sessionType = 1;
+    string id = 2;
+    string name = 3;
+    string avatar = 4;
+    string relId = 5;
+  }
+
+  message PayloadSessionAdd {
+    AddSession session = 1;
+  }
+
+  message SessionState {
+    string id = 1;
+    string lastMsg = 2;
+    int32  unreads = 3;
+  }
+
+  message PayloadSessionUpdate {
+    repeated SessionState sessionStates = 1;
   }
 
   EventType type = 1;

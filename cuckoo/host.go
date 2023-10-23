@@ -23,7 +23,7 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config) (myhost.Host, *ddht.DHT, error) {
+func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config, ebus event.Bus) (myhost.Host, *ddht.DHT, error) {
 
 	privKey, err := conf.Identity.DecodePrivateKey("")
 	if err != nil {
@@ -112,7 +112,12 @@ func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config
 		bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc})
 	}()
 
-	return myhost.NewHost(localhost), dualDHT, nil
+	lhost, err := myhost.NewHost(localhost, ebus)
+	if err != nil {
+		return nil, nil, fmt.Errorf("new host error: %w", err)
+	}
+
+	return lhost, dualDHT, nil
 }
 
 func autoRelayFeeder(ctx context.Context, h host.Host, dualDHT *ddht.DHT, peering config.Peering, peerChan chan<- peer.AddrInfo) {

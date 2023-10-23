@@ -8,7 +8,6 @@ message SystemMessage {
         string id = 1;
         string name = 2;
         string avatar = 3;
-        uint64 lamptime = 4;
     }
 
     message Peer {
@@ -23,7 +22,8 @@ message SystemMessage {
     Peer    fromPeer = 5;
     bytes   toPeerId = 6;
     string  content = 7;
-    string  systemState = 8;
-    int64   createTime = 9;
-    int64   updateTime = 10;
+    bytes   payload = 8;
+    string  systemState = 9;
+    int64   createTime = 10;
+    int64   updateTime = 11;
 }

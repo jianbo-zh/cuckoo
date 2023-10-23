@@ -21,7 +21,7 @@ func (f *FileProto) subscribeHandler(ctx context.Context, sub event.Subscription
 			}
 
 			switch evt := e.(type) {
-			case myevent.EvSyncResource:
+			case myevent.EvtSyncResource:
 				go f.handleCheckAvatarEvent(ctx, evt)
 
 			case myevent.EvtLogSessionAttachment:
@@ -170,7 +170,7 @@ func (f *FileProto) handleLogSessionAttachmentEvent(ctx context.Context, evt mye
 	}
 }
 
-func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvSyncResource) {
+func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtSyncResource) {
 	fmt.Printf("handle check avatar event %v", evt)
 
 	if evt.ResourceID != "" && len(evt.PeerIDs) > 0 {

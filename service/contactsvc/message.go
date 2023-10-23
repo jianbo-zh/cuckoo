@@ -79,7 +79,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 		isDeposit, err := c.sendMessage(ctx, contactID, msgID)
 		if err != nil {
 			isSucc = false
-			log.Error("send message error: %w", err)
+			log.Error("send message error: %v", err)
 		}
 
 		msg, err := c.msgProto.UpdateMessageState(ctx, contactID, msgID, isDeposit, isSucc)
@@ -121,7 +121,7 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 		// 在线消息
 		msgData, err := c.msgProto.SendMessage(ctx, contactID, msgID)
 		if err != nil {
-			fmt.Println("online msg failed")
+			fmt.Println("online msg failed", err.Error())
 			// 在线消息失败
 			if errors.As(err, &myerror.StreamErr{}) && msgData != nil {
 				// 流错误，可能是不在线

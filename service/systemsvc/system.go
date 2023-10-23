@@ -179,23 +179,23 @@ func (s *SystemSvc) handleInviteJoinGroupEvent(ctx context.Context, evt myevent.
 		return
 	}
 
-	for _, contact := range evt.Contacts {
+	for _, invite := range evt.Invites {
 		msg := pb.SystemMessage{
 			Id:         GenMsgID(account.ID),
 			SystemType: mytype.SystemTypeInviteJoinGroup,
 			Group: &pb.SystemMessage_Group{
-				Id:       evt.GroupID,
-				Name:     evt.GroupName,
-				Avatar:   evt.GroupAvatar,
-				Lamptime: evt.GroupLamptime,
+				Id:     evt.GroupID,
+				Name:   evt.GroupName,
+				Avatar: evt.GroupAvatar,
 			},
 			FromPeer: &pb.SystemMessage_Peer{
 				PeerId: []byte(account.ID),
 				Name:   account.Name,
 				Avatar: account.Avatar,
 			},
-			ToPeerId:    []byte(contact.ID),
+			ToPeerId:    []byte(invite.PeerID),
 			Content:     evt.Content,
+			Payload:     invite.GroupLog,
 			SystemState: mytype.SystemStateSended,
 			CreateTime:  time.Now().Unix(),
 			UpdateTime:  time.Now().Unix(),
@@ -203,7 +203,7 @@ func (s *SystemSvc) handleInviteJoinGroupEvent(ctx context.Context, evt myevent.
 
 		fmt.Println("send system message: ", msg.String())
 
-		err = s.sendSystemMessage(ctx, contact.ID, contact.DepositAddress, &msg)
+		err = s.sendSystemMessage(ctx, invite.PeerID, invite.DepositAddress, &msg)
 		if err != nil {
 			log.Errorf("systemProto.SendMessage error: %v", err)
 			return
@@ -359,7 +359,7 @@ func (s *SystemSvc) goHandleMessage() {
 
 			if account.AutoJoinGroup {
 				// 创建群组
-				if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Group.Lamptime); err != nil {
+				if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Payload); err != nil {
 					log.Errorf("groupSvc.JoinGroup error: %s", err.Error())
 					continue
 				}
@@ -449,7 +449,7 @@ func (s *SystemSvc) AgreeJoinGroup(ctx context.Context, msgID string) error {
 	}
 
 	// 创建群组
-	if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Group.Lamptime); err != nil {
+	if err = s.groupSvc.AgreeJoinGroup(ctx, msg.Group.Id, msg.Group.Name, msg.Group.Avatar, msg.Payload); err != nil {
 		return fmt.Errorf("groupSvc.JoinGroup error: %w", err)
 
 	}

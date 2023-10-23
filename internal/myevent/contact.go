@@ -8,3 +8,10 @@ import (
 type EvtSyncContactMessage struct {
 	ContactID peer.ID
 }
+
+type EvtContactAdded struct {
+	ID             peer.ID
+	Name           string
+	Avatar         string
+	DepositAddress peer.ID
+}

@@ -12,7 +12,7 @@ type Peer struct {
 type OnlineState int
 
 const (
-	OnlineStateOnline  OnlineState = 1  // 在线
 	OnlineStateUnknown OnlineState = 0  // 未知
+	OnlineStateOnline  OnlineState = 1  // 在线
 	OnlineStateOffline OnlineState = -1 // 离线
 )

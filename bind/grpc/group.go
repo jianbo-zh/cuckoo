@@ -303,6 +303,7 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 
 	group := &proto.GroupDetail{
 		GroupId:        grp.ID,
+		CreatorId:      grp.CreatorID.String(),
 		Avatar:         grp.Avatar,
 		Name:           grp.Name,
 		Notice:         grp.Notice,
@@ -318,48 +319,6 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 			Message: "ok",
 		},
 		Group: group,
-	}
-	return reply, nil
-}
-
-func (g *GroupSvc) GetGroups(ctx context.Context, request *proto.GetGroupsRequest) (reply *proto.GetGroupsReply, err error) {
-
-	log.Infoln("GetGroups request: ", request.String())
-	defer func() {
-		if e := recover(); e != nil {
-			log.Panicln("GetGroups panic: ", e)
-		} else if err != nil {
-			log.Errorln("GetGroups error: ", err.Error())
-		} else {
-			log.Infoln("GetGroups reply: ", reply.String())
-		}
-	}()
-
-	groupSvc, err := g.getGroupSvc()
-	if err != nil {
-		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
-	}
-
-	groups, err := groupSvc.GetGroups(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("svc get groups error: %w", err)
-	}
-
-	groupList := make([]*proto.Group, len(groups))
-	for i, group := range groups {
-		groupList[i] = &proto.Group{
-			Id:     group.ID,
-			Name:   group.Name,
-			Avatar: group.Avatar,
-		}
-	}
-
-	reply = &proto.GetGroupsReply{
-		Result: &proto.Result{
-			Code:    0,
-			Message: "ok",
-		},
-		Groups: groupList,
 	}
 	return reply, nil
 }
@@ -561,6 +520,9 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 	}
 
 	members, err := groupSvc.GetGroupMembers(ctx, request.GroupId, request.Keywords, int(request.Offset), int(request.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetGroupMembers error: %w", err)
+	}
 
 	memberList := make([]*proto.GroupMember, len(members))
 
@@ -576,9 +538,9 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 		}
 
 		for i, member := range members {
-			onlineState := proto.ConnState_OfflineState
+			onlineState := proto.OnlineState_IsOfflineState
 			if _, exists := onlineMemberIDsMap[member.ID]; exists {
-				onlineState = proto.ConnState_OnlineState
+				onlineState = proto.OnlineState_IsOnlineState
 			}
 
 			memberList[i] = &proto.GroupMember{
@@ -601,6 +563,52 @@ func (g *GroupSvc) GetGroupMembers(ctx context.Context, request *proto.GetGroupM
 	return reply, nil
 }
 
+// InviteJoinGroup 邀请加入群组
+func (g *GroupSvc) InviteJoinGroup(ctx context.Context, request *proto.InviteJoinGroupRequest) (reply *proto.InviteJoinGroupReply, err error) {
+
+	log.Infoln("InviteJoinGroup request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("InviteJoinGroup panic: ", e)
+		} else if err != nil {
+			log.Errorln("InviteJoinGroup error: ", err.Error())
+		} else {
+			log.Infoln("InviteJoinGroup reply: ", reply.String())
+		}
+	}()
+
+	groupSvc, err := g.getGroupSvc()
+	if err != nil {
+		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
+	}
+
+	var contactIDs []peer.ID
+	for _, contactID := range request.ContactIds {
+		peerID, err := peer.Decode(contactID)
+		if err != nil {
+			return nil, fmt.Errorf("peer decode error: %w", err)
+		}
+		contactIDs = append(contactIDs, peerID)
+	}
+
+	if len(contactIDs) > 0 {
+		fmt.Println("contactIDs: ", len(contactIDs))
+		err = groupSvc.InviteJoinGroup(ctx, request.GroupId, contactIDs, request.Content)
+		if err != nil {
+			return nil, fmt.Errorf("svc invite join group error: %w", err)
+		}
+	}
+
+	reply = &proto.InviteJoinGroupReply{
+		Result: &proto.Result{
+			Code:    0,
+			Message: "ok",
+		},
+	}
+	return reply, nil
+}
+
+// RemoveGroupMember 移除群成员
 func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveGroupMemberRequest) (reply *proto.RemoveGroupMemberReply, err error) {
 
 	log.Infoln("RemoveGroupMember request: ", request.String())
@@ -619,14 +627,20 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 		return nil, fmt.Errorf("g.getGroupSvc error: %w", err)
 	}
 
-	memberID, err := peer.Decode(request.MemberId)
-	if err != nil {
-		return nil, fmt.Errorf("peer decode error: %w", err)
+	var memberIDs []peer.ID
+	for _, memberID := range request.MemberIds {
+		peerID, err := peer.Decode(memberID)
+		if err != nil {
+			return nil, fmt.Errorf("peer decode error: %w", err)
+		}
+		memberIDs = append(memberIDs, peerID)
 	}
 
-	err = groupSvc.RemoveGroupMember(ctx, request.GroupId, memberID)
-	if err != nil {
-		return nil, fmt.Errorf("svc remove group member error: %w", err)
+	if len(memberIDs) > 0 {
+		err = groupSvc.RemoveGroupMember(ctx, request.GroupId, memberIDs)
+		if err != nil {
+			return nil, fmt.Errorf("svc remove group member error: %w", err)
+		}
 	}
 
 	reply = &proto.RemoveGroupMemberReply{
@@ -635,6 +649,7 @@ func (g *GroupSvc) RemoveGroupMember(ctx context.Context, request *proto.RemoveG
 			Message: "ok",
 		},
 	}
+
 	return reply, nil
 }
 

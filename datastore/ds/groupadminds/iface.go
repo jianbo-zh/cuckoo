@@ -4,7 +4,6 @@ import (
 	"context"
 
 	ipfsds "github.com/ipfs/go-datastore"
-	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -19,6 +18,15 @@ type AdminIface interface {
 	SaveLog(ctx context.Context, log *pb.GroupLog) error
 	GetLog(ctx context.Context, groupID string, logID string) (*pb.GroupLog, error)
 
+	UpdateCreator(ctx context.Context, groupID string) error
+	UpdateName(ctx context.Context, groupID string) error
+	UpdateAvatar(ctx context.Context, groupID string) error
+	UpdateNotice(ctx context.Context, groupID string) error
+	UpdateAutoJoinGroup(ctx context.Context, groupID string) error
+	UpdateDepositAddress(ctx context.Context, groupID string) error
+	UpdateMembers(ctx context.Context, groupID string, hostID peer.ID) error
+	UpdateDisband(ctx context.Context, groupID string) error
+
 	GetState(ctx context.Context, groupID string) (string, error)
 	GetName(ctx context.Context, groupID string) (string, error)
 	GetAvatar(ctx context.Context, groupID string) (string, error)
@@ -28,8 +36,11 @@ type AdminIface interface {
 	GetCreator(ctx context.Context, groupID string) (peer.ID, error)
 	GetCreateTime(ctx context.Context, groupID string) (int64, error)
 	GetGroupIDs(ctx context.Context) ([]string, error)
-	GetMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error)      // 正式成员
-	GetAgreeMembers(ctx context.Context, groupID string) ([]mytype.GroupMember, error) // 所有审核通过的成员
+	GetMembers(ctx context.Context, groupID string) ([]*pb.GroupMember, error) // 正式成员
+
+	GetMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error)               // 正式成员IDs
+	GetAgreePeerIDs(ctx context.Context, groupID string) ([]peer.ID, error)            // 所有审核通过的成员IDs
+	GetRefusePeerLogs(ctx context.Context, groupID string) (map[peer.ID]string, error) // 所有拒绝连接的成员
 
 	SetState(ctx context.Context, groupID string, state string) error
 	SetName(ctx context.Context, groupID string, name string) error

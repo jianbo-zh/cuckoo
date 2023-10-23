@@ -38,19 +38,58 @@ func (f *FileSvc) getFileSvc() (filesvc.FileServiceIface, error) {
 	return fileSvc, nil
 }
 
-// DownloadGroupFile 下载群组文件
-func (f *FileSvc) DownloadSessionFile(ctx context.Context, request *proto.DownloadSessionFileRequest) (reply *proto.DownloadSessionFileReply, err error) {
+// DownloadContactFile 下载联系人文件
+func (f *FileSvc) DownloadContactFile(ctx context.Context, request *proto.DownloadContactFileRequest) (reply *proto.DownloadFileReply, err error) {
 
-	log.Infoln("DownloadSessionFile request: ", request.String())
+	log.Infoln("DownloadContactFile request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("DownloadSessionFile panic: ", e)
+			log.Panicln("DownloadContactFile panic: ", e)
 		} else if err != nil {
-			log.Errorln("DownloadSessionFile error: ", err.Error())
+			log.Errorln("DownloadContactFile error: ", err.Error())
 		} else {
-			log.Infoln("DownloadSessionFile reply: ", reply.String())
+			log.Infoln("DownloadContactFile reply: ", reply.String())
 		}
 	}()
+
+	contactID, err := peer.Decode(request.Id)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(contactID)
+
+	if reply, err = f.downloadSessionFile(ctx, sessionID, request.MsgId, request.FileId); err != nil {
+		return nil, fmt.Errorf("download session file error: %w")
+	}
+
+	return reply, nil
+}
+
+// DownloadGroupFile 下载群组文件
+func (f *FileSvc) DownloadGroupFile(ctx context.Context, request *proto.DownloadGroupFileRequest) (reply *proto.DownloadFileReply, err error) {
+
+	log.Infoln("DownloadGroupFile request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("DownloadGroupFile panic: ", e)
+		} else if err != nil {
+			log.Errorln("DownloadGroupFile error: ", err.Error())
+		} else {
+			log.Infoln("DownloadGroupFile reply: ", reply.String())
+		}
+	}()
+
+	sessionID := mytype.GroupSessionID(request.Id)
+
+	if reply, err = f.downloadSessionFile(ctx, sessionID, request.MsgId, request.FileId); err != nil {
+		return nil, fmt.Errorf("download session file error: %w")
+	}
+
+	return reply, nil
+}
+
+func (f *FileSvc) downloadSessionFile(ctx context.Context, sessionID mytype.SessionID, msgID string, fileID string) (reply *proto.DownloadFileReply, err error) {
 
 	cuckoo, err := f.getter.GetCuckoo()
 	if err != nil {
@@ -72,11 +111,6 @@ func (f *FileSvc) DownloadSessionFile(ctx context.Context, request *proto.Downlo
 		return nil, fmt.Errorf("get file svc error: %w", err)
 	}
 
-	sessionID, err := mytype.DecodeSessionID(request.SessionId)
-	if err != nil {
-		return nil, fmt.Errorf("DecodeSessionID error: %w", err)
-	}
-
 	var peerIDs []peer.ID
 	var file *mytype.FileInfo
 
@@ -84,7 +118,7 @@ func (f *FileSvc) DownloadSessionFile(ctx context.Context, request *proto.Downlo
 	case mytype.ContactSession:
 		contactID := peer.ID(sessionID.Value)
 		peerIDs = []peer.ID{contactID}
-		msg, err := contactSvc.GetMessage(ctx, contactID, request.MsgId)
+		msg, err := contactSvc.GetMessage(ctx, contactID, msgID)
 		if err != nil {
 			return nil, fmt.Errorf("svc.GetMessage error: %w", err)
 		}
@@ -101,7 +135,7 @@ func (f *FileSvc) DownloadSessionFile(ctx context.Context, request *proto.Downlo
 			return nil, fmt.Errorf("svc.GetGroupOnlineMemberIDs error: %w", err)
 		}
 
-		msg, err := groupSvc.GetGroupMessage(ctx, groupID, request.MsgId)
+		msg, err := groupSvc.GetGroupMessage(ctx, groupID, msgID)
 		if err != nil {
 			return nil, fmt.Errorf("svc.GetMessage error: %w", err)
 		}
@@ -114,40 +148,79 @@ func (f *FileSvc) DownloadSessionFile(ctx context.Context, request *proto.Downlo
 		return nil, fmt.Errorf("unsupport session type")
 	}
 
-	err = fileSvc.DownloadSessionFile(ctx, request.SessionId, peerIDs, file)
+	err = fileSvc.DownloadSessionFile(ctx, sessionID.String(), peerIDs, file)
 	if err != nil {
 		return nil, fmt.Errorf("svc.DownloadFile error: %w", err)
 	}
 
-	return &proto.DownloadSessionFileReply{
+	return &proto.DownloadFileReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
 		},
-		FileId: request.FileId,
+		FileId: fileID,
 	}, nil
 }
 
-// GetGroupFiles 群组相关文件
-func (f *FileSvc) GetSessionFiles(ctx context.Context, request *proto.GetSessionFilesRequest) (reply *proto.GetSessionFilesReply, err error) {
+// GetContactFiles 获取联系人文件
+func (f *FileSvc) GetContactFiles(ctx context.Context, request *proto.GetContactFilesRequest) (reply *proto.GetFilesReply, err error) {
 
-	log.Infoln("GetSessionFiles request: ", request.String())
+	log.Infoln("GetContactFiles request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("GetSessionFiles panic: ", e)
+			log.Panicln("GetContactFiles panic: ", e)
 		} else if err != nil {
-			log.Errorln("GetSessionFiles error: ", err.Error())
+			log.Errorln("GetContactFiles error: ", err.Error())
 		} else {
-			log.Infoln("GetSessionFiles reply: ", reply.String())
+			log.Infoln("GetContactFiles reply: ", reply.String())
 		}
 	}()
+
+	contactID, err := peer.Decode(request.Id)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(contactID)
+
+	if reply, err = f.getSessionFiles(ctx, sessionID, request.Keywords, request.Offset, request.Limit); err != nil {
+		return nil, fmt.Errorf("get session files error: %w", err)
+	}
+
+	return reply, nil
+}
+
+// GetGroupFiles 获取群组文件
+func (f *FileSvc) GetGroupFiles(ctx context.Context, request *proto.GetGroupFilesRequest) (reply *proto.GetFilesReply, err error) {
+
+	log.Infoln("GetGroupFiles request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("GetGroupFiles panic: ", e)
+		} else if err != nil {
+			log.Errorln("GetGroupFiles error: ", err.Error())
+		} else {
+			log.Infoln("GetGroupFiles reply: ", reply.String())
+		}
+	}()
+
+	sessionID := mytype.GroupSessionID(request.Id)
+
+	if reply, err = f.getSessionFiles(ctx, sessionID, request.Keywords, request.Offset, request.Limit); err != nil {
+		return nil, fmt.Errorf("get session files error: %w", err)
+	}
+
+	return reply, nil
+}
+
+func (f *FileSvc) getSessionFiles(ctx context.Context, sessionID mytype.SessionID, keywords string, offset int32, limit int32) (reply *proto.GetFilesReply, err error) {
 
 	fileSvc, err := f.getFileSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get file svc error: %w", err)
 	}
 
-	files, err := fileSvc.GetSessionFiles(ctx, request.SessionId, request.Keywords, int(request.Offset), int(request.Limit))
+	files, err := fileSvc.GetSessionFiles(ctx, sessionID.String(), keywords, int(offset), int(limit))
 	if err != nil {
 		return nil, fmt.Errorf("svc.GetContactFiles error: %w", err)
 	}
@@ -157,7 +230,7 @@ func (f *FileSvc) GetSessionFiles(ctx context.Context, request *proto.GetSession
 		fileList = append(fileList, encodeFileInfo(&file))
 	}
 
-	return &proto.GetSessionFilesReply{
+	return &proto.GetFilesReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",
@@ -166,30 +239,67 @@ func (f *FileSvc) GetSessionFiles(ctx context.Context, request *proto.GetSession
 	}, nil
 }
 
-// 删除联系人文件
-func (f *FileSvc) DeleteSessionFile(ctx context.Context, request *proto.DeleteSessionFileRequest) (reply *proto.DeleteSessionFileReply, err error) {
+func (f *FileSvc) DeleteContactFile(ctx context.Context, request *proto.DeleteContactFileRequest) (reply *proto.DeleteFileReply, err error) {
 
-	log.Infoln("DeleteSessionFile request: ", request.String())
+	log.Infoln("DeleteContactFile request: ", request.String())
 	defer func() {
 		if e := recover(); e != nil {
-			log.Panicln("DeleteSessionFile panic: ", e)
+			log.Panicln("DeleteContactFile panic: ", e)
 		} else if err != nil {
-			log.Errorln("DeleteSessionFile error: ", err.Error())
+			log.Errorln("DeleteContactFile error: ", err.Error())
 		} else {
-			log.Infoln("DeleteSessionFile reply: ", reply.String())
+			log.Infoln("DeleteContactFile reply: ", reply.String())
 		}
 	}()
+
+	contactID, err := peer.Decode(request.Id)
+	if err != nil {
+		return nil, fmt.Errorf("peer.Decode error: %w", err)
+	}
+
+	sessionID := mytype.ContactSessionID(contactID)
+
+	if reply, err = f.deleteSessionFile(ctx, sessionID, request.FileIds); err != nil {
+		return nil, fmt.Errorf("delete session files error: %w", err)
+	}
+
+	return reply, nil
+}
+
+func (f *FileSvc) DeleteGroupFile(ctx context.Context, request *proto.DeleteGroupFileRequest) (reply *proto.DeleteFileReply, err error) {
+
+	log.Infoln("DeleteGroupFile request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("DeleteGroupFile panic: ", e)
+		} else if err != nil {
+			log.Errorln("DeleteGroupFile error: ", err.Error())
+		} else {
+			log.Infoln("DeleteGroupFile reply: ", reply.String())
+		}
+	}()
+
+	sessionID := mytype.GroupSessionID(request.Id)
+
+	if reply, err = f.deleteSessionFile(ctx, sessionID, request.FileIds); err != nil {
+		return nil, fmt.Errorf("delete session files error: %w", err)
+	}
+
+	return reply, nil
+}
+
+func (f *FileSvc) deleteSessionFile(ctx context.Context, sessionID mytype.SessionID, fileIDs []string) (reply *proto.DeleteFileReply, err error) {
 
 	fileSvc, err := f.getFileSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get file svc error: %w", err)
 	}
 
-	if err := fileSvc.DeleteSessionFile(ctx, request.SessionId, request.FileIds); err != nil {
+	if err := fileSvc.DeleteSessionFile(ctx, sessionID.String(), fileIDs); err != nil {
 		return nil, fmt.Errorf("svc.DeleteContactFile error: %w", err)
 	}
 
-	return &proto.DeleteSessionFileReply{
+	return &proto.DeleteFileReply{
 		Result: &proto.Result{
 			Code:    0,
 			Message: "ok",

@@ -1,0 +1,149 @@
+package groupadminproto
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	ipfsds "github.com/ipfs/go-datastore"
+	"github.com/jianbo-zh/dchat/internal/myevent"
+	"github.com/jianbo-zh/dchat/internal/mytype"
+	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
+)
+
+func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated bool, err error) {
+
+	// 检查是否已经存在
+	if _, err := a.data.GetLog(ctx, pblog.GroupId, pblog.Id); err == nil {
+		return false, nil
+
+	} else if !errors.Is(err, ipfsds.ErrNotFound) {
+		return false, fmt.Errorf("data.GetLog error: %w", err)
+	}
+
+	// 保存日志
+	if err := a.data.SaveLog(ctx, pblog); err != nil {
+		return false, fmt.Errorf("data.SaveLogs error: %w", err)
+	}
+
+	// 更新缓存
+	switch pblog.LogType {
+	case pb.GroupLog_CREATE:
+		if err := a.data.UpdateCreator(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateCreator error: %w", err)
+		}
+	case pb.GroupLog_NAME:
+		if err := a.data.UpdateName(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateName error: %w", err)
+		}
+	case pb.GroupLog_AVATAR:
+		if err := a.data.UpdateAvatar(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateAvatar error: %w", err)
+		}
+
+	case pb.GroupLog_NOTICE:
+		if err := a.data.UpdateNotice(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateNotice error: %w", err)
+		}
+
+	case pb.GroupLog_AUTO_JOIN_GROUP:
+		if err := a.data.UpdateAutoJoinGroup(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateAutoJoinGroup error: %w", err)
+		}
+
+	case pb.GroupLog_DEPOSIT_PEER_ID:
+		if err := a.data.UpdateDepositAddress(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateDepositAddress error: %w", err)
+		}
+
+	case pb.GroupLog_MEMBER:
+		fmt.Println("3333")
+		if err := a.data.UpdateMembers(ctx, pblog.GroupId, a.host.ID()); err != nil {
+			return true, fmt.Errorf("data.UpdateMembers error: %w", err)
+		}
+
+	case pb.GroupLog_DISBAND:
+		if err := a.data.UpdateDisband(ctx, pblog.GroupId); err != nil {
+			return true, fmt.Errorf("data.UpdateDisband error: %w", err)
+		}
+
+	default:
+		return true, fmt.Errorf("unsupport group log type")
+	}
+
+	return true, nil
+}
+
+// checkGroupChange 检查群组变化
+func (a *AdminProto) checkGroupChange(ctx context.Context, groupID string, isMemberOperate bool, oldState string) error {
+
+	curState, err := a.data.GetState(ctx, groupID)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return fmt.Errorf("data.GetState error: %w", err)
+	}
+
+	if curState != oldState {
+		switch curState {
+		case mytype.GroupStateExit, mytype.GroupStateDisband:
+			// 触发断开连接
+			a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
+				DeleteGroups: []string{groupID},
+			})
+
+		case mytype.GroupStateNormal:
+			// 触发增加连接
+			memberIDs, err := a.data.GetMemberIDs(ctx, groupID)
+			if err != nil {
+				return fmt.Errorf("data.GetMemberIDs error: %w", err)
+			}
+
+			agreeMemberIDs, err := a.data.GetAgreePeerIDs(ctx, groupID)
+			if err != nil {
+				return fmt.Errorf("data.GetAgreePeerIDs error: %w", err)
+			}
+
+			refusePeers, err := a.data.GetRefusePeerLogs(ctx, groupID)
+			if err != nil {
+				return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
+			}
+
+			a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
+				AddGroups: []myevent.Groups{
+					{
+						GroupID:       groupID,
+						PeerIDs:       memberIDs,
+						AcptPeerIDs:   agreeMemberIDs,
+						RefusePeerIDs: refusePeers,
+					},
+				},
+			})
+		}
+
+	} else if curState == mytype.GroupStateNormal && isMemberOperate {
+		// 正常连接，并且是成员操作，则更新连接成员信息
+		// 触发增加连接
+		memberIDs, err := a.data.GetMemberIDs(ctx, groupID)
+		if err != nil {
+			return fmt.Errorf("data.GetMemberIDs error: %w", err)
+		}
+
+		agreeMemberIDs, err := a.data.GetAgreePeerIDs(ctx, groupID)
+		if err != nil {
+			return fmt.Errorf("data.GetAgreePeerIDs error: %w", err)
+		}
+
+		refusePeers, err := a.data.GetRefusePeerLogs(ctx, groupID)
+		if err != nil {
+			return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
+		}
+
+		a.emitters.evtGroupsChange.Emit(myevent.EvtGroupMemberChange{
+			GroupID:       groupID,
+			PeerIDs:       memberIDs,
+			AcptPeerIDs:   agreeMemberIDs,
+			RefusePeerIDs: refusePeers,
+		})
+	}
+
+	return nil
+}

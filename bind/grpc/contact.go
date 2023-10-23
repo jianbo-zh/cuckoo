@@ -124,6 +124,14 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 	}
 
 	onlineStateMap := accountSvc.GetOnlineState([]peer.ID{peerID})
+	fmt.Println("onlineStateMap: ", onlineStateMap[peerID])
+	if onlineStateMap[peerID] == mytype.OnlineStateUnknown {
+		fmt.Println("1111")
+		// 状态未知，则主动探测一下
+		accountSvc.AsyncCheckOnlineState(peerID)
+		fmt.Println("AsyncCheckOnlineState...", peerID.String())
+	}
+	fmt.Println("ddda: ", encodeOnlineState(onlineStateMap[contact.ID]).String())
 
 	reply = &proto.GetContactReply{
 		Result: &proto.Result{
@@ -880,7 +888,7 @@ func (c *ContactSvc) sendContactMessage(ctx context.Context, server proto.Contac
 					Name:           account.Name,
 					Avatar:         account.Avatar,
 					DepositAddress: account.DepositAddress.String(),
-					OnlineState:    proto.ConnState_OnlineState,
+					OnlineState:    proto.OnlineState_IsOnlineState,
 				},
 				ToContactId: msg.ToPeerID.String(),
 				MsgType:     encodeMsgType(msg.MsgType),

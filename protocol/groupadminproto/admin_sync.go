@@ -318,7 +318,7 @@ func (a *AdminProto) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncLog)
 
 	fmt.Println("receive push msg: ", msg.String())
 
-	if err := a.data.SaveLog(context.Background(), &msg); err != nil {
+	if _, err := a.saveLog(context.Background(), &msg); err != nil {
 		return fmt.Errorf("data save log error: %w", err)
 	}
 

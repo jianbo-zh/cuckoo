@@ -3,12 +3,11 @@ package mytype
 import "github.com/libp2p/go-libp2p/core/peer"
 
 const (
-	GroupStateApply   = "peer_agree"
-	GroupStateAgree   = "admin_agree"
-	GroupStateReject  = "reject"
-	GroupStateExit    = "exit"
-	GroupStateNormal  = "normal"
-	GroupStateDisband = "disband"
+	GroupStateExit    = "exit"    // 0,0
+	GroupStateApply   = "apply"   // 0,1
+	GroupStateAgree   = "agree"   // 1,0
+	GroupStateNormal  = "normal"  // 1,1
+	GroupStateDisband = "disband" // 0,0
 )
 
 type Group struct {
@@ -20,6 +19,7 @@ type Group struct {
 
 type GroupDetail struct {
 	ID             string
+	CreatorID      peer.ID
 	Name           string
 	Avatar         string
 	Notice         string

@@ -131,10 +131,10 @@ group 群组Key
 /cuckoo/group/<groupID>/admin/agree_members
 /cuckoo/group/<groupID>/admin/lamptime
 /cuckoo/group/<groupID>/admin/logs/<logID>
-/cuckoo/group/<groupID/message/head
-/cuckoo/group/<groupID/message/tail
-/cuckoo/group/<groupID/message/logs/<logID>
-/cuckoo/group/<groupID/network/lamptime
+/cuckoo/group/<groupID>/message/head
+/cuckoo/group/<groupID>/message/tail
+/cuckoo/group/<groupID>/message/logs/<logID>
+/cuckoo/group/<groupID>/network/lamptime
 ---------------------------------------
 */
 const groupKeyPrefix = "/cuckoo/group/"
@@ -210,8 +210,12 @@ func (g *GroupDsKey) MembersKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/members") // 正式成员
 }
 
-func (g *GroupDsKey) AgreeMembersKey(groupID string) ipfsds.Key {
+func (g *GroupDsKey) AgreePeersKey(groupID string) ipfsds.Key {
 	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/agree_members") // 包括准成员（包括群主同意入群的）
+}
+
+func (g *GroupDsKey) RefusePeersKey(groupID string) ipfsds.Key {
+	return ipfsds.NewKey(groupKeyPrefix + groupID + "/admin/refuse_members") // 已移除成员
 }
 
 func (g *GroupDsKey) AdminLamptimeKey(groupID string) ipfsds.Key {

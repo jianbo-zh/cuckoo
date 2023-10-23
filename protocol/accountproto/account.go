@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
@@ -36,10 +35,9 @@ type AccountProto struct {
 	avatarDir string
 
 	emitter struct {
-		evtAccountBaseChange   event.Emitter
-		evtOnlineStateDiscover event.Emitter
-		evtSyncAccountMessage  event.Emitter
-		evtSyncSystemMessage   event.Emitter
+		evtAccountBaseChange  event.Emitter
+		evtSyncAccountMessage event.Emitter
+		evtSyncSystemMessage  event.Emitter
 	}
 }
 
@@ -64,10 +62,6 @@ func NewAccountProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 
 	if accountProto.emitter.evtAccountBaseChange, err = eventBus.Emitter(&myevent.EvtAccountBaseChange{}); err != nil {
 		return nil, fmt.Errorf("set account base change emitter error: %w", err)
-	}
-
-	if accountProto.emitter.evtOnlineStateDiscover, err = eventBus.Emitter(&myevent.EvtOnlineStateDiscover{}); err != nil {
-		return nil, fmt.Errorf("set peer online state discover emitter error: %w", err)
 	}
 
 	sub, err := eventBus.Subscribe([]any{new(myevent.EvtHostBootComplete)})
@@ -134,96 +128,35 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 
 func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
 
-	go a.goCheckOnlineState(peerIDs, 30*time.Second)
-
 	return a.host.OnlineStats(peerIDs, 60*time.Second)
 }
 
-func (a *AccountProto) goCheckOnlineState(peerIDs []peer.ID, onlineDuration time.Duration) {
+func (a *AccountProto) CheckOnlineState(ctx context.Context, peerID peer.ID) error {
 
-	peersOnlineState := make(map[peer.ID]bool)
-	if len(peerIDs) == 0 {
-		return
-	}
-
-	var checkOnlinePeerIDs []peer.ID
-	onlineStats := a.host.OnlineStats(peerIDs, onlineDuration)
-	for _, peerID := range peerIDs {
-		if onlineStats[peerID] == mytype.OnlineStateOnline {
-			peersOnlineState[peerID] = true
-		} else {
-			checkOnlinePeerIDs = append(checkOnlinePeerIDs, peerID)
-		}
-	}
-
-	if len(checkOnlinePeerIDs) > 0 {
-		onlineCh := make(chan mytype.PeerState, len(checkOnlinePeerIDs))
-
-		st := time.Now()
-		var wg sync.WaitGroup
-		wg.Add(len(checkOnlinePeerIDs))
-		for _, peerID := range checkOnlinePeerIDs {
-			go a.goCheckOnline(&wg, peerID, onlineCh)
-		}
-		wg.Wait()
-		close(onlineCh)
-
-		log.Debugf("check online use time: %d", time.Since(st).Milliseconds())
-
-		for res := range onlineCh {
-			if res.IsOnline {
-				peersOnlineState[res.PeerID] = true
-			} else {
-				peersOnlineState[res.PeerID] = false
-			}
-		}
-
-		// 触发在线更新事件发送到前端
-		err := a.emitter.evtOnlineStateDiscover.Emit(myevent.EvtOnlineStateDiscover{
-			OnlineState: peersOnlineState,
-		})
-		if err != nil {
-			log.Errorf("emit peer online state discover error: %v", err)
-		}
-	}
-}
-
-func (a *AccountProto) goCheckOnline(wg *sync.WaitGroup, peerID peer.ID, onlineCh chan<- mytype.PeerState) {
-	defer wg.Done()
-
-	peerState := mytype.PeerState{
-		PeerID:   peerID,
-		IsOnline: false, // default: offline
-	}
-
-	ctx := context.Background()
 	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ONLINE_ID)
 	if err != nil {
-		onlineCh <- peerState
-		log.Debugln("host new stream error: ", err.Error())
-		return
+		return fmt.Errorf("host new stream error: %w", err)
 	}
 	defer stream.Close()
+
+	fmt.Println("checkOnlineState stream..")
 
 	wt := pbio.NewDelimitedWriter(stream)
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
-	stream.SetDeadline(time.Now().Add(2 * time.Second))
 	if err = wt.WriteMsg(&pb.AccountOnline{IsOnline: true}); err != nil {
-		onlineCh <- peerState
-		log.Errorf("pbio write msg error: %v", err)
-		return
+		return fmt.Errorf("pbio write msg error: %w", err)
 	}
+
+	fmt.Println("checkOnlineState writemsg..")
 
 	var pbOnline pb.AccountOnline
 	if err = rd.ReadMsg(&pbOnline); err != nil {
-		onlineCh <- peerState
-		log.Errorf("pbio read msg error: %v", err)
-		return
+		return fmt.Errorf("pbio read msg error: %w", err)
 	}
+	fmt.Println("checkOnlineState readmsg..")
 
-	peerState.IsOnline = true
-	onlineCh <- peerState
+	return nil
 }
 
 func (a *AccountProto) onlineHandler(stream network.Stream) {
