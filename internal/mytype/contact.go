@@ -6,11 +6,20 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
+type ContactState = string
+
+const (
+	ContactStateUnknown ContactState = ""
+	ContactStateDelete  ContactState = "delete"
+	ContactStateNormal  ContactState = "normal"
+)
+
 type Contact struct {
 	ID             peer.ID
 	Name           string
 	Avatar         string
 	DepositAddress peer.ID
+	State          ContactState
 }
 
 // type ContactSession struct {

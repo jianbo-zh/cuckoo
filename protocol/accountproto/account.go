@@ -127,8 +127,7 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 }
 
 func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
-
-	return a.host.OnlineStats(peerIDs, 60*time.Second)
+	return a.host.OnlineStats(peerIDs)
 }
 
 func (a *AccountProto) CheckOnlineState(ctx context.Context, peerID peer.ID) error {

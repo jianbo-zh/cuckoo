@@ -1,6 +1,7 @@
 package myhost
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jianbo-zh/dchat/internal/myevent"
@@ -18,48 +19,38 @@ const (
 // 清理统计缓存计数
 var ClearStatsCounting = 0
 
-func (h *MyHost) OnlineState(peerID peer.ID, onlineDuration time.Duration) mytype.OnlineState {
+// OnlineState 节点在线状态
+func (h *MyHost) OnlineState(peerID peer.ID) mytype.OnlineState {
 	h.statsMutex.RLock()
-	nowtime := time.Now()
 	peerState := mytype.OnlineStateUnknown
-	if onlineTime, exists := h.onlineMap[peerID]; exists {
-		if nowtime.Sub(onlineTime) <= onlineDuration {
-			peerState = mytype.OnlineStateOnline
-		}
+	if _, exists := h.onlineMap[peerID]; exists {
+		peerState = mytype.OnlineStateOnline
 
-	} else if onlineTime, exists = h.offlineMap[peerID]; exists {
-		if nowtime.Sub(onlineTime) <= onlineDuration {
-			peerState = mytype.OnlineStateOffline
-		}
+	} else if _, exists = h.offlineMap[peerID]; exists {
+		peerState = mytype.OnlineStateOffline
 	}
 	h.statsMutex.RUnlock()
+
 	return peerState
 }
 
 // PeersOnlineStats 节点在线统计，onlineDuration 指定多少秒内算才在线，最长60秒
-func (h *MyHost) OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState {
-	nowtime := time.Now()
-	peerStats := make(map[peer.ID]mytype.OnlineState)
+func (h *MyHost) OnlineStats(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState {
 	h.statsMutex.RLock()
+	peerStats := make(map[peer.ID]mytype.OnlineState)
 	for _, peerID := range peerIDs {
-		if onlineTime, exists := h.onlineMap[peerID]; exists {
-			if nowtime.Sub(onlineTime) <= onlineDuration {
-				peerStats[peerID] = mytype.OnlineStateOnline
-			} else {
-				peerStats[peerID] = mytype.OnlineStateUnknown
-			}
+		if _, exists := h.onlineMap[peerID]; exists {
+			peerStats[peerID] = mytype.OnlineStateOnline
 
-		} else if onlineTime, exists = h.offlineMap[peerID]; exists {
-			if nowtime.Sub(onlineTime) <= onlineDuration {
-				peerStats[peerID] = mytype.OnlineStateOffline
-			} else {
-				peerStats[peerID] = mytype.OnlineStateUnknown
-			}
+		} else if _, exists = h.offlineMap[peerID]; exists {
+			peerStats[peerID] = mytype.OnlineStateOffline
+
 		} else {
 			peerStats[peerID] = mytype.OnlineStateUnknown
 		}
 	}
 	h.statsMutex.RUnlock()
+
 	return peerStats
 }
 
@@ -91,6 +82,7 @@ func (h *MyHost) online(peerID peer.ID) {
 	h.statsMutex.Unlock()
 
 	if isOnline {
+		fmt.Println("isOnline: ", peerID.String())
 		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
 			PeerID: peerID,
 			Online: true,
@@ -112,6 +104,7 @@ func (h *MyHost) offline(peerID peer.ID) {
 	h.statsMutex.Unlock()
 
 	if isOffline {
+		fmt.Println("isOffline", peerID.String())
 		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
 			PeerID: peerID,
 			Online: false,

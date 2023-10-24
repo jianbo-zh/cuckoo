@@ -213,7 +213,7 @@ func (s *SystemSvc) handleInviteJoinGroupEvent(ctx context.Context, evt myevent.
 
 func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, depositAddr peer.ID, msg *pb.SystemMessage) error {
 
-	onlineState := s.host.OnlineState(toPeerID, 60*time.Second)
+	onlineState := s.host.OnlineState(toPeerID)
 
 	switch onlineState {
 	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:

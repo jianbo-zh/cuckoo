@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jianbo-zh/dchat/internal/myerror"
 	"github.com/jianbo-zh/dchat/internal/myevent"
@@ -113,7 +112,7 @@ func (c *ContactSvc) checkDepositAddr(ctx context.Context, contactID peer.ID) (p
 
 func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID string) (isDeposit bool, err error) {
 
-	onlineState := c.host.OnlineState(contactID, 60*time.Second)
+	onlineState := c.host.OnlineState(contactID)
 
 	switch onlineState {
 	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:

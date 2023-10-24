@@ -35,10 +35,6 @@ func logIdMember(lamptime uint64, creator peer.ID) string {
 	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwMember, creator.String())
 }
 
-func logIdExit(lamptime uint64, creator peer.ID) string {
-	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwExit, creator.String())
-}
-
 func logIdDisband(lamptime uint64, creator peer.ID) string {
 	return fmt.Sprintf("%s%s%s", util.Lamptime019(lamptime), ds.KwDisband, creator.String())
 }

@@ -848,6 +848,7 @@ message Peer {
 enum ContactState {
   UnknownContactState = 0;
   NormalContactState = 1;
+  DeleteContactState = 2;
 }
 
 // 联系人
@@ -926,6 +927,7 @@ enum GroupState {
   UnknownGroupState = 0;
   NormalGroupState = 1;
   ExitedGroupState = 2;
+  DisbandGroupState = 3;
 }
 
 // 群
@@ -940,6 +942,8 @@ message Group {
   string depositAddress = 4;
   // 状态
   GroupState state = 5;
+  // 在线数量
+  string onlineNum = 6;
 }
 
 // 群详情

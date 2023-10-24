@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	ds "github.com/ipfs/go-datastore"
-	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/jianbo-zh/dchat/datastore/filter"
 	"github.com/jianbo-zh/dchat/internal/mytype"
@@ -120,8 +119,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 		return fmt.Errorf("getGroupLogs error: %w", err)
 	}
 
-	fmt.Println("44444")
-
 	refuseLogs := make(map[peer.ID]string)
 	allPeers := make(map[peer.ID]*pb.GroupMember)
 
@@ -171,38 +168,43 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 	var agreePeerIds pb.GroupAgreePeerIds
 	var refusePeers pb.GroupRefusePeers
 
-	groupState := mytype.GroupStateExit
+	groupState := mytype.GroupStateUnknown
 
 	for peerID, cond := range peers {
 		fmt.Println("peerID, cond: ", peerID, cond)
-		if cond[0] && cond[1] {
-			groupState = mytype.GroupStateNormal
-			members.Members = append(members.Members, allPeers[peerID])
 
-			fmt.Println("normal: ", members.Members)
+		if cond[0] && cond[1] {
+			members.Members = append(members.Members, allPeers[peerID])
+			agreePeerIds.PeerIds = append(agreePeerIds.PeerIds, []byte(peerID)) // 正常会员必然是可以连接会员
+
+			if peerID == hostID {
+				groupState = mytype.GroupStateNormal
+			}
 
 		} else if cond[0] {
-			groupState = mytype.GroupStateAgree
 			agreePeerIds.PeerIds = append(agreePeerIds.PeerIds, []byte(peerID))
 
-			fmt.Println("agree: ", agreePeerIds.PeerIds)
+			if peerID == hostID {
+				groupState = mytype.GroupStateAgree
+			}
 
 		} else if cond[1] {
-			groupState = mytype.GroupStateApply
-			fmt.Println("apply: ")
+			if peerID == hostID {
+				groupState = mytype.GroupStateApply
+			}
 
 		} else {
-			groupState = mytype.GroupStateExit
 			refusePeers.Peers = append(refusePeers.Peers, &pb.GroupRefuseLog{
 				PeerId: []byte(peerID),
 				LogId:  refuseLogs[peerID],
 			})
 
-			fmt.Println("exit: ", refusePeers.Peers)
+			if peerID == hostID {
+				groupState = mytype.GroupStateExit
+				fmt.Println("set group state exit")
+			}
 		}
 	}
-
-	fmt.Println("members: ", members.String())
 
 	// 正式成员
 	if bs, err := proto.Marshal(&members); err != nil {
@@ -214,8 +216,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 		}
 	}
 
-	fmt.Println("agreePeerIds: ", agreePeerIds.String())
-
 	// 允许连接成员
 	if bs, err := proto.Marshal(&agreePeerIds); err != nil {
 		return fmt.Errorf("proto.Marshal error: %w", err)
@@ -226,7 +226,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 		}
 	}
 
-	fmt.Println("refusePeers: ", refusePeers.String())
 	// 拒绝连接成员
 	if bs, err := proto.Marshal(&refusePeers); err != nil {
 		return fmt.Errorf("proto.Marshal error: %w", err)
@@ -238,14 +237,15 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 	}
 
 	// 群组状态判断
-	if _, err = a.getLatestLog(ctx, groupID, KwDisband); err != nil {
-		if !errors.Is(err, ipfsds.ErrNotFound) {
-			return fmt.Errorf("get disband error: %w", err)
-		}
-		fmt.Println("state: ", groupState)
-		// no disband, so can set
-		if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte(groupState)); err != nil {
-			return fmt.Errorf("ds put state key error: %w", err)
+	if pblog, err := a.getLatestLog(ctx, groupID, KwDisband); err != nil {
+		return fmt.Errorf("get disband error: %w", err)
+
+	} else if pblog.Id == "" {
+		// not disband, so can set
+		if groupState != "" {
+			if err := a.Put(ctx, adminDsKey.StateKey(groupID), []byte(groupState)); err != nil {
+				return fmt.Errorf("ds put state key error: %w", err)
+			}
 		}
 	}
 
@@ -256,7 +256,7 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 func (a *AdminDs) UpdateDisband(ctx context.Context, groupID string) error {
 
 	if _, err := a.getLatestLog(ctx, groupID, KwDisband); err != nil {
-		return fmt.Errorf("getOldestLog error: %w", err)
+		return fmt.Errorf("getLatestLog error: %w", err)
 	}
 
 	// found, so set

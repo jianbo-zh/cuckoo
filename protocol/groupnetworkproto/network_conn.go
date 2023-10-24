@@ -18,7 +18,8 @@ import (
 func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	n.networkMutex.Lock()
 	if _, exists := n.network[groupID][peerID]; exists {
-		log.Warnln("connect is exists")
+		n.networkMutex.Unlock()
+		log.Warnln("connect is exists, do nothing")
 		return nil
 	}
 	n.networkMutex.Unlock()
@@ -87,8 +88,12 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		go n.writeStream(&wg, stream, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
+		fmt.Println("read write closed")
+
 		stream.Close()
-		n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
+		if err := n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes); err != nil {
+			fmt.Println("triggerDisconnected error: %w", err)
+		}
 	}()
 
 	// 触发连接改变事件
@@ -206,7 +211,7 @@ func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peer
 		PeerID:      peerID,
 		IsConnected: false,
 	}); err != nil {
-		return err
+		return fmt.Errorf("emit EvtGroupConnectChange error: %w", err)
 	}
 
 	log.Infof("trigger disconnect: %s, %s", groupID, peerID.String())

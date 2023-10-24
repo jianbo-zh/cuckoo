@@ -18,25 +18,22 @@ func (n *NetworkProto) initNetwork(groups []myevent.Groups) error {
 	n.groupPeersMutex.Lock()
 	n.groupPeers = make(GroupPeers)
 	for _, group := range groups {
+		n.groupPeers[group.GroupID] = GroupPeer{
+			PeerIDs:       make(map[peer.ID]struct{}),
+			AcptPeerIDs:   make(map[peer.ID]struct{}),
+			RefusePeerIDs: make(map[peer.ID]string),
+		}
+
 		for _, peerID := range group.PeerIDs {
-			if _, exists := n.groupPeers[group.GroupID]; !exists {
-				n.groupPeers[group.GroupID] = GroupPeer{
-					PeerIDs:       make(map[peer.ID]struct{}),
-					AcptPeerIDs:   make(map[peer.ID]struct{}),
-					RefusePeerIDs: make(map[peer.ID]struct{}),
-				}
-			}
 			n.groupPeers[group.GroupID].PeerIDs[peerID] = struct{}{}
 		}
 
 		for _, peerID := range group.AcptPeerIDs {
-			if _, exists := n.groupPeers[group.GroupID]; !exists {
-				n.groupPeers[group.GroupID] = GroupPeer{
-					PeerIDs:     make(map[peer.ID]struct{}),
-					AcptPeerIDs: make(map[peer.ID]struct{}),
-				}
-			}
 			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
+		}
+
+		for peerID, logID := range group.RefusePeerIDs {
+			n.groupPeers[group.GroupID].RefusePeerIDs[peerID] = logID
 		}
 	}
 	n.groupPeersMutex.Unlock()
@@ -46,29 +43,24 @@ func (n *NetworkProto) initNetwork(groups []myevent.Groups) error {
 		log.Debugln("init group: ", group.GroupID)
 
 		rendezvous := "/dchat/group/" + group.GroupID
+		fmt.Println("1, advertise rendezvous: ", rendezvous)
 		dutil.Advertise(ctx, n.discv, rendezvous)
 
-		peerChan, err := n.discv.FindPeers(ctx, rendezvous, discovery.Limit(10))
-		if err != nil {
-			log.Errorf("discv find peers error: %w", err)
-			continue
-		}
-
-		go n.handleFindPeers(ctx, group.GroupID, peerChan)
+		go n.startNetworking(ctx, group.GroupID, rendezvous)
 	}
 
 	return nil
 }
 
 func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
-
 	fmt.Println("addNetwork...")
 
 	n.groupPeersMutex.Lock()
 	for _, group := range groups {
 		n.groupPeers[group.GroupID] = GroupPeer{
-			PeerIDs:     make(map[peer.ID]struct{}),
-			AcptPeerIDs: make(map[peer.ID]struct{}),
+			PeerIDs:       make(map[peer.ID]struct{}),
+			AcptPeerIDs:   make(map[peer.ID]struct{}),
+			RefusePeerIDs: make(map[peer.ID]string),
 		}
 
 		for _, peerID := range group.PeerIDs {
@@ -77,6 +69,10 @@ func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
 
 		for _, peerID := range group.AcptPeerIDs {
 			n.groupPeers[group.GroupID].AcptPeerIDs[peerID] = struct{}{}
+		}
+
+		for peerID, logID := range group.RefusePeerIDs {
+			n.groupPeers[group.GroupID].RefusePeerIDs[peerID] = logID
 		}
 	}
 	n.groupPeersMutex.Unlock()
@@ -90,16 +86,74 @@ func (n *NetworkProto) addNetwork(groups []myevent.Groups) error {
 		rendezvous := "/dchat/group/" + group.GroupID
 		dutil.Advertise(ctx, n.discv, rendezvous)
 
-		peerChan, err := n.discv.FindPeers(ctx, rendezvous, discovery.Limit(10))
-		if err != nil {
-			log.Errorf("discv find peers error: %w", err)
-			return err
-		}
-
-		go n.handleFindPeers(ctx, group.GroupID, peerChan)
+		go n.startNetworking(ctx, group.GroupID, rendezvous)
 	}
 
 	return nil
+}
+
+func (n *NetworkProto) startNetworking(ctx context.Context, groupID string, rendezvous string, foundPeerIDs ...peer.ID) {
+
+	foundPeerIDs2, err := n.findOnlinePeers(ctx, rendezvous, 5)
+	if err != nil {
+		log.Errorf("findOnlinePeers error: %w", err)
+		return
+	}
+
+	foundPeerIDs = append(foundPeerIDs, foundPeerIDs2...)
+
+	for _, peerID := range foundPeerIDs {
+		err := n.switchRoutingTable(groupID, peerID)
+		if err != nil {
+			log.Errorf("switch routing table error: %w", err)
+		}
+	}
+
+	if len(foundPeerIDs) > 0 {
+		n.doNetworking(groupID, foundPeerIDs)
+	}
+}
+
+func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPeerIDs []peer.ID, refusePeerIDs map[peer.ID]string) {
+	fmt.Println("update network...")
+
+	peerIDsMap := make(map[peer.ID]struct{})
+	for _, peerID := range peerIDs {
+		peerIDsMap[peerID] = struct{}{}
+	}
+
+	acptPeerIDsMap := make(map[peer.ID]struct{})
+	for _, peerID := range acptPeerIDs {
+		acptPeerIDsMap[peerID] = struct{}{}
+	}
+
+	n.groupPeersMutex.Lock()
+
+	var removePeerIDs []peer.ID
+	if _, exists := n.groupPeers[groupID]; exists {
+		for peerID := range n.groupPeers[groupID].AcptPeerIDs {
+			if _, exists := acptPeerIDsMap[peerID]; !exists {
+				removePeerIDs = append(removePeerIDs, peerID)
+			}
+		}
+	}
+
+	n.groupPeers[groupID] = GroupPeer{
+		PeerIDs:       peerIDsMap,
+		AcptPeerIDs:   acptPeerIDsMap,
+		RefusePeerIDs: refusePeerIDs,
+	}
+	n.groupPeersMutex.Unlock()
+
+	if len(removePeerIDs) > 0 {
+		for _, peerID := range removePeerIDs {
+			if _, exists := n.network[groupID][peerID]; !exists {
+				continue
+			}
+
+			n.disconnect(groupID, peerID)
+		}
+	}
 }
 
 func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
@@ -126,56 +180,33 @@ func (n *NetworkProto) deleteNetwork(groupIDs []GroupID) error {
 	return nil
 }
 
-func (n *NetworkProto) updateNetwork(groupID GroupID, peerIDs []peer.ID, acptPeerIDs []peer.ID) {
-	fmt.Println("update network...")
+func (n *NetworkProto) findOnlinePeers(ctx context.Context, rendezvous string, limit int) ([]peer.ID, error) {
 
-	peerIDsMap := make(map[peer.ID]struct{}, len(peerIDs))
-	for _, peerID := range peerIDs {
-		peerIDsMap[peerID] = struct{}{}
-	}
+	var peerIDs []peer.ID
+	for i := 0; i < 3; i++ {
+		// 尝试3次
+		peerChan, err := n.discv.FindPeers(ctx, rendezvous, discovery.Limit(limit), discovery.TTL(time.Minute))
+		if err != nil {
+			return nil, fmt.Errorf("discv find peers error: %w", err)
+		}
 
-	acptPeerIDsMap := make(map[peer.ID]struct{}, len(acptPeerIDs))
-	for _, peerID := range acptPeerIDs {
-		acptPeerIDsMap[peerID] = struct{}{}
-	}
-
-	n.groupPeersMutex.Lock()
-	var removePeerIDs []peer.ID
-	if _, exists := n.groupPeers[groupID]; exists {
-		for peerID := range n.groupPeers[groupID].AcptPeerIDs {
-			if _, exists := acptPeerIDsMap[peerID]; !exists {
-				removePeerIDs = append(removePeerIDs, peerID)
-			}
+		peerIDs = n.handleFindPeers(ctx, peerChan)
+		if len(peerIDs) > 0 {
+			break
 		}
 	}
 
-	n.groupPeers[groupID] = GroupPeer{
-		PeerIDs:     peerIDsMap,
-		AcptPeerIDs: acptPeerIDsMap,
-	}
-	n.groupPeersMutex.Unlock()
-
-	if len(removePeerIDs) > 0 {
-		for _, peerID := range removePeerIDs {
-			if _, exists := n.network[groupID][peerID]; !exists {
-				continue
-			}
-
-			n.disconnect(groupID, peerID)
-		}
-	}
+	return peerIDs, nil
 }
 
-func (n *NetworkProto) handleFindPeers(ctx context.Context, groupID GroupID, peerCh <-chan peer.AddrInfo) {
-	var foundPeerIDs []peer.ID
-
-	log.Infoln("handleFindPeers: ", groupID)
+func (n *NetworkProto) handleFindPeers(ctx context.Context, peerCh <-chan peer.AddrInfo) []peer.ID {
+	var peerIDs []peer.ID
 
 	hostID := n.host.ID()
 	timeout := time.After(5 * time.Second)
 	timeoutTimes := 0
 Loop:
-	for len(foundPeerIDs) < 5 {
+	for len(peerIDs) < 5 {
 		select {
 		case peer := <-peerCh:
 			if peer.ID == hostID {
@@ -184,23 +215,16 @@ Loop:
 			}
 
 			if peer.ID.String() == "" {
-				// log.Debugln("found empty: ", peer.String())
-				continue
+				log.Debugln("found empty peer!!!")
+				return peerIDs
 			}
 
 			fmt.Println("find peer: ", peer.ID.String())
-			foundPeerIDs = append(foundPeerIDs, peer.ID)
-
-			// 交换路由表信息
-			err := n.switchRoutingTable(groupID, peer.ID)
-			if err != nil {
-				log.Errorf("switch routing table error: %v", err)
-			}
-			log.Debugln("found peer +1")
+			peerIDs = append(peerIDs, peer.ID)
 
 		case <-timeout:
-			if len(foundPeerIDs) > 0 || timeoutTimes >= 60 {
-				log.Debugln("foundPeerIDs or timeout 300s, break loop")
+			if len(peerIDs) > 0 || timeoutTimes >= 12 {
+				log.Debugln("foundPeerIDs or timeout 60s, break loop")
 				// 找到或超时60s
 				break Loop
 			}
@@ -210,6 +234,13 @@ Loop:
 			log.Debugln("timeout +1")
 		}
 	}
+
+	return peerIDs
+}
+
+func (n *NetworkProto) doNetworking(groupID string, foundPeerIDs []peer.ID) {
+
+	hostID := n.host.ID()
 
 	if len(foundPeerIDs) == 0 {
 		// 没有找到则返回

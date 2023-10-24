@@ -4,6 +4,7 @@ package groupadminproto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -130,27 +131,16 @@ func (a *AdminProto) logHandler(stream network.Stream) {
 
 	stream.SetReadDeadline(time.Time{})
 
-	ctx := context.Background()
-	// 保存日志
-	isUpdated, err := a.saveLog(ctx, &msg)
-	if err != nil {
+	// 处理日志
+	if err := a.receiveLog(context.Background(), &msg, remotePeerID); err != nil {
 		log.Errorf("save log error: %v", err)
 		stream.Reset()
 		return
 	}
-
-	// 有更新则转发消息
-	if isUpdated {
-		err := a.broadcastMessage(ctx, msg.GroupId, &msg, remotePeerID)
-		if err != nil {
-			log.Errorf("a.broadcast message error: %v", err)
-			stream.Reset()
-			return
-		}
-	}
 }
 
 func (m *AdminProto) syncHandler(stream network.Stream) {
+	remotePeerID := stream.Conn().RemotePeer()
 	defer stream.Close()
 
 	// 获取同步GroupID
@@ -185,7 +175,7 @@ func (m *AdminProto) syncHandler(stream network.Stream) {
 	}
 
 	// 后台同步处理
-	err = m.loopSync(groupID, stream, rd, wt)
+	err = m.loopSync(groupID, remotePeerID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)
 	}
@@ -219,7 +209,7 @@ func (a *AdminProto) handleSubscribe(ctx context.Context, sub event.Subscription
 				}
 
 				depositAddress, err := a.data.GetDepositAddress(ctx, evt.GroupID)
-				if err != nil {
+				if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 					log.Errorf("data get group deposit address error: %v", err)
 
 				} else if depositAddress != peer.ID("") {
@@ -262,12 +252,14 @@ func (a *AdminProto) handleSubscribe(ctx context.Context, sub event.Subscription
 }
 
 // 发送消息
-func (a *AdminProto) broadcastMessage(ctx context.Context, groupID string, msg *pb.GroupLog, excludePeerIDs ...peer.ID) error {
+func (a *AdminProto) broadcastMessage(groupID string, msg *pb.GroupLog, excludePeerIDs ...peer.ID) error {
 
 	if len(a.groupConns[groupID]) == 0 {
 		// 这里不要报错，报错也不能完全解决问题（比如：不退群直接把软件删除了呢），可以靠关联日志同步来弥补
 		return nil
 	}
+
+	ctx := context.Background()
 
 	for peerID := range a.groupConns[groupID] {
 		if len(excludePeerIDs) > 0 {
@@ -275,6 +267,7 @@ func (a *AdminProto) broadcastMessage(ctx context.Context, groupID string, msg *
 			for _, excludePeerID := range excludePeerIDs {
 				if peerID == excludePeerID {
 					isExcluded = true
+					break
 				}
 			}
 			if isExcluded {

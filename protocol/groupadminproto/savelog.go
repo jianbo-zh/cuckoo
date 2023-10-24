@@ -9,7 +9,33 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+func (a *AdminProto) receiveLog(ctx context.Context, pblog *pb.GroupLog, fromPeerIDs ...peer.ID) error {
+	oldState, err := a.data.GetState(ctx, pblog.GroupId)
+
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return fmt.Errorf("data.GetState error: %w", err)
+	}
+
+	isUpdated, err := a.saveLog(ctx, pblog)
+	if err != nil {
+		return fmt.Errorf("a.saveLog error: %w", err)
+	}
+
+	if isUpdated {
+		if err := a.broadcastMessage(pblog.GroupId, pblog, fromPeerIDs...); err != nil {
+			return fmt.Errorf("a.broadcastMessage error: %w", err)
+		}
+
+		if err := a.checkGroupChange(ctx, pblog.GroupId, pblog.LogType == pb.GroupLog_MEMBER, oldState); err != nil {
+			return fmt.Errorf(".checkGroupChange error: %w", err)
+		}
+	}
+
+	return nil
+}
 
 func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated bool, err error) {
 
@@ -20,6 +46,8 @@ func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated
 	} else if !errors.Is(err, ipfsds.ErrNotFound) {
 		return false, fmt.Errorf("data.GetLog error: %w", err)
 	}
+
+	fmt.Println("saveLog: ", pblog.String())
 
 	// 保存日志
 	if err := a.data.SaveLog(ctx, pblog); err != nil {
@@ -57,7 +85,6 @@ func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated
 		}
 
 	case pb.GroupLog_MEMBER:
-		fmt.Println("3333")
 		if err := a.data.UpdateMembers(ctx, pblog.GroupId, a.host.ID()); err != nil {
 			return true, fmt.Errorf("data.UpdateMembers error: %w", err)
 		}
@@ -137,7 +164,7 @@ func (a *AdminProto) checkGroupChange(ctx context.Context, groupID string, isMem
 			return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
 		}
 
-		a.emitters.evtGroupsChange.Emit(myevent.EvtGroupMemberChange{
+		a.emitters.evtGroupMemberChange.Emit(myevent.EvtGroupMemberChange{
 			GroupID:       groupID,
 			PeerIDs:       memberIDs,
 			AcptPeerIDs:   agreeMemberIDs,

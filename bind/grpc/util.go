@@ -68,6 +68,30 @@ func encodeMessageState(state mytype.MessageState) proto.MsgState {
 	}
 }
 
+func encodeContactState(state mytype.ContactState) proto.ContactState {
+	switch state {
+	case mytype.ContactStateDelete:
+		return proto.ContactState_DeleteContactState
+	case mytype.ContactStateNormal:
+		return proto.ContactState_NormalContactState
+	default:
+		return proto.ContactState_UnknownContactState
+	}
+}
+
+func encodeGroupState(state mytype.GroupState) proto.GroupState {
+	switch state {
+	case mytype.GroupStateNormal:
+		return proto.GroupState_NormalGroupState
+	case mytype.GroupStateExit:
+		return proto.GroupState_ExitedGroupState
+	case mytype.GroupStateDisband:
+		return proto.GroupState_DisbandGroupState
+	default:
+		return proto.GroupState_UnknownGroupState
+	}
+}
+
 func encodeFileInfo(file *mytype.FileInfo) *proto.FileInfo {
 	var fileType proto.FileType
 	switch file.FileType {

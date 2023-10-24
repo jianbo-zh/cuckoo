@@ -196,39 +196,14 @@ func (g *GroupService) GetGroupDetail(ctx context.Context, groupID string) (*myt
 	return g.adminProto.GetGroupDetail(ctx, groupID)
 }
 
+// GetGroupMemberIDs 获取群成员列表
+func (g *GroupService) GetGroupMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error) {
+	return g.adminProto.GetMemberIDs(ctx, groupID)
+}
+
 // GetGroupOnlineMemberIDs 获取群在线成员IDs
 func (g *GroupService) GetGroupOnlineMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error) {
-	// 所以成员
-	memberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
-	if err != nil {
-		return nil, fmt.Errorf("proto.GetMemberIDs error: %w", err)
-
-	} else if len(memberIDs) == 0 {
-		return nil, nil
-	}
-
-	memberIDsMap := make(map[peer.ID]struct{}, 0)
-	for _, memberID := range memberIDs {
-		memberIDsMap[memberID] = struct{}{}
-	}
-
-	// 在线成员
-	onlineIDs, err := g.networkProto.GetGroupOnlinePeers(groupID)
-	if err != nil {
-		return nil, fmt.Errorf("proto.GetGroupOnlinePeers error: %w", err)
-
-	} else if len(onlineIDs) == 0 {
-		return nil, nil
-	}
-
-	var onlineMemberIDs []peer.ID
-	for _, onlineID := range onlineIDs {
-		if _, exists := memberIDsMap[onlineID]; exists {
-			onlineMemberIDs = append(onlineMemberIDs, onlineID)
-		}
-	}
-
-	return onlineMemberIDs, nil
+	return g.networkProto.GetGroupOnlinePeers(groupID)
 }
 
 // InviteJoinGroup 邀请进群

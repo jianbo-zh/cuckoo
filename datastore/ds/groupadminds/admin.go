@@ -283,13 +283,6 @@ func (a *AdminDs) GetGroupIDs(ctx context.Context) ([]string, error) {
 
 func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]*pb.GroupMember, error) {
 
-	fmt.Println("------")
-	logs, _ := a.getGroupLogs(ctx, groupID, "")
-	for _, log := range logs {
-		fmt.Println(log)
-	}
-	fmt.Println("------")
-
 	value, err := a.Get(ctx, adminDsKey.MembersKey(groupID))
 	if err != nil {
 		if errors.Is(err, ds.ErrNotFound) {

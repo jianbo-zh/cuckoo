@@ -8,6 +8,5 @@ const (
 	KwAutoJoin       = "_autojoin_"
 	KwDepositAddress = "_depositpeer_"
 	KwMember         = "_member_"
-	KwExit           = "_exit_"
 	KwDisband        = "_disband_"
 )

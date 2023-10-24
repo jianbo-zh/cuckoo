@@ -25,10 +25,10 @@ var log = logging.Logger("myhost")
 type Host interface {
 	host.Host
 
-	OnlineState(peerID peer.ID, onlineDuration time.Duration) mytype.OnlineState
+	OnlineState(peerID peer.ID) mytype.OnlineState
 
 	// peer在线状态统计
-	OnlineStats(peerIDs []peer.ID, onlineDuration time.Duration) map[peer.ID]mytype.OnlineState
+	OnlineStats(peerIDs []peer.ID) map[peer.ID]mytype.OnlineState
 }
 
 type MyHost struct {

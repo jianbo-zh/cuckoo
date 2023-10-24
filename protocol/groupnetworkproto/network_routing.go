@@ -3,6 +3,7 @@ package groupnetworkproto
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
@@ -16,14 +17,14 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	ctx := context.Background()
 	stream, err := n.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), peerID, ROUTING_ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("host.NewStream error: %w", err)
 	}
 
 	// 获取本地路由表
 	localGRT := n.getRoutingTable(groupID)
 	bs, err := json.Marshal(localGRT)
 	if err != nil {
-		return err
+		return fmt.Errorf("json.Marshal localGRT error: %w", err)
 	}
 
 	// 发送本地路由表
@@ -31,19 +32,19 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	defer wt.Close()
 
 	if err = wt.WriteMsg(&pb.GroupRoutingTable{GroupId: groupID, Payload: bs}); err != nil {
-		return err
+		return fmt.Errorf("pbio write msg error: %w", err)
 	}
 
 	// 接收对方路由表
 	var msg pb.GroupRoutingTable
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&msg); err != nil {
-		return err
+		return fmt.Errorf("pbio read msg error: %w", err)
 	}
 
 	var remoteGRT GroupRoutingTable
 	if err = json.Unmarshal(msg.Payload, &remoteGRT); err != nil {
-		return err
+		return fmt.Errorf("json.Unmarshal remoteGRT error: %w", err)
 	}
 
 	// 合并更新到本地路由

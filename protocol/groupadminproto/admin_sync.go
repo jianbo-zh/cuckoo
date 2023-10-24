@@ -51,13 +51,13 @@ func (a *AdminProto) goSyncAdmin(groupID string, peerID peer.ID) {
 
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 
-	err = a.loopSync(groupID, stream, rd, wt)
+	err = a.loopSync(groupID, peerID, stream, rd, wt)
 	if err != nil {
 		log.Errorf("loop sync error: %v", err)
 	}
 }
 
-func (a *AdminProto) loopSync(groupID string, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
+func (a *AdminProto) loopSync(groupID string, remotePeerID peer.ID, stream network.Stream, rd pbio.ReadCloser, wt pbio.WriteCloser) error {
 
 	var syncmsg pb.GroupSyncLog
 
@@ -88,7 +88,7 @@ func (a *AdminProto) loopSync(groupID string, stream network.Stream, rd pbio.Rea
 			}
 
 		case pb.GroupSyncLog_PUSH_MSG:
-			if err := a.handleSyncPushMsg(groupID, &syncmsg); err != nil {
+			if err := a.handleSyncPushMsg(groupID, remotePeerID, &syncmsg); err != nil {
 				return fmt.Errorf("handle sync push msg error: %w", err)
 			}
 
@@ -310,7 +310,7 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyncLog
 	return nil
 }
 
-func (a *AdminProto) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncLog) error {
+func (a *AdminProto) handleSyncPushMsg(groupID string, fromPeerID peer.ID, syncmsg *pb.GroupSyncLog) error {
 	var msg pb.GroupLog
 	if err := proto.Unmarshal(syncmsg.Payload, &msg); err != nil {
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
@@ -318,7 +318,7 @@ func (a *AdminProto) handleSyncPushMsg(groupID string, syncmsg *pb.GroupSyncLog)
 
 	fmt.Println("receive push msg: ", msg.String())
 
-	if _, err := a.saveLog(context.Background(), &msg); err != nil {
+	if err := a.receiveLog(context.Background(), &msg, fromPeerID); err != nil {
 		return fmt.Errorf("data save log error: %w", err)
 	}
 

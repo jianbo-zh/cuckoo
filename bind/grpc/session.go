@@ -104,6 +104,11 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 			if err != nil {
 				return nil, fmt.Errorf("svc get group error: %w", err)
 			}
+
+			lastMsg := session.Content
+			if len(session.Username) > 0 {
+				lastMsg = session.Username + ": " + session.Content
+			}
 			sessionList = append(sessionList, &proto.Session{
 				Id:      session.ID.String(),
 				Type:    proto.SessionType_GroupSessionType,
@@ -111,7 +116,7 @@ func (s *SessionSvc) GetSessions(ctx context.Context, request *proto.GetSessions
 				Name:    group.Name,
 				Avatar:  group.Avatar,
 				State:   proto.OnlineState_UnknownOnlineState,
-				Lastmsg: session.Username + ": " + session.Content,
+				Lastmsg: lastMsg,
 				Unreads: int32(session.Unreads),
 			})
 		default:

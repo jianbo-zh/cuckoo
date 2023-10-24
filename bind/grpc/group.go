@@ -261,11 +261,23 @@ func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest)
 		return nil, fmt.Errorf("groupSvc.GetGroup error: %w", err)
 	}
 
+	memberIDs, err := groupSvc.GetGroupMemberIDs(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetGroupMemberIDs error: %w", err)
+	}
+
+	onlineIDs, err := groupSvc.GetGroupOnlineMemberIDs(ctx, request.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("svc.GetGroupOnlineMemberIDs error: %w", err)
+	}
+
 	group := &proto.Group{
 		Id:             grp.ID,
 		Avatar:         grp.Avatar,
 		Name:           grp.Name,
 		DepositAddress: grp.DepositAddress.String(),
+		State:          encodeGroupState(grp.State),
+		OnlineNum:      fmt.Sprintf("%d/%d", len(onlineIDs), len(memberIDs)),
 	}
 
 	reply = &proto.GetGroupReply{
@@ -309,6 +321,7 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 		Notice:         grp.Notice,
 		AutoJoinGroup:  grp.AutoJoinGroup,
 		DepositAddress: grp.DepositAddress.String(),
+		State:          encodeGroupState(grp.State),
 		CreateTime:     grp.CreateTime,
 		UpdateTime:     grp.UpdateTime,
 	}
