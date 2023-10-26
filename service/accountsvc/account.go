@@ -130,7 +130,7 @@ func (a *AccountSvc) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.Online
 // AsyncCheckOnlineState 异步探测Peer是否在线
 func (a *AccountSvc) AsyncCheckOnlineState(peerID peer.ID) {
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := a.accountProto.CheckOnlineState(ctx, peerID); err != nil {

@@ -17,7 +17,7 @@ import (
 
 func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	n.networkMutex.Lock()
-	if _, exists := n.network[groupID][peerID]; exists {
+	if _, exists := n.network[groupID].Conns[peerID]; exists {
 		n.networkMutex.Unlock()
 		log.Warnln("connect is exists, do nothing")
 		return nil
@@ -35,6 +35,7 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	hostBootTs := n.bootTs
 	hostConnTimes := n.incrConnTimes() // 连接或断开一次则1
 
+	fmt.Println("send conn init")
 	// 发送组网请求，同步Lamport时钟
 	wt := pbio.NewDelimitedWriter(stream)
 	sendConnInit := pb.GroupConnectInit{
@@ -47,6 +48,7 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		return fmt.Errorf("wt write msg error: %w", err)
 	}
 
+	fmt.Println("recv conn init")
 	var recvConnInit pb.GroupConnectInit
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&recvConnInit); err != nil {
@@ -62,24 +64,17 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		writer: wt,
 	}
 
+	fmt.Println("update network peerConn")
+
 	// 更新网络状态
 	n.networkMutex.Lock()
-	if _, exists := n.network[groupID]; !exists {
-		n.network[groupID] = make(map[peer.ID]*Connect)
-	}
-
-	if _, exists := n.network[groupID][peerID]; exists {
-		log.Errorf("peer connect is exists, delete old")
-		close(n.network[groupID][peerID].doneCh)
-		delete(n.network[groupID], peerID)
-	}
-
-	n.network[groupID][peerID] = &peerConn
+	n.network[groupID].Conns[peerID] = &peerConn
 	n.networkMutex.Unlock()
 
 	peerBootTs := recvConnInit.BootTs
 	peerConnTimes := recvConnInit.ConnTimes
 
+	fmt.Println("read write stream")
 	go func() {
 		var wg sync.WaitGroup
 
@@ -104,6 +99,8 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	}); err != nil {
 		return err
 	}
+
+	fmt.Println("update routing and froward")
 
 	// 转发连接改变事件
 	n.updateRoutingAndForward(groupID, peerID,
@@ -164,7 +161,6 @@ func (n *NetworkProto) writeStream(wg *sync.WaitGroup, stream network.Stream, gr
 				log.Errorf("json marshal error: %v", err)
 				return
 			}
-
 			err = writer.WriteMsg(&pb.GroupConnectMaintain{Type: pb.GroupConnectMaintain_ConnectChange, Payload: bs})
 			if err != nil {
 				log.Errorf("write msg error: %v", err)
@@ -190,20 +186,18 @@ func (n *NetworkProto) disconnect(groupID GroupID, peerID peer.ID) error {
 	n.networkMutex.Lock()
 	defer n.networkMutex.Unlock()
 
-	if _, exists := n.network[groupID][peerID]; !exists {
+	if _, exists := n.network[groupID].Conns[peerID]; !exists {
 		return fmt.Errorf("conn not exists")
 	}
 
-	// disconnect signal
-	close(n.network[groupID][peerID].doneCh)
+	// 发送断开信号
+	close(n.network[groupID].Conns[peerID].doneCh)
 	return nil
 }
 
 func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peerBootTs uint64, peerConnTimes uint64) error {
 	n.networkMutex.Lock()
-	if _, exists := n.network[groupID]; exists {
-		delete(n.network[groupID], peerID)
-	}
+	delete(n.network[groupID].Conns, peerID)
 	n.networkMutex.Unlock()
 
 	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
@@ -221,6 +215,7 @@ func (n *NetworkProto) triggerDisconnected(groupID GroupID, peerID peer.ID, peer
 }
 
 func (n *NetworkProto) updateRoutingAndForward(groupID GroupID, peerID peer.ID, conn ConnectPair) error {
+	log.Debugln("updateRoutingAndForward")
 	// 更新路由表
 	if isUpdated := n.updateRoutingTable(groupID, conn); !isUpdated {
 		return nil
@@ -228,17 +223,22 @@ func (n *NetworkProto) updateRoutingAndForward(groupID GroupID, peerID peer.ID, 
 	log.Debugln("update group routing table")
 
 	// 转发路由连接
-	if err := n.handleForwardConnect(groupID, peerID, conn); err != nil {
+	if err := n.handleForwardConnect(groupID, conn, peerID); err != nil {
 		return fmt.Errorf("forward connect error: %w", err)
 	}
 	log.Debugln("forword peer connect")
+
+	// 触发路由更新
+	if err := n.emitters.evtGroupRoutingTableChanged.Emit(myevent.EvtGroupRoutingTableChanged{GroupID: groupID}); err != nil {
+		return fmt.Errorf("emit group routing table changed event error: %w", err)
+	}
 
 	return nil
 }
 
 // forwardConnectMaintain 转发更新连接
-func (n *NetworkProto) handleForwardConnect(groupID GroupID, excludePeerID peer.ID, conn0 ConnectPair) error {
-	for peerID, conn := range n.network[groupID] {
+func (n *NetworkProto) handleForwardConnect(groupID GroupID, conn0 ConnectPair, excludePeerID peer.ID) error {
+	for peerID, conn := range n.network[groupID].Conns {
 		if peerID == excludePeerID {
 			continue
 		}

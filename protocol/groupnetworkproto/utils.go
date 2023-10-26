@@ -8,3 +8,7 @@ func connKey(peerID1 peer.ID, peerID2 peer.ID) ConnKey {
 	}
 	return peerID2.String() + "_" + peerID1.String()
 }
+
+func groupRendezvous(groupID string) string {
+	return "/dchat/group/" + groupID
+}

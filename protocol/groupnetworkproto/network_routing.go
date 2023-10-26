@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/mytype"
 	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -48,7 +49,11 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	}
 
 	// 合并更新到本地路由
-	n.mergeRoutingTable(groupID, remoteGRT)
+	if n.mergeRoutingTable(groupID, remoteGRT) {
+		if err := n.emitters.evtGroupRoutingTableChanged.Emit(myevent.EvtGroupRoutingTableChanged{GroupID: groupID}); err != nil {
+			return fmt.Errorf("emit group routing table changed event error: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -117,16 +122,20 @@ func (n *NetworkProto) getRoutingTable(groupID string) GroupRoutingTable {
 }
 
 // mergeRoutingTable 合并路由表
-func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingTable) {
+func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingTable) bool {
+	var isUpdated bool
+
 	n.routingTableMutex.Lock()
 	defer n.routingTableMutex.Unlock()
 
 	if n.routingTable == nil {
 		n.routingTable = make(RoutingTable)
+		isUpdated = true
 	}
 
 	if _, exists := n.routingTable[groupID]; !exists {
 		n.routingTable[groupID] = remoteGRT
+		isUpdated = true
 
 	} else {
 		// todo: 复制一份路由表
@@ -137,14 +146,17 @@ func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingT
 			connPair, exists := localGRT[key]
 			if !exists {
 				localGRT[key] = conn
+				isUpdated = true
 			}
 
 			if conn.BootTs0 > connPair.BootTs0 || conn.BootTs1 > connPair.BootTs1 {
 				localGRT[key] = conn
+				isUpdated = true
 
 			} else if conn.BootTs0 == connPair.BootTs0 && conn.BootTs1 == connPair.BootTs1 {
 				if conn.ConnTimes0 > connPair.ConnTimes0 && conn.ConnTimes1 > connPair.ConnTimes1 {
 					localGRT[key] = conn
+					isUpdated = true
 				}
 			}
 		}
@@ -185,9 +197,12 @@ func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingT
 				(conn.BootTs1 == pmax[conn.PeerID1][0] && conn.ConnTimes1 < pmax[conn.PeerID1][1]) {
 
 				delete(localGRT, key)
+				isUpdated = true
 			}
 		}
 
 		n.routingTable[groupID] = localGRT
 	}
+
+	return isUpdated
 }

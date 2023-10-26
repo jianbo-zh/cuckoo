@@ -38,6 +38,7 @@ type AdminIface interface {
 	GetGroupIDs(ctx context.Context) ([]string, error)
 	GetMembers(ctx context.Context, groupID string) ([]*pb.GroupMember, error) // 正式成员
 
+	GetLogIDs(ctx context.Context, groupID string) ([]string, error)                   // 所有日志IDs
 	GetMemberIDs(ctx context.Context, groupID string) ([]peer.ID, error)               // 正式成员IDs
 	GetAgreePeerIDs(ctx context.Context, groupID string) ([]peer.ID, error)            // 所有审核通过的成员IDs
 	GetRefusePeerLogs(ctx context.Context, groupID string) (map[peer.ID]string, error) // 所有拒绝连接的成员

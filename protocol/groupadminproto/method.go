@@ -178,14 +178,7 @@ func (a *AdminProto) CreateGroup(ctx context.Context, account *mytype.Account, n
 
 	// 触发新增群组
 	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-		AddGroups: []myevent.Groups{
-			{
-				GroupID:       groupID,
-				PeerIDs:       []peer.ID{account.ID},
-				AcptPeerIDs:   memberIDs,
-				RefusePeerIDs: make(map[peer.ID]string),
-			},
-		},
+		AddGroupID: groupID,
 	}); err != nil {
 		return nil, fmt.Errorf("emite add group error: %w", err)
 	}
@@ -355,14 +348,7 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *mytype.Account
 	}
 
 	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-		AddGroups: []myevent.Groups{
-			{
-				GroupID:       group.ID,
-				PeerIDs:       []peer.ID{account.ID},
-				AcptPeerIDs:   []peer.ID{account.ID},
-				RefusePeerIDs: make(map[peer.ID]string),
-			},
-		},
+		AddGroupID: group.ID,
 	}); err != nil {
 		return fmt.Errorf("emit groups change error: %w", err)
 	}
@@ -411,7 +397,7 @@ func (a *AdminProto) ExitGroup(ctx context.Context, account *mytype.Account, gro
 
 	// 触发退出群组
 	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-		DeleteGroups: []string{groupID},
+		DeleteGroupID: groupID,
 	}); err != nil {
 		return fmt.Errorf("emite add group error: %w", err)
 	}
@@ -461,7 +447,7 @@ func (a *AdminProto) DeleteGroup(ctx context.Context, account *mytype.Account, g
 
 		// 触发退出群组
 		if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-			DeleteGroups: []string{groupID},
+			DeleteGroupID: groupID,
 		}); err != nil {
 			return fmt.Errorf("emite add group error: %w", err)
 		}
@@ -515,7 +501,7 @@ func (a *AdminProto) DisbandGroup(ctx context.Context, account *mytype.Account, 
 	}
 
 	if err = a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-		DeleteGroups: []string{groupID},
+		DeleteGroupID: groupID,
 	}); err != nil {
 		return fmt.Errorf("emite delete group error: %w", err)
 	}

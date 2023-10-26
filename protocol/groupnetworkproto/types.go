@@ -39,6 +39,14 @@ type GroupPeers = map[GroupID]GroupPeer
 
 type GroupID = string
 
+// ------------ 组网相关 -------------
+type NetworkState string
+
+const (
+	DoingNetworkState NetworkState = "doing"
+	DoneNetworkState  NetworkState = "done"
+)
+
 type Connect struct {
 	PeerID peer.ID
 	reader pbio.ReadCloser
@@ -47,4 +55,9 @@ type Connect struct {
 	doneCh chan struct{}
 }
 
-type Network map[GroupID]map[peer.ID]*Connect
+type GroupNetwork struct {
+	Conns map[peer.ID]*Connect
+	State NetworkState // 组网状态（是否正在启动组网）
+}
+
+type Network map[GroupID]*GroupNetwork

@@ -531,6 +531,61 @@ func (x *GroupLog) GetSignature() []byte {
 	return nil
 }
 
+type GroupLogPack struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	LeftNum int32     `protobuf:"varint,1,opt,name=leftNum,proto3" json:"leftNum,omitempty"`
+	Log     *GroupLog `protobuf:"bytes,2,opt,name=log,proto3" json:"log,omitempty"`
+}
+
+func (x *GroupLogPack) Reset() {
+	*x = GroupLogPack{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_group_admin_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GroupLogPack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupLogPack) ProtoMessage() {}
+
+func (x *GroupLogPack) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_group_admin_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupLogPack.ProtoReflect.Descriptor instead.
+func (*GroupLogPack) Descriptor() ([]byte, []int) {
+	return file_proto_group_admin_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GroupLogPack) GetLeftNum() int32 {
+	if x != nil {
+		return x.LeftNum
+	}
+	return 0
+}
+
+func (x *GroupLogPack) GetLog() *GroupLog {
+	if x != nil {
+		return x.Log
+	}
+	return nil
+}
+
 var File_proto_group_admin_proto protoreflect.FileDescriptor
 
 var file_proto_group_admin_proto_rawDesc = []byte{
@@ -593,7 +648,12 @@ var file_proto_group_admin_proto_rawDesc = []byte{
 	0x50, 0x4c, 0x59, 0x10, 0x02, 0x12, 0x09, 0x0a, 0x05, 0x41, 0x47, 0x52, 0x45, 0x45, 0x10, 0x03,
 	0x12, 0x0c, 0x0a, 0x08, 0x52, 0x45, 0x4a, 0x45, 0x43, 0x54, 0x45, 0x44, 0x10, 0x04, 0x12, 0x0a,
 	0x0a, 0x06, 0x52, 0x45, 0x4d, 0x4f, 0x56, 0x45, 0x10, 0x05, 0x12, 0x08, 0x0a, 0x04, 0x45, 0x58,
-	0x49, 0x54, 0x10, 0x06, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x49, 0x54, 0x10, 0x06, 0x22, 0x4e, 0x0a, 0x0c, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4c, 0x6f, 0x67,
+	0x50, 0x61, 0x63, 0x6b, 0x12, 0x18, 0x0a, 0x07, 0x6c, 0x65, 0x66, 0x74, 0x4e, 0x75, 0x6d, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x07, 0x6c, 0x65, 0x66, 0x74, 0x4e, 0x75, 0x6d, 0x12, 0x24,
+	0x0a, 0x03, 0x6c, 0x6f, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x61, 0x64,
+	0x6d, 0x69, 0x6e, 0x2e, 0x70, 0x62, 0x2e, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x4c, 0x6f, 0x67, 0x52,
+	0x03, 0x6c, 0x6f, 0x67, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -609,7 +669,7 @@ func file_proto_group_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_group_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_group_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_proto_group_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_group_admin_proto_goTypes = []interface{}{
 	(GroupLog_LogType)(0),       // 0: admin.pb.GroupLog.LogType
 	(GroupLog_MemberOperate)(0), // 1: admin.pb.GroupLog.MemberOperate
@@ -619,6 +679,7 @@ var file_proto_group_admin_proto_goTypes = []interface{}{
 	(*GroupRefuseLog)(nil),      // 5: admin.pb.GroupRefuseLog
 	(*GroupRefusePeers)(nil),    // 6: admin.pb.GroupRefusePeers
 	(*GroupLog)(nil),            // 7: admin.pb.GroupLog
+	(*GroupLogPack)(nil),        // 8: admin.pb.GroupLogPack
 }
 var file_proto_group_admin_proto_depIdxs = []int32{
 	2, // 0: admin.pb.GroupMembers.members:type_name -> admin.pb.GroupMember
@@ -626,11 +687,12 @@ var file_proto_group_admin_proto_depIdxs = []int32{
 	0, // 2: admin.pb.GroupLog.logType:type_name -> admin.pb.GroupLog.LogType
 	2, // 3: admin.pb.GroupLog.member:type_name -> admin.pb.GroupMember
 	1, // 4: admin.pb.GroupLog.memberOperate:type_name -> admin.pb.GroupLog.MemberOperate
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	7, // 5: admin.pb.GroupLogPack.log:type_name -> admin.pb.GroupLog
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_group_admin_proto_init() }
@@ -711,6 +773,18 @@ func file_proto_group_admin_proto_init() {
 				return nil
 			}
 		}
+		file_proto_group_admin_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GroupLogPack); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -718,7 +792,7 @@ func file_proto_group_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_group_admin_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

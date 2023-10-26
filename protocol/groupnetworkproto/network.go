@@ -3,10 +3,12 @@ package groupnetworkproto
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	logds "github.com/jianbo-zh/dchat/datastore/ds/groupadminds"
 	ds "github.com/jianbo-zh/dchat/datastore/ds/groupnetworkds"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
@@ -36,8 +38,9 @@ const (
 )
 
 type NetworkProto struct {
-	host myhost.Host
-	data ds.NetworkIface
+	host    myhost.Host
+	data    ds.NetworkIface
+	logdata logds.AdminIface
 
 	discv *drouting.RoutingDiscovery
 
@@ -47,15 +50,14 @@ type NetworkProto struct {
 	network      Network
 	networkMutex sync.RWMutex
 
-	groupPeers      GroupPeers
-	groupPeersMutex sync.RWMutex
-
 	bootTs    uint64 // boot timestamp
 	connTimes uint64 // connect change(connect & disconnect) count
 
 	emitters struct {
-		evtGroupConnectChange  event.Emitter
-		evtGroupNetworkSuccess event.Emitter
+		evtGroupConnectChange       event.Emitter
+		evtGroupNetworkSuccess      event.Emitter
+		evtGroupRoutingTableChanged event.Emitter
+		evtPullGroupLog             event.Emitter
 	}
 }
 
@@ -66,6 +68,7 @@ func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids
 	networksvc := &NetworkProto{
 		host:         lhost,
 		data:         ds.NetworkWrap(ids),
+		logdata:      logds.AdminWrap(ids),
 		discv:        rdiscvry,
 		routingTable: make(RoutingTable),
 		network:      make(Network),
@@ -86,14 +89,23 @@ func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids
 		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
 	}
 
+	networksvc.emitters.evtGroupRoutingTableChanged, err = ebus.Emitter(&myevent.EvtGroupRoutingTableChanged{})
+	if err != nil {
+		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
+	}
+
+	networksvc.emitters.evtPullGroupLog, err = ebus.Emitter(&myevent.EvtPullGroupLog{})
+	if err != nil {
+		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
+	}
+
 	// EvtGroupsInit 第一步获取组信息
-	sub, err := ebus.Subscribe([]any{new(myevent.EvtGroupsInit), new(myevent.EvtGroupsChange), new(myevent.EvtGroupMemberChange)})
+	sub, err := ebus.Subscribe([]any{new(myevent.EvtGroupInitNetwork), new(myevent.EvtGroupsChange), new(myevent.EvtGroupMemberChange)})
 	if err != nil {
 		return nil, fmt.Errorf("subscribe event error: %w", err)
-
-	} else {
-		go networksvc.subscribeHandler(context.Background(), sub)
 	}
+
+	go networksvc.subscribeHandler(context.Background(), sub)
 
 	return networksvc, nil
 }
@@ -101,13 +113,16 @@ func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids
 func (n *NetworkProto) GetGroupOnlinePeers(groupID string) ([]peer.ID, error) {
 	rTable := n.getRoutingTable(groupID)
 
+	fmt.Println("routing table: -----")
 	peerIDsMap := make(map[peer.ID]bool)
 	for _, connPair := range rTable {
+		fmt.Println("connPair: ", connPair)
 		if connPair.State == StateConnected {
 			peerIDsMap[connPair.PeerID0] = true
 			peerIDsMap[connPair.PeerID1] = true
 		}
 	}
+	fmt.Println("routing table: -----")
 
 	var peerIDs []peer.ID
 	for peerID := range peerIDsMap {
@@ -115,6 +130,67 @@ func (n *NetworkProto) GetGroupOnlinePeers(groupID string) ([]peer.ID, error) {
 	}
 
 	return peerIDs, nil
+}
+
+func (n *NetworkProto) GetNormalGroupIDs(ctx context.Context) ([]string, error) {
+
+	groupIDs, err := n.logdata.GetGroupIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("data.GetGroupIDs error: %w", err)
+	}
+
+	var normalGroupIDs []string
+	for _, groupID := range groupIDs {
+		state, err := n.logdata.GetState(ctx, groupID)
+		if err != nil {
+			return nil, fmt.Errorf("data.GetState error: %w", err)
+		}
+
+		switch state {
+		case mytype.GroupStateDisband:
+			creator, err := n.logdata.GetCreator(ctx, groupID)
+			if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+				log.Errorf("data.GetCreate error: %w", err)
+			}
+			if n.host.ID() == creator {
+				normalGroupIDs = append(normalGroupIDs, groupID)
+			}
+		case mytype.GroupStateNormal:
+			normalGroupIDs = append(normalGroupIDs, groupID)
+		}
+	}
+
+	return normalGroupIDs, nil
+}
+
+// checkGroupNetworkAlive 保持群组网络
+func (n *NetworkProto) listenGroupNetworkAlive() {
+	ctx := context.Background()
+
+	for {
+		time.Sleep(10 * time.Second)
+
+		groupIDs, err := n.GetNormalGroupIDs(ctx)
+		if err != nil {
+			log.Errorf("data.GetGroupIDs error: %w", err)
+			return
+		}
+
+		for _, groupID := range groupIDs {
+			isNeedStart := false
+			n.networkMutex.Lock()
+			if _, exists := n.network[groupID]; !exists {
+				isNeedStart = true
+			} else if len(n.network[groupID].Conns) == 0 {
+				isNeedStart = true
+			}
+			n.networkMutex.Unlock()
+
+			if isNeedStart {
+				n.startNetworking(ctx, groupID)
+			}
+		}
+	}
 }
 
 // connectHandler 接收组网请求
@@ -129,18 +205,29 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	}
 
 	groupID := connInit.GroupId
-	peerID := stream.Conn().RemotePeer()
+	remotePeerID := stream.Conn().RemotePeer()
 
 	// 判断对方是否在群里面
-	n.groupPeersMutex.RLock()
-	if _, exists := n.groupPeers[groupID]; exists {
-		if _, exists := n.groupPeers[groupID].AcptPeerIDs[peerID]; !exists {
-			log.Errorf("not group peer, refuse conn")
-			stream.Reset()
-			return
+	acptPeerIDs, err := n.logdata.GetAgreePeerIDs(context.Background(), groupID)
+	if err != nil {
+		log.Errorf("data.GetAgreePeerIDs error: %w", err)
+		stream.Reset()
+		return
+	}
+
+	isFound := false
+	for _, peerID := range acptPeerIDs {
+		if remotePeerID == peerID {
+			isFound = true
+			break
 		}
 	}
-	n.groupPeersMutex.RUnlock()
+
+	if !isFound {
+		log.Errorf("not agree peer")
+		stream.Reset()
+		return
+	}
 
 	hostBootTs := n.bootTs
 	hostConnTimes := n.incrConnTimes()
@@ -153,7 +240,7 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	}
 
 	peerConn := Connect{
-		PeerID: peerID,
+		PeerID: remotePeerID,
 		sendCh: make(chan ConnectPair),
 		doneCh: make(chan struct{}),
 		reader: rd,
@@ -163,15 +250,18 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 	// 更新网络状态
 	n.networkMutex.Lock()
 	if _, exists := n.network[groupID]; !exists {
-		n.network[groupID] = make(map[peer.ID]*Connect)
+		n.network[groupID] = &GroupNetwork{
+			Conns: make(map[peer.ID]*Connect),
+			State: DoneNetworkState, // 这里是接收的连接，所以默认就完成了
+		}
 	}
 
-	if _, exists := n.network[groupID][peerID]; exists {
+	if _, exists := n.network[groupID].Conns[remotePeerID]; exists {
 		log.Errorf("conn is exists, delete old")
-		close(n.network[groupID][peerID].doneCh)
-		delete(n.network[groupID], peerID)
+		close(n.network[groupID].Conns[remotePeerID].doneCh)
+		delete(n.network[groupID].Conns, remotePeerID)
 	}
-	n.network[groupID][peerID] = &peerConn
+	n.network[groupID].Conns[remotePeerID] = &peerConn
 	n.networkMutex.Unlock()
 
 	// 保持网络连接
@@ -182,26 +272,26 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 		var wg sync.WaitGroup
 
 		wg.Add(2)
-		go n.readStream(&wg, stream, groupID, peerID, peerConn.reader, peerConn.doneCh)
-		go n.writeStream(&wg, stream, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
+		go n.readStream(&wg, stream, groupID, remotePeerID, peerConn.reader, peerConn.doneCh)
+		go n.writeStream(&wg, stream, groupID, remotePeerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
 		stream.Close()
-		n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes)
+		n.triggerDisconnected(groupID, remotePeerID, peerBootTs, peerConnTimes)
 	}()
 
 	// 触发连接改变事件
 	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
 		GroupID:     groupID,
-		PeerID:      peerID,
+		PeerID:      remotePeerID,
 		IsConnected: true,
 	}); err != nil {
 		log.Errorf("emit group connect change error: %w", err)
 	}
 
 	// 转发连接改变事件
-	n.updateRoutingAndForward(groupID, peerID,
-		n.connectPair(groupID, n.host.ID(), n.bootTs, hostConnTimes, peerID, peerBootTs, peerConnTimes, StateConnected))
+	n.updateRoutingAndForward(groupID, remotePeerID,
+		n.connectPair(groupID, n.host.ID(), n.bootTs, hostConnTimes, remotePeerID, peerBootTs, peerConnTimes, StateConnected))
 }
 
 // routingHandler 接收更新路由表请求
@@ -239,7 +329,12 @@ func (n *NetworkProto) routingHandler(stream network.Stream) {
 	}
 
 	// 合并更新到本地路由
-	n.mergeRoutingTable(groupID, remoteGRT)
+	if n.mergeRoutingTable(groupID, remoteGRT) {
+		if err := n.emitters.evtGroupRoutingTableChanged.Emit(myevent.EvtGroupRoutingTableChanged{GroupID: groupID}); err != nil {
+			log.Errorf("emit group routing table changed event error: %w", err)
+			return
+		}
+	}
 }
 
 func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscription) {
@@ -252,22 +347,22 @@ func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscript
 				return
 			}
 			switch evt := e.(type) {
-			case myevent.EvtGroupsInit:
-				n.initNetwork(evt.Groups)
+			case myevent.EvtGroupInitNetwork:
+				n.initNetwork()
 
 			case myevent.EvtGroupsChange:
 				fmt.Println("receive EvtGroupsChange: ", evt)
 
-				if len(evt.AddGroups) > 0 {
-					n.addNetwork(evt.AddGroups)
+				if evt.AddGroupID != "" {
+					n.addGroupNetwork(evt.AddGroupID)
 				}
 
-				if len(evt.DeleteGroups) > 0 {
-					n.deleteNetwork(evt.DeleteGroups)
+				if evt.DeleteGroupID != "" {
+					n.deleteGroupNetwork(evt.DeleteGroupID)
 				}
 
 			case myevent.EvtGroupMemberChange:
-				n.updateNetwork(evt.GroupID, evt.PeerIDs, evt.AcptPeerIDs, evt.RefusePeerIDs)
+				n.updateGroupNetwork(evt.GroupID)
 			}
 
 		case <-ctx.Done():

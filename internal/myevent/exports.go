@@ -47,3 +47,7 @@ type UpdateSession struct {
 type EvtSessionUpdated struct {
 	Sessions []UpdateSession
 }
+
+type EvtGroupRoutingTableChanged struct {
+	GroupID string
+}

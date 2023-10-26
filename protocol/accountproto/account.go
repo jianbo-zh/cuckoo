@@ -88,6 +88,7 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 			switch evt := e.(type) {
 			case myevent.EvtHostBootComplete:
 				if evt.IsSucc {
+					fmt.Println("account host boot complete")
 					account, err := a.data.GetAccount(ctx)
 					if err != nil {
 						log.Errorf("data.GetAccount error: %w", err)
@@ -132,7 +133,7 @@ func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.Onli
 
 func (a *AccountProto) CheckOnlineState(ctx context.Context, peerID peer.ID) error {
 
-	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, time.Second), ""), peerID, ONLINE_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, 3*time.Second), ""), peerID, ONLINE_ID)
 	if err != nil {
 		return fmt.Errorf("host new stream error: %w", err)
 	}
@@ -206,6 +207,8 @@ func (a *AccountProto) GetAccount(ctx context.Context) (*pb.Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ds get account error: %w", err)
 	}
+
+	fmt.Println("address: ", a.host.Addrs())
 
 	return account, nil
 }

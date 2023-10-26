@@ -114,61 +114,21 @@ func (a *AdminProto) checkGroupChange(ctx context.Context, groupID string, isMem
 		case mytype.GroupStateExit, mytype.GroupStateDisband:
 			// 触发断开连接
 			a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-				DeleteGroups: []string{groupID},
+				DeleteGroupID: groupID,
 			})
 
 		case mytype.GroupStateNormal:
 			// 触发增加连接
-			memberIDs, err := a.data.GetMemberIDs(ctx, groupID)
-			if err != nil {
-				return fmt.Errorf("data.GetMemberIDs error: %w", err)
-			}
-
-			agreeMemberIDs, err := a.data.GetAgreePeerIDs(ctx, groupID)
-			if err != nil {
-				return fmt.Errorf("data.GetAgreePeerIDs error: %w", err)
-			}
-
-			refusePeers, err := a.data.GetRefusePeerLogs(ctx, groupID)
-			if err != nil {
-				return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
-			}
-
 			a.emitters.evtGroupsChange.Emit(myevent.EvtGroupsChange{
-				AddGroups: []myevent.Groups{
-					{
-						GroupID:       groupID,
-						PeerIDs:       memberIDs,
-						AcptPeerIDs:   agreeMemberIDs,
-						RefusePeerIDs: refusePeers,
-					},
-				},
+				AddGroupID: groupID,
 			})
 		}
 
 	} else if curState == mytype.GroupStateNormal && isMemberOperate {
 		// 正常连接，并且是成员操作，则更新连接成员信息
 		// 触发增加连接
-		memberIDs, err := a.data.GetMemberIDs(ctx, groupID)
-		if err != nil {
-			return fmt.Errorf("data.GetMemberIDs error: %w", err)
-		}
-
-		agreeMemberIDs, err := a.data.GetAgreePeerIDs(ctx, groupID)
-		if err != nil {
-			return fmt.Errorf("data.GetAgreePeerIDs error: %w", err)
-		}
-
-		refusePeers, err := a.data.GetRefusePeerLogs(ctx, groupID)
-		if err != nil {
-			return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
-		}
-
 		a.emitters.evtGroupMemberChange.Emit(myevent.EvtGroupMemberChange{
-			GroupID:       groupID,
-			PeerIDs:       memberIDs,
-			AcptPeerIDs:   agreeMemberIDs,
-			RefusePeerIDs: refusePeers,
+			GroupID: groupID,
 		})
 	}
 

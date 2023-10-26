@@ -125,10 +125,11 @@ func (c *ContactSvc) GetContact(ctx context.Context, request *proto.GetContactRe
 
 	onlineStateMap := accountSvc.GetOnlineState([]peer.ID{peerID})
 
-	if onlineStateMap[peerID] == mytype.OnlineStateUnknown {
-		// 状态未知，则主动探测一下
-		accountSvc.AsyncCheckOnlineState(peerID)
-	}
+	// if onlineStateMap[peerID] == mytype.OnlineStateUnknown {
+	// 	// 状态未知，则主动探测一下
+	// 	accountSvc.AsyncCheckOnlineState(peerID)
+	// }
+	accountSvc.AsyncCheckOnlineState(peerID)
 
 	reply = &proto.GetContactReply{
 		Result: &proto.Result{

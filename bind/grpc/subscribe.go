@@ -50,6 +50,7 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 		new(myevent.EvtPeerStateChanged),
 		new(myevent.EvtSessionAdded),
 		new(myevent.EvtSessionUpdated),
+		new(myevent.EvtGroupRoutingTableChanged),
 	})
 	if err != nil {
 		return fmt.Errorf("ebus.Subscribe error: %w", err)
@@ -116,6 +117,28 @@ func (c *SubscribeSvc) SubscribeCommonEvent(request *proto.SubscribeCommonEventR
 			reply := proto.SubscribeCommonEventReply{
 				Event: &proto.CommonEvent{
 					Type:    proto.CommonEvent_PeerStateChanged,
+					Payload: payload,
+				},
+			}
+
+			err = server.Send(&reply)
+			if err != nil {
+				return fmt.Errorf("server.Send error: %w", err)
+			}
+
+			log.Infoln("SubscribeCommonEvent reply: ", reply.String())
+
+		case myevent.EvtGroupRoutingTableChanged:
+			payload, err := goproto.Marshal(&proto.CommonEvent_PayloadGroupState{
+				GroupId: evt.GroupID,
+			})
+			if err != nil {
+				return fmt.Errorf("proto.Marshal error: %w", err)
+			}
+
+			reply := proto.SubscribeCommonEventReply{
+				Event: &proto.CommonEvent{
+					Type:    proto.CommonEvent_GroupStateChanged,
 					Payload: payload,
 				},
 			}

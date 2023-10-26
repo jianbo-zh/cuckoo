@@ -107,9 +107,11 @@ func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config
 			}
 		}
 
-		fmt.Println("boot complete")
+		fmt.Println("boot complete, succ: ", isAnySucc)
 
-		bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc})
+		if err := bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc}); err != nil {
+			fmt.Println("emit boot complete error: %w", err)
+		}
 	}()
 
 	lhost, err := myhost.NewHost(localhost, ebus)

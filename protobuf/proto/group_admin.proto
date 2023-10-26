@@ -67,3 +67,8 @@ message GroupLog {
     uint64  lamportime = 9;    // lamport时间戳
     bytes   signature = 10;    // 签名
 }
+
+message GroupLogPack {
+    int32    leftNum = 1;
+    GroupLog log = 2;
+}

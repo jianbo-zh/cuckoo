@@ -4,6 +4,7 @@ package groupadminproto
 
 import (
 	"context"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/libp2p/go-msgio/pbio"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,6 +31,7 @@ var StreamTimeout = 1 * time.Minute
 
 const (
 	LOG_ID  = myprotocol.GroupAdminID_v100
+	PULL_ID = myprotocol.GroupAdminPullID_v100
 	SYNC_ID = myprotocol.GroupAdminSyncID_v100
 
 	ServiceName = "group.admin"
@@ -74,6 +75,7 @@ func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 	}
 
 	lhost.SetStreamHandler(LOG_ID, admsvc.logHandler)
+	lhost.SetStreamHandler(PULL_ID, admsvc.pullHandler)
 	lhost.SetStreamHandler(SYNC_ID, admsvc.syncHandler)
 
 	if admsvc.emitters.evtInviteJoinGroup, err = eventBus.Emitter(&myevent.EvtInviteJoinGroup{}); err != nil {
@@ -96,7 +98,8 @@ func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 		return nil, fmt.Errorf("set sync group message emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupNetworkSuccess), new(myevent.EvtGroupConnectChange)}, eventbus.Name("adminlog"))
+	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupNetworkSuccess), new(myevent.EvtGroupConnectChange), new(myevent.EvtPullGroupLog)})
+
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
 	}
@@ -136,6 +139,122 @@ func (a *AdminProto) logHandler(stream network.Stream) {
 		log.Errorf("save log error: %v", err)
 		stream.Reset()
 		return
+	}
+}
+
+// pullHandler 获取消息处理器
+func (a *AdminProto) pullHandler(stream network.Stream) {
+
+	defer stream.Close()
+
+	var ctx = context.Background()
+
+	// 接收对方消息摘要
+	var recvSumMsg pb.GroupLogHash
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	if err := rd.ReadMsg(&recvSumMsg); err != nil {
+		log.Errorf("pbio read msg error: %v", err)
+		return
+	}
+
+	groupID := recvSumMsg.GroupId
+
+	// 首先计算消息摘要（头尾md5）
+	logIDs, err := a.data.GetLogIDs(ctx, groupID)
+	if err != nil {
+		log.Errorf("data.GetLogIDs error: %v", err)
+		stream.Reset()
+		return
+	}
+
+	var logHash []byte
+	var headID, tailID string
+
+	logIDNum := len(logIDs)
+	if logIDNum > 0 {
+		md5sum := md5.New()
+		for _, logID := range logIDs {
+			if _, err := md5sum.Write([]byte(logID)); err != nil {
+				log.Errorf("md5sum write error: %w", err)
+				stream.Reset()
+				return
+			}
+		}
+		headID = logIDs[0]
+		tailID = logIDs[logIDNum-1]
+		logHash = md5sum.Sum(nil)
+	}
+
+	// 计算并发送本地消息摘要
+	sendSumMsg := pb.GroupLogHash{
+		HeadId: headID,
+		TailId: tailID,
+		Length: int32(logIDNum),
+		Hash:   logHash,
+	}
+	wt := pbio.NewDelimitedWriter(stream)
+	if err := wt.WriteMsg(&sendSumMsg); err != nil {
+		log.Errorf("pbio write msg error: %w", err)
+		return
+	}
+
+	// 如果本地和远端都一样，则正常退出
+	if string(recvSumMsg.Hash) == string(sendSumMsg.Hash) {
+		log.Debugln("summary hash equal")
+		return
+	}
+
+	// 不一致，准备接收对方的消息ID列表，然后进行比对
+	var groupLogIDs []string
+	var groupLogIDPack pb.GroupLogIDPack
+	var leftNum int32
+	for {
+		groupLogIDPack.Reset()
+		if err := rd.ReadMsg(&groupLogIDPack); err != nil {
+			log.Errorf("pbio read log pack error: %w", err)
+			return
+		}
+
+		if groupLogIDPack.LogId != "" {
+			groupLogIDs = append(groupLogIDs, groupLogIDPack.LogId)
+		}
+
+		if groupLogIDPack.LeftNum <= 0 {
+			// 无剩余则退出
+			break
+
+		} else if groupLogIDPack.LeftNum >= leftNum {
+			// 越剩越多则报错
+			log.Errorln("left num more")
+			stream.Reset()
+			return
+		}
+
+		leftNum = groupLogIDPack.LeftNum
+	}
+
+	if len(groupLogIDs) == 0 {
+		log.Debugln("group log ids empty")
+		return
+	}
+
+	// 发送日志给对方
+	groupLogs, err := a.data.GetLogsByIDs(groupID, groupLogIDs)
+	if err != nil {
+		log.Errorf("data.GetLogsByIDs error: %w", err)
+		stream.Reset()
+		return
+	}
+
+	logNum := len(groupLogs)
+	for i, groupLog := range groupLogs {
+		if err := wt.WriteMsg(&pb.GroupLogPack{
+			LeftNum: int32(logNum - i - 1),
+			Log:     groupLog,
+		}); err != nil {
+			log.Errorf("pbio write log pack error: %w", err)
+			return
+		}
 	}
 }
 
@@ -243,9 +362,127 @@ func (a *AdminProto) handleSubscribe(ctx context.Context, sub event.Subscription
 					delete(a.groupConns[evt.GroupID], evt.PeerID)
 				}
 
+			case myevent.EvtPullGroupLog:
+				go a.handlePullGroupLogEvent(evt.GroupID, evt.PeerID, evt.Result)
+
 			}
 
 		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, resultCh chan<- error) {
+	var resultErr error
+	var ctx = context.Background()
+
+	defer func() {
+		resultCh <- resultErr
+		close(resultCh)
+	}()
+
+	// 首先计算消息摘要（头尾md5）
+	logIDs, err := a.data.GetLogIDs(ctx, groupID)
+	if err != nil {
+		resultErr = fmt.Errorf("data.GetLogIDs error: %w", err)
+		return
+	}
+
+	var logHash []byte
+	var headID, tailID string
+
+	logNum := len(logIDs)
+	if logNum > 0 {
+		md5sum := md5.New()
+		for _, logID := range logIDs {
+			if _, err := md5sum.Write([]byte(logID)); err != nil {
+				resultErr = fmt.Errorf("md5sum write error: %w", err)
+				return
+			}
+		}
+		headID = logIDs[0]
+		tailID = logIDs[logNum-1]
+		logHash = md5sum.Sum(nil)
+	}
+
+	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, PULL_ID)
+	if err != nil {
+		resultErr = fmt.Errorf("host.NewStream error: %w", err)
+		return
+	}
+	defer stream.Close()
+
+	sendSumMsg := pb.GroupLogHash{
+		GroupId: groupID,
+		HeadId:  headID,
+		TailId:  tailID,
+		Length:  int32(logNum),
+		Hash:    logHash,
+	}
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err := wt.WriteMsg(&sendSumMsg); err != nil {
+		resultErr = fmt.Errorf("pbio write msg error: %w", err)
+		return
+	}
+
+	// 接收对方消息摘要
+	var recvSumMsg pb.GroupLogHash
+	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
+	if err := rd.ReadMsg(&recvSumMsg); err != nil {
+		resultErr = fmt.Errorf("pbio read msg error: %w", err)
+		return
+	}
+
+	if string(recvSumMsg.Hash) == string(sendSumMsg.Hash) {
+		// 正常退出
+		log.Debugln("summary hash equal")
+		return
+	}
+
+	// 消息摘要不一致，则发送本地所有消息ID给对方
+	for i := 0; i < logNum; i++ {
+		if err := wt.WriteMsg(&pb.GroupLogIDPack{
+			LogId:   logIDs[i],
+			LeftNum: int32(logNum - i - 1),
+		}); err != nil {
+			resultErr = fmt.Errorf("pbio write logid pack error: %w", err)
+			return
+		}
+	}
+
+	// 接收对方消息列表，并更新本地
+	var groupLogs []*pb.GroupLog
+	var groupLogPack pb.GroupLogPack
+	var leftNum int32
+	for {
+		groupLogPack.Reset()
+		if err := rd.ReadMsg(&groupLogPack); err != nil {
+			resultErr = fmt.Errorf("pbio read log pack error: %w", err)
+			return
+		}
+
+		if groupLogPack.Log != nil {
+			groupLogs = append(groupLogs, groupLogPack.Log)
+		}
+
+		if groupLogPack.LeftNum <= 0 {
+			break
+
+		} else if groupLogPack.LeftNum >= leftNum {
+			resultErr = fmt.Errorf("left num more")
+			stream.Reset()
+			return
+		}
+
+		leftNum = groupLogPack.LeftNum
+	}
+
+	for _, pblog := range groupLogs {
+		if _, err := a.saveLog(ctx, pblog); err != nil {
+			resultErr = fmt.Errorf("save log error: %w", err)
+			stream.Reset()
 			return
 		}
 	}
@@ -302,24 +539,8 @@ func (a *AdminProto) sendPeerMessage(ctx context.Context, peerID peer.ID, msg *p
 
 func (a *AdminProto) emitGroupMemberChange(ctx context.Context, groupID string) error {
 
-	memberIDs, err := a.data.GetMemberIDs(ctx, groupID)
-	if err != nil {
-		return fmt.Errorf("data.GetMemberIDs error: %w", err)
-	}
-	agreePeerIDs, err := a.data.GetAgreePeerIDs(ctx, groupID)
-	if err != nil {
-		return fmt.Errorf("data.GetAgreePeerIDs error: %w", err)
-	}
-	refusePeerLogs, err := a.data.GetRefusePeerLogs(ctx, groupID)
-	if err != nil {
-		return fmt.Errorf("data.GetRefusePeerLogs error: %w", err)
-	}
-
 	if err := a.emitters.evtGroupMemberChange.Emit(myevent.EvtGroupMemberChange{
-		GroupID:       groupID,
-		PeerIDs:       memberIDs,
-		AcptPeerIDs:   agreePeerIDs,
-		RefusePeerIDs: refusePeerLogs,
+		GroupID: groupID,
 	}); err != nil {
 		return fmt.Errorf("emit group member change error: %w", err)
 	}

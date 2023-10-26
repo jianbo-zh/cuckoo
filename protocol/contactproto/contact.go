@@ -387,6 +387,8 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 			}
 			switch ev := e.(type) {
 			case myevent.EvtHostBootComplete:
+				fmt.Println("contact host boot complete")
+
 				if !ev.IsSucc {
 					log.Warnf("host boot complete but not succ")
 					continue

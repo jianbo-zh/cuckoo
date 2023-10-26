@@ -25,10 +25,8 @@ type EvtGroupConnectChange struct {
 	IsConnected bool
 }
 
-// EvtGroupsInit 启动成功后，初始化群组
-type EvtGroupsInit struct {
-	Groups []Groups
-}
+// EvtGroupInitNetwork 启动成功后，初始化群组
+type EvtGroupInitNetwork struct{}
 
 // EvtGroupNetworkSuccess 群组组网成功
 type EvtGroupNetworkSuccess struct {
@@ -44,14 +42,17 @@ type EvtSyncGroupMessage struct {
 
 // EvtGroupsChange 群组发生改变（删除群、新增群）
 type EvtGroupsChange struct {
-	DeleteGroups []string
-	AddGroups    []Groups
+	DeleteGroupID string
+	AddGroupID    string
 }
 
 // EvtGroupMemberChange 群成员发生改变
 type EvtGroupMemberChange struct {
-	GroupID       string
-	PeerIDs       []peer.ID
-	AcptPeerIDs   []peer.ID
-	RefusePeerIDs map[peer.ID]string
+	GroupID string
+}
+
+type EvtPullGroupLog struct {
+	GroupID string
+	PeerID  peer.ID
+	Result  chan<- error
 }

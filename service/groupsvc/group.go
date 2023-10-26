@@ -71,7 +71,7 @@ func NewGroupService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batching
 	}
 
 	// 触发器
-	groupsvc.emitters.evtGroupsInit, err = ebus.Emitter(&myevent.EvtGroupsInit{})
+	groupsvc.emitters.evtGroupsInit, err = ebus.Emitter(&myevent.EvtGroupInitNetwork{})
 	if err != nil {
 		return nil, fmt.Errorf("ebus.Emitter: %s", err.Error())
 	}
@@ -132,33 +132,7 @@ func (g *GroupService) handleSubscribe(ctx context.Context, sub event.Subscripti
 			switch evt := e.(type) {
 			case myevent.EvtHostBootComplete:
 				if evt.IsSucc {
-					groupIDs, err := g.adminProto.GetGroupIDs(ctx)
-					if err != nil {
-						log.Errorf("get group ids error: %v", err)
-						return
-					}
-					var groups []myevent.Groups
-					for _, groupID := range groupIDs {
-						connMemberIDs, err := g.adminProto.GetMemberIDs(ctx, groupID)
-						if err != nil {
-							log.Errorf("get member ids error: %v", err)
-						}
-						acptPeerIDs, err := g.adminProto.GetAgreePeerIDs(ctx, groupID)
-						if err != nil {
-							log.Errorf("get accept member ids error: %v", err)
-							return
-						}
-						groups = append(groups, myevent.Groups{
-							GroupID:     groupID,
-							PeerIDs:     connMemberIDs,
-							AcptPeerIDs: acptPeerIDs,
-						})
-					}
-
-					err = g.emitters.evtGroupsInit.Emit(myevent.EvtGroupsInit{
-						Groups: groups,
-					})
-					if err != nil {
+					if err := g.emitters.evtGroupsInit.Emit(myevent.EvtGroupInitNetwork{}); err != nil {
 						log.Errorf("emit group init error: %s", err.Error())
 					}
 					return

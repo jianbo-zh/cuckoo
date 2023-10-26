@@ -1060,8 +1060,9 @@ message CommonEvent {
     PeerMessageReceived = 0;
     GroupMessageReceived = 1;
     PeerStateChanged = 2;
-    SessionAdded = 3;
-    SessionUpdated = 4;
+    GroupStateChanged = 3;
+    SessionAdded = 4;
+    SessionUpdated = 5;
   }
 
   message PayloadPeerMessage {
@@ -1077,6 +1078,10 @@ message CommonEvent {
   message PayloadPeerState {
     string peerId = 1;
     bool   online = 2;
+  }
+
+  message PayloadGroupState {
+    string groupId = 1;
   }
 
   message AddSession {

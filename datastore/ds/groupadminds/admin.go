@@ -94,6 +94,30 @@ func (a *AdminDs) GetLogTail(ctx context.Context, groupID string) (string, error
 	return pblog.Id, nil
 }
 
+// GetLogIDs 获取日志ID列表
+func (a *AdminDs) GetLogIDs(ctx context.Context, groupID string) ([]string, error) {
+	prefix := adminDsKey.AdminLogPrefix(groupID)
+
+	result, err := a.Query(ctx, query.Query{
+		Prefix:   prefix,
+		Orders:   []query.Order{query.OrderByKey{}},
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ds query error: %w", err)
+	}
+
+	var logs []string
+	for entry := range result.Next() {
+		if entry.Error != nil {
+			return nil, fmt.Errorf("ds result next error: %w", entry.Error)
+		}
+		logs = append(logs, strings.TrimPrefix(entry.Key, prefix))
+	}
+
+	return logs, nil
+}
+
 // GetLogLength 获取日志长度
 func (a *AdminDs) GetLogLength(ctx context.Context, groupID string) (int, error) {
 	result, err := a.Query(ctx, query.Query{
