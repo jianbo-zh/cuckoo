@@ -88,7 +88,6 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 			switch evt := e.(type) {
 			case myevent.EvtHostBootComplete:
 				if evt.IsSucc {
-					fmt.Println("account host boot complete")
 					account, err := a.data.GetAccount(ctx)
 					if err != nil {
 						log.Errorf("data.GetAccount error: %w", err)
@@ -133,13 +132,11 @@ func (a *AccountProto) GetOnlineState(peerIDs []peer.ID) map[peer.ID]mytype.Onli
 
 func (a *AccountProto) CheckOnlineState(ctx context.Context, peerID peer.ID) error {
 
-	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, 3*time.Second), ""), peerID, ONLINE_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(ctx, ""), peerID, ONLINE_ID)
 	if err != nil {
 		return fmt.Errorf("host new stream error: %w", err)
 	}
 	defer stream.Close()
-
-	fmt.Println("checkOnlineState stream..")
 
 	wt := pbio.NewDelimitedWriter(stream)
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
@@ -148,13 +145,10 @@ func (a *AccountProto) CheckOnlineState(ctx context.Context, peerID peer.ID) err
 		return fmt.Errorf("pbio write msg error: %w", err)
 	}
 
-	fmt.Println("checkOnlineState writemsg..")
-
 	var pbOnline pb.AccountOnline
 	if err = rd.ReadMsg(&pbOnline); err != nil {
 		return fmt.Errorf("pbio read msg error: %w", err)
 	}
-	fmt.Println("checkOnlineState readmsg..")
 
 	return nil
 }
@@ -207,8 +201,6 @@ func (a *AccountProto) GetAccount(ctx context.Context) (*pb.Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ds get account error: %w", err)
 	}
-
-	fmt.Println("address: ", a.host.Addrs())
 
 	return account, nil
 }
@@ -321,7 +313,7 @@ func (a *AccountProto) UpdateAccountDepositAddress(ctx context.Context, depositP
 func (a *AccountProto) GetPeer(ctx context.Context, peerID peer.ID) (*pb.AccountPeer, error) {
 	log.Debugln("do get peer")
 
-	stream, err := a.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), peerID, ACCOUNT_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(ctx, ""), peerID, ACCOUNT_ID)
 	if err != nil {
 		return nil, fmt.Errorf("new stream error: %w", err)
 	}

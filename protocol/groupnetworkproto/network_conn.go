@@ -25,17 +25,14 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	n.networkMutex.Unlock()
 
 	ctx := context.Background()
-	stream, err := n.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, CONN_ID)
+	stream, err := n.host.NewStream(network.WithUseTransient(ctx, ""), peerID, CONN_ID)
 	if err != nil {
 		return fmt.Errorf("host new stream error: %w", err)
 	}
 
-	fmt.Println("connect peer: ", peerID.String())
-
 	hostBootTs := n.bootTs
 	hostConnTimes := n.incrConnTimes() // 连接或断开一次则1
 
-	fmt.Println("send conn init")
 	// 发送组网请求，同步Lamport时钟
 	wt := pbio.NewDelimitedWriter(stream)
 	sendConnInit := pb.GroupConnectInit{
@@ -48,7 +45,6 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		return fmt.Errorf("wt write msg error: %w", err)
 	}
 
-	fmt.Println("recv conn init")
 	var recvConnInit pb.GroupConnectInit
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err := rd.ReadMsg(&recvConnInit); err != nil {
@@ -64,8 +60,6 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		writer: wt,
 	}
 
-	fmt.Println("update network peerConn")
-
 	// 更新网络状态
 	n.networkMutex.Lock()
 	n.network[groupID].Conns[peerID] = &peerConn
@@ -74,7 +68,6 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	peerBootTs := recvConnInit.BootTs
 	peerConnTimes := recvConnInit.ConnTimes
 
-	fmt.Println("read write stream")
 	go func() {
 		var wg sync.WaitGroup
 
@@ -83,11 +76,9 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		go n.writeStream(&wg, stream, groupID, peerID, peerConn.writer, peerConn.sendCh, peerConn.doneCh)
 		wg.Wait()
 
-		fmt.Println("read write closed")
-
 		stream.Close()
 		if err := n.triggerDisconnected(groupID, peerID, peerBootTs, peerConnTimes); err != nil {
-			fmt.Println("triggerDisconnected error: %w", err)
+			log.Errorf("triggerDisconnected error: %v", err)
 		}
 	}()
 
@@ -99,8 +90,6 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 	}); err != nil {
 		return err
 	}
-
-	fmt.Println("update routing and froward")
 
 	// 转发连接改变事件
 	n.updateRoutingAndForward(groupID, peerID,

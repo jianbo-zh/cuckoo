@@ -113,16 +113,13 @@ func NewNetworkProto(lhost myhost.Host, rdiscvry *drouting.RoutingDiscovery, ids
 func (n *NetworkProto) GetGroupOnlinePeers(groupID string) ([]peer.ID, error) {
 	rTable := n.getRoutingTable(groupID)
 
-	fmt.Println("routing table: -----")
 	peerIDsMap := make(map[peer.ID]bool)
 	for _, connPair := range rTable {
-		fmt.Println("connPair: ", connPair)
 		if connPair.State == StateConnected {
 			peerIDsMap[connPair.PeerID0] = true
 			peerIDsMap[connPair.PeerID1] = true
 		}
 	}
-	fmt.Println("routing table: -----")
 
 	var peerIDs []peer.ID
 	for peerID := range peerIDsMap {
@@ -351,7 +348,6 @@ func (n *NetworkProto) subscribeHandler(ctx context.Context, sub event.Subscript
 				n.initNetwork()
 
 			case myevent.EvtGroupsChange:
-				fmt.Println("receive EvtGroupsChange: ", evt)
 
 				if evt.AddGroupID != "" {
 					n.addGroupNetwork(evt.AddGroupID)

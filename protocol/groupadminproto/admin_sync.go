@@ -35,7 +35,7 @@ func (a *AdminProto) goSyncAdmin(groupID string, peerID peer.ID) {
 	log.Infoln("sync group admin log start")
 
 	ctx := context.Background()
-	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, SYNC_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(ctx, ""), peerID, SYNC_ID)
 	if err != nil {
 		return
 	}
@@ -112,8 +112,6 @@ func (a *AdminProto) handleSyncSummary(groupID string, syncmsg *pb.GroupSyncLog,
 	if err := proto.Unmarshal(syncmsg.Payload, &remoteSummary); err != nil {
 		return fmt.Errorf("proto unmarshal summary msg error: %w", err)
 	}
-
-	fmt.Println("receive summary msg: ", remoteSummary.String())
 
 	err := a.data.MergeLamptime(context.Background(), groupID, remoteSummary.Lamptime)
 	if err != nil {
@@ -200,8 +198,6 @@ func (a *AdminProto) handleSyncRangeHash(groupID string, syncmsg *pb.GroupSyncLo
 		return fmt.Errorf("proto unmarshal msg payload error: %w", err)
 	}
 
-	fmt.Println("receive range hash msg: ", hashmsg.String())
-
 	// 我也计算hash
 	hashBytes, err := a.rangeHash(groupID, hashmsg.StartId, hashmsg.EndId)
 	if err != nil {
@@ -239,8 +235,6 @@ func (a *AdminProto) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyncLog
 	if err := proto.Unmarshal(syncmsg.Payload, &idmsg); err != nil {
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
-
-	fmt.Println("receive range ids msg: ", idmsg.String())
 
 	idmsg2, err := a.getRangeIDs(groupID, idmsg.StartId, idmsg.EndId)
 	if err != nil {
@@ -316,8 +310,6 @@ func (a *AdminProto) handleSyncPushMsg(groupID string, fromPeerID peer.ID, syncm
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
 
-	fmt.Println("receive push msg: ", msg.String())
-
 	if err := a.receiveLog(context.Background(), &msg, fromPeerID); err != nil {
 		return fmt.Errorf("data save log error: %w", err)
 	}
@@ -330,8 +322,6 @@ func (a *AdminProto) handleSyncPullMsg(groupID string, syncmsg *pb.GroupSyncLog,
 	if err := proto.Unmarshal(syncmsg.Payload, &pullmsg); err != nil {
 		return fmt.Errorf("proto unmarshal payload error: %w", err)
 	}
-
-	fmt.Println("receive pull msg: ", pullmsg.String())
 
 	msgs, err := a.data.GetLogsByIDs(groupID, pullmsg.Ids)
 	if err != nil {

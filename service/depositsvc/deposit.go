@@ -43,7 +43,6 @@ func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lh
 	}
 
 	if conf.EnableDepositService {
-		fmt.Println("start deposit service!")
 		depositsvc.service, err = deposit.NewDepositServiceProto(ctx, lhost, ids)
 		if err != nil {
 			return nil, fmt.Errorf("new deposit service proto error: %w", err)
@@ -98,13 +97,11 @@ func (d *DepositService) handleEnableDepositService(isEnable bool) error {
 		if err != nil {
 			return fmt.Errorf("start deposit service error: %w", err)
 		}
-		fmt.Println("deposit service started")
 
 	} else if !isEnable && d.service != nil {
 		// close service
 		d.service.Close()
 		d.service = nil
-		fmt.Println("deposit service closed")
 	}
 
 	return nil

@@ -605,7 +605,6 @@ func (g *GroupSvc) InviteJoinGroup(ctx context.Context, request *proto.InviteJoi
 	}
 
 	if len(contactIDs) > 0 {
-		fmt.Println("contactIDs: ", len(contactIDs))
 		err = groupSvc.InviteJoinGroup(ctx, request.GroupId, contactIDs, request.Content)
 		if err != nil {
 			return nil, fmt.Errorf("svc invite join group error: %w", err)

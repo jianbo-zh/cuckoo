@@ -53,7 +53,6 @@ func (f *FileProto) fileQueryHandler(stream network.Stream) {
 
 // resourceUploadIDHandler 资源上传处理器
 func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
-	fmt.Println("resourceUploadIDHandler start")
 	remotePeerID := stream.Conn().RemotePeer()
 
 	defer stream.Close()
@@ -68,12 +67,9 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 		return
 	}
 
-	fmt.Println("receive upload request: ", reqMsg.String())
-
 	// 判断文件是否已存在
 	filePath := path.Join(f.conf.ResourceDir, reqMsg.FileId)
 	if _, err := os.Stat(filePath); err == nil {
-		fmt.Println("file exists")
 		if err := wt.WriteMsg(&pb.FileUploadReply{Exists: true}); err != nil {
 			log.Errorf("pbio.WriteMsg error: %w", err)
 			stream.Reset()
@@ -102,8 +98,6 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 		return
 	}
 
-	fmt.Println("start receive file")
-
 	bfrd := bufio.NewReader(stream)
 	size, err := bfrd.WriteTo(tmpFile)
 	if err != nil {
@@ -115,7 +109,6 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 	tmpFile.Close()
 
 	log.Debugln("receive file finish %s, fileSize: %d", reqMsg.FileId, size)
-	fmt.Println("receive file finish")
 
 	// 重命名文件
 	if err := os.Rename(tmpFilePath, filePath); err != nil {
@@ -123,7 +116,6 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 		stream.Reset()
 		return
 	}
-	fmt.Println("rename file finish")
 
 	// 记录关联资源
 	sessionID := mytype.ContactSessionID(remotePeerID)
@@ -284,9 +276,6 @@ func (f *FileProto) fileDownloadHandler(stream network.Stream) {
 			stream.Reset()
 			log.Errorf("bufWriter write size error")
 			return
-
-		} else {
-			fmt.Println("write header size: ", size)
 		}
 
 		// 发送头信息分隔符

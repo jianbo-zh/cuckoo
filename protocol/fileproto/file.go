@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -131,12 +130,10 @@ func (f *FileProto) DeleteSessionFiles(ctx context.Context, sessionID string, fi
 
 // downloadResource  下载资源
 func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID string) error {
-	fmt.Println("download resource start", peerID.String(), fileID)
 
 	// 检查本地有没有
 	filePath := path.Join(f.conf.ResourceDir, fileID)
 	if _, err := os.Stat(filePath); err == nil { // exists
-		fmt.Println("file local exists")
 		return nil
 
 	} else if !os.IsNotExist(err) {
@@ -144,12 +141,11 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	}
 
 	// 发送下载请求
-	stream, err := f.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, RESOURCE_DOWNLOAD_ID)
+	stream, err := f.host.NewStream(network.WithUseTransient(ctx, ""), peerID, RESOURCE_DOWNLOAD_ID)
 	if err != nil {
 		return fmt.Errorf("host.NewStream error: %w", err)
 	}
 	defer stream.Close()
-	fmt.Println("333")
 
 	reqMsg := pb.DownloadResourceRequest{FileId: fileID}
 	wt := pbio.NewDelimitedWriter(stream)
@@ -157,20 +153,6 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 		stream.Reset()
 		return fmt.Errorf("pbio.WriteMsg error: %w", err)
 	}
-	fmt.Println("4444")
-
-	// // 等待鉴权结果
-	// var replyMsg pb.DownloadResourceReply
-	// rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
-	// if err := rd.ReadMsg(&replyMsg); err != nil {
-	// 	stream.Reset()
-	// 	return fmt.Errorf("pbio.ReadMsg error: %w", err)
-	// }
-	// if replyMsg.Error != "" {
-	// 	stream.Reset()
-	// 	return fmt.Errorf("download reply: %s", replyMsg.Error)
-	// }
-	// fmt.Println("5555")
 
 	// 开始接收文件
 	tmpFilePath := path.Join(f.conf.ResourceDir, fmt.Sprintf("%s_%s", "tmp", fileID))
@@ -179,10 +161,9 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 		stream.Reset()
 		return fmt.Errorf("os.OpenFile error: %w", err)
 	}
-	fmt.Println("6666")
 
 	bufStream := bufio.NewReader(stream)
-	size, err := bufStream.WriteTo(tmpFile)
+	_, err = bufStream.WriteTo(tmpFile)
 	if err != nil {
 		tmpFile.Close()
 		stream.Reset()
@@ -190,14 +171,11 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	}
 	tmpFile.Close()
 
-	fmt.Println("7777, writeSize: ", size)
-
 	// 重命名文件
 	if err := os.Rename(tmpFilePath, filePath); err != nil {
 		stream.Reset()
 		return fmt.Errorf("os.Rename error: %w", err)
 	}
-	fmt.Println("88888")
 
 	return nil
 }
@@ -227,8 +205,6 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 
 	hostID := d.host.ID()
 
-	fmt.Println("peers: ", fromPeerIDs, " fileID:"+fileID, " fileSize: "+strconv.FormatInt(fileSize, 10))
-
 	// 判断文件是否存在，存在则返回
 	filePath := filepath.Join(d.conf.FileDir, fileID)
 	if _, err := os.Stat(filePath); err == nil {
@@ -238,8 +214,6 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("os.Stat error: %v", err)
 	}
-	fmt.Println("query which peer exists")
-
 	// 查询哪些peer有文件
 	resultCh := make(chan peer.ID, len(fromPeerIDs))
 	var wg sync.WaitGroup
@@ -260,8 +234,6 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 		peerIDs = append(peerIDs, peerID)
 	}
 
-	fmt.Println("get peerIDs: ", peerIDs)
-
 	if len(peerIDs) == 0 {
 		return fmt.Errorf("no peer have file")
 	}
@@ -275,7 +247,6 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 		chunkTotal = 1
 	}
 
-	fmt.Println("chunkTotal: ", chunkTotal)
 	taskCh := make(chan int64, chunkTotal)
 	for i := int64(0); i < chunkTotal; i++ {
 		taskCh <- i
@@ -292,15 +263,12 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 	wg2.Wait()
 	close(taskCh)
 
-	fmt.Println("finish task")
-
 	// 检查任务完成没
 	if _, isOk := <-taskCh; isOk {
 		// 还有值，则下载失败
 		return fmt.Errorf("download failed, task not finish")
 	}
 
-	fmt.Println("start merge file: " + filePath)
 	// 分片下载完成，则合并整个文件
 	ofile, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
 	if err != nil {
@@ -325,15 +293,11 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 		ofile2.Close()
 	}
 
-	fmt.Println("merge succ")
-
 	calcHash := fmt.Sprintf("%x", hashSum.Sum(nil))
 	if !strings.Contains(fileID, calcHash) {
 		os.Remove(filePath)
 		return fmt.Errorf("file %s hash %s error", fileID, calcHash)
 	}
-
-	fmt.Println("download succ")
 
 	// 下载完成后，删除分片文件
 	for chunkIndex := int64(0); chunkIndex < chunkTotal; chunkIndex++ {
@@ -346,31 +310,25 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh chan peer.ID, peerID peer.ID, fileID string) {
 	defer wg.Done()
 
-	fmt.Println("start query file")
-
-	stream, err := d.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, QUERY_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), peerID, QUERY_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
 		return
 	}
 	defer stream.Close()
 
-	fmt.Println("write msg")
 	wt := pbio.NewDelimitedWriter(stream)
 	if err = wt.WriteMsg(&pb.FileQuery{FileId: fileID}); err != nil {
 		log.Errorf("pbio write msg error: %v", err)
 		return
 	}
 
-	fmt.Println("read msg")
 	var result pb.FileQueryResult
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&result); err != nil {
 		log.Errorf("pbio read msg error: %v", err)
 		return
 	}
-
-	fmt.Println("get msg", result.String())
 
 	if result.Exists {
 		resultCh <- peerID
@@ -383,7 +341,7 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 
 	defer wg.Done()
 
-	stream, err := d.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, DOWNLOAD_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), peerID, DOWNLOAD_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
 		return
@@ -427,8 +385,6 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 			log.Errorf("proto.Unmarshal chunk header error: %v", err)
 			return
 		}
-
-		fmt.Print("chunkInfo: ", chunkInfo.String())
 
 		// 接收分片数据
 		hashSum := md5.New()

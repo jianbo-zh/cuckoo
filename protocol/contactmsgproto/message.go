@@ -137,7 +137,7 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 
 	var switchMsg pb.MessageEnvelope
 	if err := rd.ReadMsg(&switchMsg); err != nil {
-		log.Errorf("failed to read CONNECT message from remote peer: %w", err)
+		log.Errorf("failed to read CONNECT message from remote peer: %v", err)
 		stream.Reset()
 		return
 	}
@@ -415,7 +415,7 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, contactID peer.ID, m
 
 func (p *PeerMessageProto) sendMessage(ctx context.Context, peerID peer.ID, msg *pb.MessageEnvelope) error {
 
-	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, time.Second), peerID, MSG_ID)
+	stream, err := p.host.NewStream(network.WithUseTransient(ctx, ""), peerID, MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("host new stream error", err)
 	}

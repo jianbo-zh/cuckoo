@@ -90,7 +90,6 @@ func (s *SessionDataStore) GetSessionIDs(ctx context.Context) ([]string, error) 
 		if result.Error != nil {
 			return nil, result.Error
 		}
-		fmt.Println("session query: ", result.Key)
 		sessionIDs = append(sessionIDs, strings.TrimPrefix(result.Key, sessionDsKey.ListPrefix()))
 	}
 

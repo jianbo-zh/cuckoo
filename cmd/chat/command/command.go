@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +16,6 @@ func Execute() {
 			&CuckooCmd,
 		},
 		Action: func(ctx *cli.Context) error {
-			fmt.Printf("chat -> args: %v", ctx.Args())
 			return nil
 		},
 	}

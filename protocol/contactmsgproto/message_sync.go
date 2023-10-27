@@ -19,7 +19,7 @@ func (p *PeerMessageProto) goSyncMessage(contactID peer.ID) {
 	log.Debugln("start sync contact: ", contactID.String())
 
 	ctx := context.Background()
-	stream, err := p.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, MSG_SYNC_ID)
+	stream, err := p.host.NewStream(network.WithUseTransient(ctx, ""), contactID, MSG_SYNC_ID)
 	if err != nil {
 		log.Errorf("host sync new stream error: %v", err)
 		return

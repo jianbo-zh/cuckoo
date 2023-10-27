@@ -557,7 +557,7 @@ func (m *MessageProto) broadcastMessage(ctx context.Context, groupID string, msg
 // 发送消息（指定peerID）
 func (m *MessageProto) sendPeerMessage(ctx context.Context, groupID string, peerID peer.ID, msg *pb.MessageEnvelope) error {
 
-	stream, err := m.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, MSG_ID)
+	stream, err := m.host.NewStream(network.WithUseTransient(ctx, ""), peerID, MSG_ID)
 	if err != nil {
 		return err
 	}

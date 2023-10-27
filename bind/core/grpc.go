@@ -59,7 +59,6 @@ func startGrpc(scheme string, socketpath string) {
 
 	err = s.Serve(listen)
 	if err != nil {
-		fmt.Printf("failed to serve: %v", err)
 		panic(err)
 	}
 }

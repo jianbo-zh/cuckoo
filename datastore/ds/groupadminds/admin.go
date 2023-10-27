@@ -320,10 +320,6 @@ func (a *AdminDs) GetMembers(ctx context.Context, groupID string) ([]*pb.GroupMe
 		return nil, fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
 
-	fmt.Println("size", len(value))
-	fmt.Println("pbmsg: ", pbmsg.String())
-	fmt.Println("pbmember: ", pbmsg.Members)
-
 	return pbmsg.Members, nil
 }
 

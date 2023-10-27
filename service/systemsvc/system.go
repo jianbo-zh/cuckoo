@@ -201,8 +201,6 @@ func (s *SystemSvc) handleInviteJoinGroupEvent(ctx context.Context, evt myevent.
 			UpdateTime:  time.Now().Unix(),
 		}
 
-		fmt.Println("send system message: ", msg.String())
-
 		err = s.sendSystemMessage(ctx, invite.PeerID, invite.DepositAddress, &msg)
 		if err != nil {
 			log.Errorf("systemProto.SendMessage error: %v", err)
@@ -255,7 +253,7 @@ func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, dep
 				}
 			}
 
-			return fmt.Errorf("proto.SendMessage error")
+			return fmt.Errorf("proto.SendMessage error: %w", err)
 		}
 
 		return nil
@@ -326,7 +324,6 @@ func (s *SystemSvc) goHandleMessage() {
 
 			if account.AutoAddContact {
 				// 添加为好友
-				fmt.Println("auto add contact avatar: ", msg.FromPeer.Avatar)
 				if err = s.contactSvc.AgreeAddContact(ctx, &mytype.Peer{
 					ID:     peer.ID(msg.FromPeer.PeerId),
 					Name:   msg.FromPeer.Name,

@@ -147,7 +147,7 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 
 	depositAddr := evt.DepositAddress
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_CONTACT_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PULL_CONTACT_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
@@ -200,9 +200,8 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 		return
 	}
 
-	fmt.Println("deposit peerID: ", depositAddr.String())
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_GROUP_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PULL_GROUP_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
@@ -256,7 +255,7 @@ func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDep
 
 	depositAddr := evt.DepositAddress
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PULL_SYSTEM_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PULL_SYSTEM_MSG_ID)
 	if err != nil {
 		log.Errorf("new stream to deposit error: %v", err)
 		return
@@ -303,7 +302,7 @@ func (d *DepositClientProto) PushContactMessage(depositAddr peer.ID, toPeerID pe
 	log.Debugf("get deposit service peer: %s", depositAddr.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_CONTACT_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PUSH_CONTACT_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
@@ -342,7 +341,7 @@ func (d *DepositClientProto) PushGroupMessage(depositAddr peer.ID, groupID strin
 	log.Debugf("get deposit service peer: %s", depositAddr.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_GROUP_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PUSH_GROUP_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}
@@ -383,7 +382,7 @@ func (d *DepositClientProto) PushSystemMessage(depositAddr peer.ID, toPeerID pee
 	log.Debugf("get deposit service peer: %s", depositAddr.String())
 
 	ctx := context.Background()
-	stream, err := d.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), depositAddr, PUSH_SYSTEM_MSG_ID)
+	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PUSH_SYSTEM_MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("new stream to deposit peer error", err)
 	}

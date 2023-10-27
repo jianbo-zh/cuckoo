@@ -336,8 +336,6 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *mytype.Account
 		return fmt.Errorf("ds set group state error: %w", err)
 	}
 
-	fmt.Println("agree join group")
-
 	if err = a.data.SetListID(ctx, group.ID); err != nil {
 		return fmt.Errorf("ds set group session error: %w", err)
 	}
@@ -352,8 +350,6 @@ func (a *AdminProto) AgreeJoinGroup(ctx context.Context, account *mytype.Account
 	}); err != nil {
 		return fmt.Errorf("emit groups change error: %w", err)
 	}
-
-	fmt.Println("agree join group end")
 
 	return nil
 }

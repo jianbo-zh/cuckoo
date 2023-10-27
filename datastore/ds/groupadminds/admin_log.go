@@ -126,8 +126,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 	var peers = make(map[peer.ID][2]bool)
 	for _, pblog := range pblogs {
 
-		fmt.Println("pblog: ", pblog.String())
-
 		memberID := peer.ID(pblog.Member.Id)
 		if _, exists := peers[memberID]; !exists {
 			peers[memberID] = [2]bool{false, false}
@@ -171,7 +169,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 	groupState := mytype.GroupStateUnknown
 
 	for peerID, cond := range peers {
-		fmt.Println("peerID, cond: ", peerID, cond)
 
 		if cond[0] && cond[1] {
 			members.Members = append(members.Members, allPeers[peerID])
@@ -201,7 +198,6 @@ func (a *AdminDs) UpdateMembers(ctx context.Context, groupID string, hostID peer
 
 			if peerID == hostID {
 				groupState = mytype.GroupStateExit
-				fmt.Println("set group state exit")
 			}
 		}
 	}

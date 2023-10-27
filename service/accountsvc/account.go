@@ -137,7 +137,6 @@ func (a *AccountSvc) AsyncCheckOnlineState(peerID peer.ID) {
 			log.Errorf("proto.CheckOnlineState error: %v", err)
 		}
 
-		fmt.Println("a.accountProto.CheckOnlineState finish")
 	}()
 }
 

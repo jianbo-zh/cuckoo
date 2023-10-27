@@ -101,7 +101,7 @@ func (s *SystemProto) DeleteSystemMessage(ctx context.Context, msgIDs []string) 
 func (s *SystemProto) SendMessage(ctx context.Context, msg *pb.SystemMessage) error {
 
 	log.Debugln("start new stream ", peer.ID(msg.ToPeerId).String())
-	stream, err := s.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peer.ID(msg.ToPeerId), ID)
+	stream, err := s.host.NewStream(network.WithUseTransient(ctx, ""), peer.ID(msg.ToPeerId), ID)
 	if err != nil {
 		log.Debugln("start new stream error")
 		return myerror.WrapStreamError("host new stream error", err)

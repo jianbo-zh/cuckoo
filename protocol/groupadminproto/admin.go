@@ -406,7 +406,7 @@ func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, res
 		logHash = md5sum.Sum(nil)
 	}
 
-	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, PULL_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(ctx, ""), peerID, PULL_ID)
 	if err != nil {
 		resultErr = fmt.Errorf("host.NewStream error: %w", err)
 		return
@@ -520,7 +520,7 @@ func (a *AdminProto) broadcastMessage(groupID string, msg *pb.GroupLog, excludeP
 
 func (a *AdminProto) sendPeerMessage(ctx context.Context, peerID peer.ID, msg *pb.GroupLog) {
 
-	stream, err := a.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, LOG_ID)
+	stream, err := a.host.NewStream(network.WithUseTransient(ctx, ""), peerID, LOG_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
 		return

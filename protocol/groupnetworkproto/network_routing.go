@@ -16,13 +16,14 @@ import (
 // switchRouting 交换路由信息
 func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error {
 	ctx := context.Background()
-	stream, err := n.host.NewStream(network.WithUseTransient(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), ""), peerID, ROUTING_ID)
+	stream, err := n.host.NewStream(network.WithUseTransient(ctx, ""), peerID, ROUTING_ID)
 	if err != nil {
 		return fmt.Errorf("host.NewStream error: %w", err)
 	}
 
 	// 获取本地路由表
 	localGRT := n.getRoutingTable(groupID)
+
 	bs, err := json.Marshal(localGRT)
 	if err != nil {
 		return fmt.Errorf("json.Marshal localGRT error: %w", err)
@@ -44,6 +45,7 @@ func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error 
 	}
 
 	var remoteGRT GroupRoutingTable
+
 	if err = json.Unmarshal(msg.Payload, &remoteGRT); err != nil {
 		return fmt.Errorf("json.Unmarshal remoteGRT error: %w", err)
 	}
@@ -177,14 +179,14 @@ func (n *NetworkProto) mergeRoutingTable(groupID string, remoteGRT GroupRoutingT
 			}
 
 			if _, exists := pmax[conn.PeerID1]; !exists {
-				pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
+				pmax[conn.PeerID1] = [2]uint64{conn.BootTs1, conn.ConnTimes1}
 
 			} else {
-				if conn.BootTs0 > pmax[conn.PeerID1][0] {
-					pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
+				if conn.BootTs1 > pmax[conn.PeerID1][0] {
+					pmax[conn.PeerID1] = [2]uint64{conn.BootTs1, conn.ConnTimes1}
 
-				} else if conn.BootTs0 == pmax[conn.PeerID1][0] && conn.ConnTimes0 > pmax[conn.PeerID1][1] {
-					pmax[conn.PeerID1] = [2]uint64{conn.BootTs0, conn.ConnTimes0}
+				} else if conn.BootTs1 == pmax[conn.PeerID1][0] && conn.ConnTimes1 > pmax[conn.PeerID1][1] {
+					pmax[conn.PeerID1] = [2]uint64{conn.BootTs1, conn.ConnTimes1}
 				}
 			}
 		}

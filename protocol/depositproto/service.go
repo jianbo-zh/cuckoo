@@ -2,7 +2,6 @@ package deposit
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	ipfsds "github.com/ipfs/go-datastore"
@@ -126,8 +125,6 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 		log.Errorf("read deposit peer message error: %v", err)
 		return
 	}
-
-	fmt.Println("save group msg: ", msg.String())
 
 	if err = d.datastore.SaveGroupMessage(&msg); err != nil {
 		stream.Reset()
@@ -258,14 +255,11 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 			return
 		}
 
-		fmt.Println("get group msgs len: ", len(msgs))
-
 		if len(msgs) == 0 {
 			break
 		}
 
 		for _, msg := range msgs {
-			fmt.Println("send msg: ", msg.String())
 
 			if err = pw.WriteMsg(msg); err != nil {
 				log.Errorf("io write message error: %v", err)

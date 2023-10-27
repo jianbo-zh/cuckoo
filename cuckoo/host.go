@@ -3,6 +3,7 @@ package cuckoo
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -98,19 +99,33 @@ func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config
 
 	// 连接引导节点
 	go func() {
-		isAnySucc := false
+		var wg sync.WaitGroup
+		resultCh := make(chan error, len(conf.Bootstrap))
 		for _, addr := range conf.Bootstrap {
-			pi, _ := peer.AddrInfoFromString(addr)
-			if err := localhost.Connect(ctx, *pi); err == nil {
+			wg.Add(1)
+
+			go func(wg *sync.WaitGroup, addr string, resultCh chan<- error) {
+				defer wg.Done()
+
+				pi, _ := peer.AddrInfoFromString(addr)
+				resultCh <- localhost.Connect(ctx, *pi)
+
+			}(&wg, addr, resultCh)
+		}
+		wg.Wait()
+		close(resultCh)
+
+		isAnySucc := false
+		for result := range resultCh {
+			if result == nil {
 				isAnySucc = true
-				fmt.Println("connect peer: " + pi.String())
 			}
 		}
 
-		fmt.Println("boot complete, succ: ", isAnySucc)
+		log.Infoln("boot complete, succ: ", isAnySucc)
 
 		if err := bootEmitter.Emit(myevent.EvtHostBootComplete{IsSucc: isAnySucc}); err != nil {
-			fmt.Println("emit boot complete error: %w", err)
+			log.Errorf("emit boot complete error: %v", err)
 		}
 	}()
 
@@ -186,7 +201,7 @@ type discoveryNotifee struct {
 
 func (m *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
 	if m.h.Network().Connectedness(pi.ID) != network.Connected {
-		fmt.Printf("Found %s!\n", pi.ID.ShortString())
+		log.Debugln("found: %s", pi.ID.String())
 		m.h.Connect(m.ctx, pi)
 	}
 }

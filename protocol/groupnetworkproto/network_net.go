@@ -14,7 +14,6 @@ import (
 
 // initNetwork 初始化网络
 func (n *NetworkProto) initNetwork() error {
-	fmt.Println("initNetwork: ")
 
 	ctx := context.Background()
 
@@ -38,7 +37,6 @@ func (n *NetworkProto) initNetwork() error {
 }
 
 func (n *NetworkProto) addGroupNetwork(groupID string) error {
-	fmt.Println("addNetwork...")
 
 	if _, exists := n.network[groupID]; exists {
 		log.Warnln("network exists")
@@ -139,7 +137,6 @@ func (n *NetworkProto) pullGroupLogs(groupID string, peerID peer.ID) error {
 }
 
 func (n *NetworkProto) updateGroupNetwork(groupID GroupID) {
-	fmt.Println("update network...")
 
 	acptPeerIDs, err := n.logdata.GetAgreePeerIDs(context.Background(), groupID)
 	if err != nil {
@@ -170,7 +167,6 @@ func (n *NetworkProto) updateGroupNetwork(groupID GroupID) {
 }
 
 func (n *NetworkProto) deleteGroupNetwork(groupID string) error {
-	fmt.Println("delete network...")
 
 	if _, exists := n.network[groupID]; exists {
 		for peerID := range n.network[groupID].Conns {
@@ -220,7 +216,6 @@ Loop:
 				return peerIDs
 			}
 
-			fmt.Println("find peer: ", peer.ID.String())
 			peerIDs = append(peerIDs, peer.ID)
 
 		case <-timeout:
@@ -271,8 +266,6 @@ func (n *NetworkProto) doNetworking(groupID string, findPeerIDs []peer.ID) error
 			}
 		}
 	}
-
-	fmt.Println("onlinePeerIDs", onlinePeerIDs)
 
 	if len(onlinePeerIDs) == 0 {
 		return fmt.Errorf("not found online peer")

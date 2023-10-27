@@ -35,7 +35,7 @@ func (m *MessageProto) goSync(groupID string, peerID peer.ID) {
 	log.Infoln("sync group msg log start")
 
 	ctx := context.Background()
-	stream, err := m.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, SYNC_ID)
+	stream, err := m.host.NewStream(network.WithUseTransient(ctx, ""), peerID, SYNC_ID)
 	if err != nil {
 		log.Errorf("host sync new stream error: %w", err)
 		return
@@ -152,8 +152,6 @@ func (m *MessageProto) handleSyncSummary(groupID string, syncmsg *pb.GroupSyncMe
 			if err != nil {
 				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
-
-			fmt.Println("---tail msg: ", msg.String())
 
 			if err = wt.WriteMsg(&pb.GroupSyncMessage{
 				Type:    pb.GroupSyncMessage_PUSH_MSG,
@@ -273,8 +271,6 @@ func (m *MessageProto) handleSyncRangeIDs(groupID string, syncmsg *pb.GroupSyncM
 				return fmt.Errorf("proto marshal msg error: %w", err)
 			}
 
-			fmt.Println("---handle range ids msg: ", msg.String())
-
 			if err = wt.WriteMsg(&pb.GroupSyncMessage{
 				Type:    pb.GroupSyncMessage_PUSH_MSG,
 				Payload: bs,
@@ -339,8 +335,6 @@ func (m *MessageProto) handleSyncPullMsg(groupID string, syncmsg *pb.GroupSyncMe
 		if err != nil {
 			return fmt.Errorf("proto marshal msg error: %w", err)
 		}
-
-		fmt.Println("---handle pull msg: ", msg.String())
 
 		if err = wt.WriteMsg(&pb.GroupSyncMessage{
 			Type:    pb.GroupSyncMessage_PUSH_MSG,

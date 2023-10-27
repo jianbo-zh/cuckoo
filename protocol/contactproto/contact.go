@@ -246,9 +246,9 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 	log.Debugln("sync contact: ", contactID.String(), accountPeer, isBootSync)
 
 	ctx := context.Background()
-	stream, err := c.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), contactID, SYNC_ID)
+	stream, err := c.host.NewStream(network.WithUseTransient(ctx, ""), contactID, SYNC_ID)
 	if err != nil {
-		log.Errorf("host new stream error: %w", err)
+		log.Errorf("host new stream error: %v", err)
 		return
 	}
 	defer stream.Close()
@@ -273,8 +273,8 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 
 	// 读取对方数据
 	var recvmsg pb.ContactPeer
-	if err = rd.ReadMsg(&recvmsg); err != nil {
-		log.Errorf("pbio read msg error: %w", err)
+	if err := rd.ReadMsg(&recvmsg); err != nil {
+		log.Errorf("pbio read msg error: %v", err)
 		stream.Reset()
 		return
 	}
@@ -291,7 +291,7 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 		return
 	}
 
-	log.Debugln("sync contact recv peer: ", recvmsg.String())
+	log.Debugln("sync contact recv peer: ", peer.ID(recvmsg.Id).String())
 
 	if isBootSync {
 		// 启动时同步，还要触发同步消息事件
@@ -319,7 +319,7 @@ func (c *ContactProto) goCheckApply(peerID peer.ID, accountPeer mytype.AccountPe
 	log.Debugln("check apply: ", peerID.String())
 
 	ctx := context.Background()
-	stream, err := c.host.NewStream(network.WithDialPeerTimeout(ctx, mytype.DialTimeout), peerID, CHECK_ID)
+	stream, err := c.host.NewStream(network.WithUseTransient(ctx, ""), peerID, CHECK_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %w", err)
 		return
@@ -387,7 +387,6 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 			}
 			switch ev := e.(type) {
 			case myevent.EvtHostBootComplete:
-				fmt.Println("contact host boot complete")
 
 				if !ev.IsSucc {
 					log.Warnf("host boot complete but not succ")

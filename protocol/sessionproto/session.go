@@ -135,8 +135,6 @@ func (s *SessionProto) loopSessionNotify(ctx context.Context) {
 
 func (s *SessionProto) checkSessionNotify(timeout bool) {
 
-	fmt.Println("receive notify timeout: ", timeout)
-
 	s.sessionNotify.Mutex.Lock()
 	defer s.sessionNotify.Mutex.Unlock()
 
@@ -144,8 +142,6 @@ func (s *SessionProto) checkSessionNotify(timeout bool) {
 	for _, num := range s.sessionNotify.Updates {
 		updatedTimes += num
 	}
-
-	fmt.Println("update times: ", updatedTimes)
 
 	ctx := context.Background()
 	if updatedTimes >= 5 || (timeout && updatedTimes > 0) {
@@ -190,8 +186,6 @@ func (s *SessionProto) handleReceiveContactMessageEvent(ctx context.Context, evt
 	s.sessionNotify.Mutex.Lock()
 	sessionID := mytype.ContactSessionID(evt.FromPeerID)
 
-	fmt.Println("handle receive contact message event: ", sessionID.String())
-
 	if _, exists := s.sessionNotify.Updates[sessionID.String()]; !exists {
 		s.sessionNotify.Updates[sessionID.String()] = 1
 	} else {
@@ -202,7 +196,6 @@ func (s *SessionProto) handleReceiveContactMessageEvent(ctx context.Context, evt
 
 	select {
 	case s.sessionNotify.Signal <- true:
-		fmt.Println("signal true")
 	default:
 	}
 }
@@ -211,8 +204,6 @@ func (s *SessionProto) handleReceiveGroupMessageEvent(ctx context.Context, evt m
 	s.sessionNotify.Mutex.Lock()
 	sessionID := mytype.GroupSessionID(evt.GroupID)
 
-	fmt.Println("handle receive group message event: ", sessionID.String())
-
 	if _, exists := s.sessionNotify.Updates[sessionID.String()]; !exists {
 		s.sessionNotify.Updates[sessionID.String()] = 1
 	} else {
@@ -222,7 +213,6 @@ func (s *SessionProto) handleReceiveGroupMessageEvent(ctx context.Context, evt m
 	s.sessionNotify.Mutex.Unlock()
 	select {
 	case s.sessionNotify.Signal <- true:
-		fmt.Println("signal true")
 	default:
 	}
 }

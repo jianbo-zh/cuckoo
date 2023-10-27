@@ -116,13 +116,12 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 
 	switch onlineState {
 	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:
-		fmt.Println("online msg")
 		// 在线消息
 		msgData, err := c.msgProto.SendMessage(ctx, contactID, msgID)
 		if err != nil {
-			fmt.Println("online msg failed", err.Error())
 			// 在线消息失败
 			if errors.As(err, &myerror.StreamErr{}) && msgData != nil {
+				streamErr := err
 				// 流错误，可能是不在线
 				depositAddr, err := c.checkDepositAddr(ctx, contactID)
 				if err != nil {
@@ -130,7 +129,7 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 				}
 
 				if depositAddr == peer.ID("") {
-					return false, fmt.Errorf("send message failed")
+					return false, fmt.Errorf("send message failed: %w", streamErr)
 				}
 
 				// 发送寄存信息

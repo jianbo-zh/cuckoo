@@ -18,12 +18,15 @@ import (
 	"github.com/jianbo-zh/dchat/service/groupsvc"
 	"github.com/jianbo-zh/dchat/service/sessionsvc"
 	"github.com/jianbo-zh/dchat/service/systemsvc"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
+
+var log = logging.Logger("cuckoo")
 
 type CuckooGetter interface {
 	GetCuckoo() (*Cuckoo, error)

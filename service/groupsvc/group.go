@@ -193,8 +193,6 @@ func (g *GroupService) InviteJoinGroup(ctx context.Context, groupID string, cont
 		return fmt.Errorf("svc.GetContact error: %w", err)
 	}
 
-	fmt.Println("222")
-
 	return g.adminProto.InviteJoinGroup(ctx, account, groupID, contacts, content)
 }
 

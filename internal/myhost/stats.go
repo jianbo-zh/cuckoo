@@ -1,7 +1,6 @@
 package myhost
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/jianbo-zh/dchat/internal/myevent"
@@ -11,7 +10,7 @@ import (
 
 const (
 	// 确定为在线的时长
-	MaxOnlineDuration = 60 * time.Second
+	MaxOnlineDuration = 10 * time.Second
 	// 清理统计缓存间隔
 	ClearStatsInterval = 1000
 )
@@ -21,17 +20,18 @@ var ClearStatsCounting = 0
 
 // OnlineState 节点在线状态
 func (h *MyHost) OnlineState(peerID peer.ID) mytype.OnlineState {
-	h.statsMutex.RLock()
-	peerState := mytype.OnlineStateUnknown
-	if _, exists := h.onlineMap[peerID]; exists {
-		peerState = mytype.OnlineStateOnline
+	// h.statsMutex.RLock()
+	// peerState := mytype.OnlineStateUnknown
+	// if _, exists := h.onlineMap[peerID]; exists {
+	// 	peerState = mytype.OnlineStateOnline
 
-	} else if _, exists = h.offlineMap[peerID]; exists {
-		peerState = mytype.OnlineStateOffline
-	}
-	h.statsMutex.RUnlock()
+	// } else if _, exists = h.offlineMap[peerID]; exists {
+	// 	peerState = mytype.OnlineStateOffline
+	// }
+	// h.statsMutex.RUnlock()
+	return mytype.OnlineStateUnknown
 
-	return peerState
+	// return peerState
 }
 
 // PeersOnlineStats 节点在线统计，onlineDuration 指定多少秒内算才在线，最长60秒
@@ -82,7 +82,6 @@ func (h *MyHost) online(peerID peer.ID) {
 	h.statsMutex.Unlock()
 
 	if isOnline {
-		fmt.Println("isOnline: ", peerID.String())
 		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
 			PeerID: peerID,
 			Online: true,
@@ -104,7 +103,6 @@ func (h *MyHost) offline(peerID peer.ID) {
 	h.statsMutex.Unlock()
 
 	if isOffline {
-		fmt.Println("isOffline", peerID.String())
 		if err := h.emitters.evtPeerStateChanged.Emit(myevent.EvtPeerStateChanged{
 			PeerID: peerID,
 			Online: false,

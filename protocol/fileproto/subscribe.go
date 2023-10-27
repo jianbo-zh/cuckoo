@@ -171,20 +171,15 @@ func (f *FileProto) handleLogSessionAttachmentEvent(ctx context.Context, evt mye
 }
 
 func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtSyncResource) {
-	fmt.Printf("handle check avatar event %v", evt)
 
 	if evt.ResourceID != "" && len(evt.PeerIDs) > 0 {
 		_, err := os.Stat(filepath.Join(f.conf.ResourceDir, evt.ResourceID))
 		if err != nil && os.IsNotExist(err) {
-			fmt.Println("for download resource")
 			for _, peerID := range evt.PeerIDs {
-				fmt.Println("download resource", peerID.String(), evt.ResourceID)
 				if err = f.DownloadResource(ctx, peerID, evt.ResourceID); err == nil {
 					break
 				}
 			}
-		} else {
-			fmt.Println("avatar is exists")
 		}
 	}
 }

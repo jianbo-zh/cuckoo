@@ -16,5 +16,4 @@ func TestNewConnAlgo(t *testing.T) {
 
 	pp := got.GetClosestPeers()
 	fmt.Println(peer.ID(pp[0]).String())
-	fmt.Println(111)
 }

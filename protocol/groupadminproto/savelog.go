@@ -47,8 +47,6 @@ func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated
 		return false, fmt.Errorf("data.GetLog error: %w", err)
 	}
 
-	fmt.Println("saveLog: ", pblog.String())
-
 	// 保存日志
 	if err := a.data.SaveLog(ctx, pblog); err != nil {
 		return false, fmt.Errorf("data.SaveLogs error: %w", err)
