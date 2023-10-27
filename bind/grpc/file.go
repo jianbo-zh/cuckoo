@@ -60,7 +60,7 @@ func (f *FileSvc) DownloadContactFile(ctx context.Context, request *proto.Downlo
 	sessionID := mytype.ContactSessionID(contactID)
 
 	if reply, err = f.downloadSessionFile(ctx, sessionID, request.MsgId, request.FileId); err != nil {
-		return nil, fmt.Errorf("download session file error: %w")
+		return nil, fmt.Errorf("download session file error: %w", err)
 	}
 
 	return reply, nil
@@ -83,7 +83,7 @@ func (f *FileSvc) DownloadGroupFile(ctx context.Context, request *proto.Download
 	sessionID := mytype.GroupSessionID(request.Id)
 
 	if reply, err = f.downloadSessionFile(ctx, sessionID, request.MsgId, request.FileId); err != nil {
-		return nil, fmt.Errorf("download session file error: %w")
+		return nil, fmt.Errorf("download session file error: %w", err)
 	}
 
 	return reply, nil

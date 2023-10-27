@@ -8,10 +8,13 @@ import (
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/protocol/fileproto"
+	"github.com/jianbo-zh/dchat/service/filesvc/protocols/fileproto"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+var log = logging.Logger("filesvc")
 
 var _ FileServiceIface = (*FileService)(nil)
 

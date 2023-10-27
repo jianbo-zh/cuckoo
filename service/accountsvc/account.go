@@ -8,15 +8,17 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	pb "github.com/jianbo-zh/dchat/protobuf/pb/accountpb"
-	"github.com/jianbo-zh/dchat/protocol/accountproto"
+	pb "github.com/jianbo-zh/dchat/service/accountsvc/protobuf/pb/accountpb"
+	"github.com/jianbo-zh/dchat/service/accountsvc/protocols/accountproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("account-svc")
+var log = logging.Logger("accountsvc")
+
+var _ AccountServiceIface = (*AccountSvc)(nil)
 
 type AccountSvc struct {
 	accountProto *accountproto.AccountProto

@@ -8,14 +8,14 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/protocol/contactmsgproto"
-	"github.com/jianbo-zh/dchat/protocol/contactproto"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocols/contactmsgproto"
+	"github.com/jianbo-zh/dchat/service/contactsvc/protocols/contactproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-var log = logging.Logger("contact-svc")
+var log = logging.Logger("contactsvc")
 
 var _ ContactServiceIface = (*ContactSvc)(nil)
 

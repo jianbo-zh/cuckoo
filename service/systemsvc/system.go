@@ -11,10 +11,10 @@ import (
 	myevent "github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	pb "github.com/jianbo-zh/dchat/protobuf/pb/systempb"
-	"github.com/jianbo-zh/dchat/protocol/systemproto"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
 	"github.com/jianbo-zh/dchat/service/groupsvc"
+	pb "github.com/jianbo-zh/dchat/service/systemsvc/protobuf/pb/systempb"
+	"github.com/jianbo-zh/dchat/service/systemsvc/protocols/systemproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -22,7 +22,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("system")
+var log = logging.Logger("systemsvc")
+
+var _ SystemServiceIface = (*SystemSvc)(nil)
 
 type SystemSvc struct {
 	host myhost.Host

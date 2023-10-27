@@ -8,15 +8,15 @@ import (
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
-	deposit "github.com/jianbo-zh/dchat/protocol/depositproto"
+	deposit "github.com/jianbo-zh/dchat/service/depositsvc/protocols/depositproto"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
 
-var log = logging.Logger("deposit")
+var log = logging.Logger("depositsvc")
 
-var depositsvc *DepositService
+var _ DepositServiceIface = (*DepositService)(nil)
 
 type DepositService struct {
 	cuckooCtx context.Context
@@ -31,7 +31,7 @@ type DepositService struct {
 func NewDepositService(ctx context.Context, conf config.DepositServiceConfig, lhost myhost.Host, ids ipfsds.Batching, ebus event.Bus) (*DepositService, error) {
 
 	var err error
-	depositsvc = &DepositService{
+	depositsvc := &DepositService{
 		cuckooCtx: ctx,
 		host:      lhost,
 		ids:       ids,

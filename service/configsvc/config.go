@@ -10,10 +10,15 @@ import (
 
 	"github.com/jianbo-zh/dchat/cuckoo/config"
 	"github.com/jianbo-zh/dchat/internal/myevent"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
+
+var log = logging.Logger("configsvc")
+
+var _ ConfigServiceIface = (*ConfigSvc)(nil)
 
 type ConfigSvc struct {
 	mutex sync.Mutex

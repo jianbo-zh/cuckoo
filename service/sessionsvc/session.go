@@ -7,9 +7,12 @@ import (
 	ipfsds "github.com/ipfs/go-datastore"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/protocol/sessionproto"
+	"github.com/jianbo-zh/dchat/service/sessionsvc/protocols/sessionproto"
+	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
 )
+
+var log = logging.Logger("sessionsvc")
 
 var _ SessionServiceIface = (*SessionService)(nil)
 

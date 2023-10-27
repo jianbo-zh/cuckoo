@@ -2,7 +2,7 @@ package contactsvc
 
 import (
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	pb "github.com/jianbo-zh/dchat/protobuf/pb/contactpb"
+	pb "github.com/jianbo-zh/dchat/service/contactsvc/protobuf/pb/contactpb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

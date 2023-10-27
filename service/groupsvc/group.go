@@ -8,10 +8,10 @@ import (
 	"github.com/jianbo-zh/dchat/internal/myevent"
 	"github.com/jianbo-zh/dchat/internal/myhost"
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	"github.com/jianbo-zh/dchat/protocol/groupadminproto"
-	"github.com/jianbo-zh/dchat/protocol/groupmsgproto"
-	"github.com/jianbo-zh/dchat/protocol/groupnetworkproto"
 	"github.com/jianbo-zh/dchat/service/contactsvc"
+	"github.com/jianbo-zh/dchat/service/groupsvc/protocols/groupadminproto"
+	"github.com/jianbo-zh/dchat/service/groupsvc/protocols/groupmsgproto"
+	"github.com/jianbo-zh/dchat/service/groupsvc/protocols/groupnetworkproto"
 	"github.com/jianbo-zh/dchat/service/sessionsvc"
 	logging "github.com/jianbo-zh/go-log"
 	"github.com/libp2p/go-libp2p/core/event"
@@ -19,7 +19,9 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("group-service")
+var log = logging.Logger("groupsvc")
+
+var _ GroupServiceIface = (*GroupService)(nil)
 
 type GroupService struct {
 	host myhost.Host

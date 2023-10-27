@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package deposit.pb;
+
+message DepositContactMessagePull {
+    string startId = 1;
+}
+
+message DepositContactMessage {
+    string  id = 1;
+    bytes   fromPeerId = 2;
+    bytes   toPeerId = 3;
+    string  msgId = 4;
+    bytes   msgData = 5;
+    int64   depositTime = 6;
+}
+
+
+message DepositGroupMessagePull {
+    string  groupId = 1;
+    string  startId = 2;
+}
+
+message DepositGroupMessage {
+    string  id = 1;
+    bytes   fromPeerId = 2;
+    string  groupId = 3;
+    string  msgId = 4;
+    bytes   msgData = 5;
+    int64   depositTime = 6;
+}
+
+
+message DepositSystemMessagePull {
+    string startId = 1;
+}
+
+message DepositSystemMessage {
+    string  id = 1;
+    bytes   fromPeerId = 2;
+    bytes   toPeerId = 3;
+    string  msgId = 4;
+    bytes   msgData = 5;
+    int64   depositTime = 6;
+}
+
+message DepositMessageAck {
+    string msgId = 1;
+}

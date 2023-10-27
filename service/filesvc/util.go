@@ -2,7 +2,7 @@ package filesvc
 
 import (
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	pb "github.com/jianbo-zh/dchat/protobuf/pb/filepb"
+	pb "github.com/jianbo-zh/dchat/service/filesvc/protobuf/pb/filepb"
 )
 
 func decodeFile(file *pb.FileInfo) *mytype.FileInfo {

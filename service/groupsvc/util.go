@@ -2,7 +2,7 @@ package groupsvc
 
 import (
 	"github.com/jianbo-zh/dchat/internal/mytype"
-	pb "github.com/jianbo-zh/dchat/protobuf/pb/grouppb"
+	pb "github.com/jianbo-zh/dchat/service/groupsvc/protobuf/pb/grouppb"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

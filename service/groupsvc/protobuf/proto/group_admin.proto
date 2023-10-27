@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package admin.pb;
+
+// 群组成员
+message GroupMember {
+    bytes   id = 1;
+    string  name = 2;
+    string  avatar = 3;
+}
+
+// 群组成员列表
+message GroupMembers {
+    repeated GroupMember members = 1;
+}
+
+// 允许接入Peer列表
+message GroupAgreePeerIds {
+    repeated bytes peerIds = 1;
+}
+
+// 拒绝接入Peer
+message GroupRefuseLog {
+    bytes peerId = 1;
+    string logId = 2;
+}
+
+// 拒绝接入Peer列表
+message GroupRefusePeers {
+    repeated GroupRefuseLog peers = 1;
+}
+
+// 群组管理日志
+message GroupLog {
+
+    // 日志类型
+    enum LogType {
+        CREATE = 0; // 创建群
+        NAME = 1; // 设置群名
+        AVATAR = 2; // 设置群头像
+        NOTICE = 3; // 设置群公告
+        AUTO_JOIN_GROUP = 4; // 设置入群免审核
+        DEPOSIT_PEER_ID = 5; // 离线消息寄存节点
+        MEMBER = 6; // 群成员操作
+        DISBAND = 7; // 解散群
+    }
+
+    // 群成员具体操作
+    enum MemberOperate {
+        NONE = 0; // 无操作
+        CREATOR = 1; // 创建者
+        APPLY = 2; // 申请
+        AGREE = 3; // 同意
+        REJECTED = 4; // 拒绝
+        REMOVE = 5; // 移除
+        EXIT = 6; // 退出
+    }
+
+    string  id = 1;    // 日志ID
+    string  groupId = 2;    // 群组ID
+    bytes   peerId = 3;    // 操作人
+    LogType logType = 4;    // 日志类型
+    GroupMember  member = 5;    // 成员ID
+    MemberOperate memberOperate = 6;    // 成员操作
+    bytes   payload = 7;    // 附带内容
+    int64   createTime = 8;    // 时间戳
+    uint64  lamportime = 9;    // lamport时间戳
+    bytes   signature = 10;    // 签名
+}
+
+message GroupLogPack {
+    int32    leftNum = 1;
+    GroupLog log = 2;
+}
