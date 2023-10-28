@@ -3,7 +3,7 @@ module github.com/jianbo-zh/dchat
 go 1.19
 
 require (
-	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/gofiber/fiber/v2 v2.47.0
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-datastore v0.6.0

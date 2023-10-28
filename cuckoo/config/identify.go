@@ -47,6 +47,6 @@ func CreateIdentity() (Identity, error) {
 	if err != nil {
 		return ident, err
 	}
-	ident.PeerID = id.Pretty()
+	ident.PeerID = id.String()
 	return ident, nil
 }
