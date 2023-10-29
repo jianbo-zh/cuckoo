@@ -417,7 +417,7 @@ func (g *GroupService) sendGroupMessage(ctx context.Context, groupID string, msg
 	msgData, err := g.messageProto.SendGroupMessage(ctx, groupID, msgID)
 	if err != nil {
 		isOnlineFail = true
-		log.Errorln("send group online msg error: %v", err)
+		log.Errorf("send group online msg error: %v", err)
 	}
 
 	isOfflineFail := false
@@ -456,6 +456,8 @@ func (g *GroupService) sendGroupMessage(ctx context.Context, groupID string, msg
 				}
 			}
 		}
+	} else {
+		isOfflineFail = true
 	}
 
 	if isOnlineFail && isOfflineFail {

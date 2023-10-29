@@ -259,7 +259,7 @@ func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDep
 	ctx := context.Background()
 	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PULL_SYSTEM_MSG_ID)
 	if err != nil {
-		log.Errorf("new stream to deposit error: %v", err)
+		log.Errorf("new stream to deposit %s error: %v", depositAddr.String(), err)
 		return
 	}
 	defer stream.Close()
