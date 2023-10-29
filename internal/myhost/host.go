@@ -103,7 +103,9 @@ func (h *MyHost) RemoveStreamHandler(pid protocol.ID) {
 }
 
 func (h *MyHost) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (stream network.Stream, err error) {
-	stream, err = h.basehost.NewStream(ctx, p, pids...)
+
+	// 默认20秒超时
+	stream, err = h.basehost.NewStream(network.WithDialPeerTimeout(ctx, 20*time.Second), p, pids...)
 	if err != nil {
 		h.offline(p)
 	} else {
