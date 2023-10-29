@@ -13,6 +13,9 @@ import (
 )
 
 func (a *AdminProto) receiveLog(ctx context.Context, pblog *pb.GroupLog, fromPeerIDs ...peer.ID) error {
+
+	log.Debugln("receiveLog: ")
+
 	oldState, err := a.data.GetState(ctx, pblog.GroupId)
 
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
@@ -102,6 +105,8 @@ func (a *AdminProto) saveLog(ctx context.Context, pblog *pb.GroupLog) (isUpdated
 // checkGroupChange 检查群组变化
 func (a *AdminProto) checkGroupChange(ctx context.Context, groupID string, isMemberOperate bool, oldState string) error {
 
+	log.Debugln("checkGroupChange: ")
+
 	curState, err := a.data.GetState(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return fmt.Errorf("data.GetState error: %w", err)
@@ -123,6 +128,7 @@ func (a *AdminProto) checkGroupChange(ctx context.Context, groupID string, isMem
 		}
 
 	} else if curState == mytype.GroupStateNormal && isMemberOperate {
+		log.Debugln("emit: EvtGroupMemberChange")
 		// 正常连接，并且是成员操作，则更新连接成员信息
 		// 触发增加连接
 		a.emitters.evtGroupMemberChange.Emit(myevent.EvtGroupMemberChange{

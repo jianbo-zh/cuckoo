@@ -8,20 +8,11 @@ import (
 type EvtReceiveContactMessage struct {
 	MsgID      string
 	FromPeerID peer.ID
-	MsgType    string
-	MimeType   string
-	Payload    []byte
-	Timestamp  int64
 }
 
 type EvtReceiveGroupMessage struct {
-	MsgID      string
-	GroupID    string
-	FromPeerID peer.ID
-	MsgType    string
-	MimeType   string
-	Payload    []byte
-	Timestamp  int64
+	MsgID   string
+	GroupID string
 }
 
 // EvtPeerStateChanged Peer在线状态

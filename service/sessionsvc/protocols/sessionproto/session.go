@@ -16,7 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/event"
 )
 
-var log = logging.Logger("sessionproto")
+var log = logging.Logger("cuckoo/sessionproto")
 
 type SessionNotify struct {
 	Updates map[string]int64
@@ -144,7 +144,7 @@ func (s *SessionProto) checkSessionNotify(timeout bool) {
 	}
 
 	ctx := context.Background()
-	if updatedTimes >= 5 || (timeout && updatedTimes > 0) {
+	if updatedTimes >= 2 || (timeout && updatedTimes > 0) {
 		var updateSessions []myevent.UpdateSession
 		for sessionID := range s.sessionNotify.Updates {
 			lastMsg, err := s.data.GetLastMessage(ctx, sessionID)

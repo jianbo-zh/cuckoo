@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	logging2 "github.com/ipfs/go-log/v2"
 	"github.com/jianbo-zh/dchat/bind/utils"
 	"github.com/jianbo-zh/dchat/cuckoo"
 	cuckooConfig "github.com/jianbo-zh/dchat/cuckoo/config"
@@ -42,6 +43,8 @@ func StartNode(config *NodeConfig) error {
 		Format: logging.FormatPlaintextOutput,
 		Stdout: true,
 	})
+
+	logging2.SetLogLevel("*", "ERROR")
 
 	if node != nil {
 		return fmt.Errorf("node is started")

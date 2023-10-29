@@ -26,7 +26,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
 
-var log = logging.Logger("cuckoo")
+var log = logging.Logger("cuckoo/cuckoo")
 
 type CuckooGetter interface {
 	GetCuckoo() (*Cuckoo, error)

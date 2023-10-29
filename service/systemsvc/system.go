@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("systemsvc")
+var log = logging.Logger("cuckoo/systemsvc")
 
 var _ SystemServiceIface = (*SystemSvc)(nil)
 
@@ -41,6 +41,7 @@ type SystemSvc struct {
 	emitters struct {
 		evtPushDepositSystemMessage event.Emitter
 		evtPullDepositSystemMessage event.Emitter
+		evtSyncResource             event.Emitter
 	}
 }
 
@@ -67,6 +68,10 @@ func NewSystemService(ctx context.Context, lhost myhost.Host, ids ipfsds.Batchin
 	}
 
 	if systemsvc.emitters.evtPullDepositSystemMessage, err = ebus.Emitter(&myevent.EvtPullDepositSystemMessage{}); err != nil {
+		return nil, fmt.Errorf("set pull deposit system msg emitter error: %w", err)
+	}
+
+	if systemsvc.emitters.evtSyncResource, err = ebus.Emitter(&myevent.EvtSyncResource{}); err != nil {
 		return nil, fmt.Errorf("set pull deposit system msg emitter error: %w", err)
 	}
 
@@ -112,6 +117,8 @@ func (s *SystemSvc) goSubscribeHandler(ctx context.Context, sub event.Subscripti
 }
 
 func (s *SystemSvc) handleSyncSystemMessage(ctx context.Context, evt myevent.EvtSyncSystemMessage) {
+	log.Debugln("handleSyncSystemMessage:")
+
 	if err := s.emitters.evtPullDepositSystemMessage.Emit(myevent.EvtPullDepositSystemMessage{
 		DepositAddress: evt.DepositAddress,
 		MessageHandler: s.SaveDepositMessage,
@@ -217,6 +224,7 @@ func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, dep
 
 	switch onlineState {
 	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:
+		log.Debugln("try send online system message")
 		if err := s.systemProto.SendMessage(ctx, msg); err != nil {
 			// 发送离线消息
 			if errors.As(err, &myerror.StreamErr{}) && depositAddr != peer.ID("") {
@@ -231,7 +239,7 @@ func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, dep
 						return fmt.Errorf("proto.Marshal msg error: %w", err)
 					}
 
-					log.Debugln("start deposit ", depositAddr.String())
+					log.Debugln("try send deposit msg ", depositAddr.String())
 
 					resultCh := make(chan error, 1)
 					if err := s.emitters.evtPushDepositSystemMessage.Emit(myevent.EvtPushDepositSystemMessage{
@@ -245,12 +253,10 @@ func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, dep
 					}
 
 					if err := <-resultCh; err != nil {
-
-						log.Debugln("start deposit error")
+						log.Debugln("push deposit system msg error")
 						return fmt.Errorf("send deposit msg error: %w", err)
 					}
 
-					log.Debugln("start deposit end")
 					return nil
 				}
 			}
@@ -262,12 +268,16 @@ func (s *SystemSvc) sendSystemMessage(ctx context.Context, toPeerID peer.ID, dep
 
 	case mytype.OnlineStateOffline:
 		if depositAddr != peer.ID("") {
+
 			account, err := s.accountGetter.GetAccount(ctx)
 			if err != nil {
 				return fmt.Errorf("get account error: %w", err)
 			}
 
 			if account.AutoDepositMessage {
+
+				log.Debugln("try send deposit msg ", depositAddr.String())
+
 				msgData, err := proto.Marshal(msg)
 				if err != nil {
 					return fmt.Errorf("proto.Marshal msg error: %w", err)
@@ -310,6 +320,8 @@ func (s *SystemSvc) goHandleMessage() {
 
 		switch msg.SystemType {
 		case mytype.SystemTypeApplyAddContact: // 申请加好友
+			log.Debugln("SystemTypeApplyAddContact")
+
 			ctx := context.Background()
 			// 系统消息入库
 			if err := s.systemProto.SaveMessage(ctx, msg); err != nil {
@@ -338,6 +350,14 @@ func (s *SystemSvc) goHandleMessage() {
 				if err = s.systemProto.UpdateMessageState(ctx, msg.Id, mytype.SystemStateAgreed); err != nil {
 					log.Errorf("update message state error: %s", err.Error())
 					continue
+				}
+			} else {
+				// 触发检查是否需要同步头像
+				if err = s.emitters.evtSyncResource.Emit(myevent.EvtSyncResource{
+					ResourceID: msg.FromPeer.Avatar,
+					PeerIDs:    []peer.ID{peer.ID(msg.FromPeer.PeerId)},
+				}); err != nil {
+					log.Errorf("emit check avatar evt error: %w", err)
 				}
 			}
 

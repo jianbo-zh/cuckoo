@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("fileproto")
+var log = logging.Logger("cuckoo/fileproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -43,7 +43,7 @@ const (
 
 	ServiceName = "peer.message"
 
-	ChunkSize = 50 * 1024 // 256K
+	ChunkSize = 50 * 1024 // 50K
 )
 
 type FileProto struct {
@@ -130,6 +130,7 @@ func (f *FileProto) DeleteSessionFiles(ctx context.Context, sessionID string, fi
 
 // downloadResource  下载资源
 func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID string) error {
+	log.Debugf("download resource %s %s\n", peerID.String(), fileID)
 
 	// 检查本地有没有
 	filePath := path.Join(f.conf.ResourceDir, fileID)
@@ -155,7 +156,7 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 	}
 
 	// 开始接收文件
-	tmpFilePath := path.Join(f.conf.ResourceDir, fmt.Sprintf("%s_%s", "tmp", fileID))
+	tmpFilePath := path.Join(f.conf.TmpDir, fmt.Sprintf("%s_%s", "tmp", fileID))
 	tmpFile, err := os.OpenFile(tmpFilePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
 	if err != nil {
 		stream.Reset()
@@ -181,6 +182,7 @@ func (f *FileProto) DownloadResource(ctx context.Context, peerID peer.ID, fileID
 }
 
 func (f *FileProto) DownloadFile(ctx context.Context, sessionID string, fromPeerIDs []peer.ID, file *mytype.FileInfo) error {
+
 	// 检查是否存在，如果存在则不下载
 	if _, err := os.Stat(filepath.Join(f.conf.FileDir, file.FileID)); err == nil {
 		return nil
@@ -202,18 +204,20 @@ func (f *FileProto) DownloadFile(ctx context.Context, sessionID string, fromPeer
 }
 
 func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fileID string, fileSize int64) error {
+	log.Debugln("downloadFile")
 
 	hostID := d.host.ID()
 
 	// 判断文件是否存在，存在则返回
 	filePath := filepath.Join(d.conf.FileDir, fileID)
 	if _, err := os.Stat(filePath); err == nil {
-		log.Errorln("file exists")
+		log.Debugln("file exists")
 		return nil
 
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("os.Stat error: %v", err)
 	}
+
 	// 查询哪些peer有文件
 	resultCh := make(chan peer.ID, len(fromPeerIDs))
 	var wg sync.WaitGroup
@@ -246,6 +250,8 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 	if chunkTotal <= 0 {
 		chunkTotal = 1
 	}
+
+	log.Debugf("filesize: %d chunkSize: %d chunkTotal: %d", fileSize, ChunkSize, chunkTotal)
 
 	taskCh := make(chan int64, chunkTotal)
 	for i := int64(0); i < chunkTotal; i++ {
@@ -310,6 +316,8 @@ func (d *FileProto) downloadFile(ctx context.Context, fromPeerIDs []peer.ID, fil
 func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh chan peer.ID, peerID peer.ID, fileID string) {
 	defer wg.Done()
 
+	log.Debugln("queryFile")
+
 	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), peerID, QUERY_ID)
 	if err != nil {
 		log.Errorf("host new stream error: %v", err)
@@ -317,6 +325,7 @@ func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh 
 	}
 	defer stream.Close()
 
+	log.Debugln("queryFile send file query")
 	wt := pbio.NewDelimitedWriter(stream)
 	if err = wt.WriteMsg(&pb.FileQuery{FileId: fileID}); err != nil {
 		log.Errorf("pbio write msg error: %v", err)
@@ -330,6 +339,8 @@ func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh 
 		return
 	}
 
+	log.Debugln("queryFile recv query result: ", result.String())
+
 	if result.Exists {
 		resultCh <- peerID
 	}
@@ -339,6 +350,7 @@ func (d *FileProto) queryFile(ctx context.Context, wg *sync.WaitGroup, resultCh 
 func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, mhr *MultiHandleResult,
 	taskCh chan int64, peerID peer.ID, fileID string, chunkTotal int64) {
 
+	log.Debugln("downloadFileChunk from ", peerID.String())
 	defer wg.Done()
 
 	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), peerID, DOWNLOAD_ID)
@@ -353,6 +365,7 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 
 	for chunkIndex := range taskCh {
 		// 发送下载分片请求
+		log.Debugf("pbio write chunk request")
 		if err = wt.WriteMsg(&pb.FileDownloadChunk{
 			FileId:     fileID,
 			ChunkIndex: chunkIndex,
@@ -386,6 +399,8 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 			return
 		}
 
+		log.Debugf("pbio receive chunk info: ", chunkInfo.String())
+
 		// 接收分片数据
 		hashSum := md5.New()
 		chunkFile := filepath.Join(d.conf.TmpDir, chunkFileName(fileID, chunkIndex))
@@ -401,7 +416,7 @@ func (d *FileProto) downloadFileChunk(ctx context.Context, wg *sync.WaitGroup, m
 		ofile.Close()
 		if err != nil {
 			taskCh <- chunkIndex
-			log.Errorf("io copy error: %v", err)
+			log.Errorf("io copy error: %v, size: %d", err, size)
 			return
 		}
 

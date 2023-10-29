@@ -108,7 +108,15 @@ func NewHost(ctx context.Context, bootEmitter event.Emitter, conf *config.Config
 				defer wg.Done()
 
 				pi, _ := peer.AddrInfoFromString(addr)
-				resultCh <- localhost.Connect(ctx, *pi)
+
+				err := localhost.Connect(ctx, *pi)
+				resultCh <- err
+
+				if err != nil {
+					log.Errorf("connect bootstrap peer %s error: %w", pi.ID.String(), err)
+				} else {
+					log.Infof("connect bootstrap peer %s success", pi.ID.String())
+				}
 
 			}(&wg, addr, resultCh)
 		}

@@ -25,7 +25,7 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("groupnetworkproto")
+var log = logging.Logger("cuckoo/groupnetworkproto")
 
 const (
 	CONN_ID    = myprotocol.GroupConnID_v100
@@ -169,9 +169,10 @@ func (n *NetworkProto) listenGroupNetworkAlive() {
 
 		groupIDs, err := n.GetNormalGroupIDs(ctx)
 		if err != nil {
-			log.Errorf("data.GetGroupIDs error: %w", err)
-			return
+			log.Errorf("data.GetGroupIDs error: %v", err)
 		}
+
+		log.Debugln("alive groupIDs ", groupIDs)
 
 		for _, groupID := range groupIDs {
 			isNeedStart := false
@@ -179,11 +180,14 @@ func (n *NetworkProto) listenGroupNetworkAlive() {
 			if _, exists := n.network[groupID]; !exists {
 				isNeedStart = true
 			} else if len(n.network[groupID].Conns) == 0 {
-				isNeedStart = true
+				if n.network[groupID].State != DoingNetworkState {
+					isNeedStart = true
+				}
 			}
 			n.networkMutex.Unlock()
 
 			if isNeedStart {
+				log.Debugln("listen group network alive, is neet start network")
 				n.startNetworking(ctx, groupID)
 			}
 		}
@@ -192,6 +196,7 @@ func (n *NetworkProto) listenGroupNetworkAlive() {
 
 // connectHandler 接收组网请求
 func (n *NetworkProto) connectHandler(stream network.Stream) {
+	log.Debugln("network.connectHandler: ")
 
 	var connInit pb.GroupConnectInit
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
@@ -212,16 +217,26 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 		return
 	}
 
-	isFound := false
+	isFoundSelf := false
+	isFoundPeer := false
 	for _, peerID := range acptPeerIDs {
+		if n.host.ID() == peerID {
+			isFoundSelf = true
+			if isFoundPeer {
+				break
+			}
+		}
+
 		if remotePeerID == peerID {
-			isFound = true
-			break
+			isFoundPeer = true
+			if isFoundSelf {
+				break
+			}
 		}
 	}
 
-	if !isFound {
-		log.Errorf("not agree peer")
+	if !isFoundPeer || !isFoundSelf {
+		log.Errorf("not agree peer or self exited group")
 		stream.Reset()
 		return
 	}
@@ -276,6 +291,8 @@ func (n *NetworkProto) connectHandler(stream network.Stream) {
 		stream.Close()
 		n.triggerDisconnected(groupID, remotePeerID, peerBootTs, peerConnTimes)
 	}()
+
+	log.Debugln("emit: EvtGroupConnectChange")
 
 	// 触发连接改变事件
 	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{

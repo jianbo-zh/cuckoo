@@ -141,7 +141,7 @@ func (f *FileProto) resourceUploadIDHandler(stream network.Stream) {
 
 // resourceDownloadIDHandler 资源下载处理器
 func (f *FileProto) resourceDownloadIDHandler(stream network.Stream) {
-	log.Debugln("download resource start")
+	log.Infoln("download resource handler")
 
 	defer stream.Close()
 
@@ -298,7 +298,6 @@ func (f *FileProto) fileDownloadHandler(stream network.Stream) {
 		bufWriter.Flush()
 
 		log.Debugln("send file chunk finish")
-
 	}
 
 }

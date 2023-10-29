@@ -15,7 +15,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-var log = logging.Logger("depositproto")
+var log = logging.Logger("cuckoo/depositproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -69,7 +69,7 @@ func (d *DepositServiceProto) Close() {
 
 // SaveContactMessageHandler 保存联系人消息
 func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
-	log.Debugln("save contact message start")
+	log.Debugln("SaveContactMessageHandler: ")
 
 	err := stream.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
@@ -94,14 +94,13 @@ func (d *DepositServiceProto) SaveContactMessageHandler(stream network.Stream) {
 		log.Errorf("save deposit message error: %v", err)
 		return
 	}
+	log.Debugln("datastore.SaveContactMessage ", msg.Id)
 
 	if err = wt.WriteMsg(&pb.DepositMessageAck{MsgId: msg.MsgId}); err != nil {
 		stream.Reset()
 		log.Errorf("pbio write ack msg error: %w", err)
 		return
 	}
-
-	log.Debugln("save contact message success")
 }
 
 // SaveGroupMessageHandler 保存群组消息
@@ -143,7 +142,7 @@ func (d *DepositServiceProto) SaveGroupMessageHandler(stream network.Stream) {
 
 // SaveSystemMessageHandler 保存系统消息
 func (d *DepositServiceProto) SaveSystemMessageHandler(stream network.Stream) {
-	log.Debugln("save system message start")
+	log.Debugln("SaveSystemMessageHandler: ")
 
 	err := stream.SetReadDeadline(time.Now().Add(StreamTimeout))
 	if err != nil {
@@ -156,6 +155,7 @@ func (d *DepositServiceProto) SaveSystemMessageHandler(stream network.Stream) {
 	rb := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
+	log.Debugln("pbio read deposit system msg")
 	var msg pb.DepositSystemMessage
 	if err = rb.ReadMsg(&msg); err != nil {
 		stream.Reset()
@@ -169,19 +169,18 @@ func (d *DepositServiceProto) SaveSystemMessageHandler(stream network.Stream) {
 		return
 	}
 
+	log.Debugln("pbio write deposit system msg ack")
 	if err = wt.WriteMsg(&pb.DepositMessageAck{MsgId: msg.MsgId}); err != nil {
 		stream.Reset()
 		log.Errorf("pbio write ack msg error: %w", err)
 		return
 	}
-
-	log.Debugln("save system message success")
 }
 
 // GetContactMessageHandler 获取联系人消息
 func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 
-	log.Debugln("get contact message start")
+	log.Debugln("GetContactMessageHandler: ")
 
 	defer stream.Close()
 
@@ -197,12 +196,14 @@ func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 		return
 	}
 
+	log.Debugln("recevie pull deposit contact msg request: ", msg.String())
+
 	startID := msg.StartId
 
 	for {
 		msgs, err := d.datastore.GetContactMessages(remotePeerID, startID, 50)
 		if err != nil {
-			log.Errorf("get deposit message ids error: %v", err)
+			log.Errorf("get deposit contact msg ids error: %v", err)
 			stream.Reset()
 			return
 		}
@@ -218,19 +219,15 @@ func (d *DepositServiceProto) GetContactMessageHandler(stream network.Stream) {
 				return
 			}
 
-			log.Debugln("send msg: ", msg.String())
-
+			log.Debugln("send deposit contact msg: ", msg.Id)
 			startID = msg.Id
 		}
 	}
-
-	log.Debugln("get contact message finish")
 }
 
 // GetGroupMessageHandler 获取群组消息
 func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
-
-	log.Debugln("get group message start")
+	log.Debugln("GetGroupMessageHandler: ")
 
 	defer stream.Close()
 
@@ -260,7 +257,6 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 		}
 
 		for _, msg := range msgs {
-
 			if err = pw.WriteMsg(msg); err != nil {
 				log.Errorf("io write message error: %v", err)
 				stream.Reset()
@@ -270,13 +266,11 @@ func (d *DepositServiceProto) GetGroupMessageHandler(stream network.Stream) {
 			startID = msg.Id
 		}
 	}
-
-	log.Debugln("get group message finish")
 }
 
 // GetSystemMessageHandler 获取系统消息
 func (d *DepositServiceProto) GetSystemMessageHandler(stream network.Stream) {
-	log.Debugln("get system message start")
+	log.Debugln("deposit GetSystemMessageHandler")
 
 	defer stream.Close()
 
@@ -285,6 +279,7 @@ func (d *DepositServiceProto) GetSystemMessageHandler(stream network.Stream) {
 	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
+	log.Debugln("pbio read pull system request")
 	var msg pb.DepositSystemMessagePull
 	if err := pr.ReadMsg(&msg); err != nil {
 		log.Errorf("pbio read msg error: %w", err)
@@ -307,17 +302,14 @@ func (d *DepositServiceProto) GetSystemMessageHandler(stream network.Stream) {
 		}
 
 		for _, msg := range msgs {
+			log.Debugln("pbio write system msg ", msg.MsgId)
 			if err = pw.WriteMsg(msg); err != nil {
 				log.Errorf("io write message error: %v", err)
 				stream.Reset()
 				return
 			}
 
-			log.Debugln("send msg: ", msg.String())
-
 			startID = msg.Id
 		}
 	}
-
-	log.Debugln("get system message finish")
 }

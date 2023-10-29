@@ -20,7 +20,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-var log = logging.Logger("contactproto")
+var log = logging.Logger("cuckoo/contactproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -55,7 +55,7 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 		accountGetter: accountGetter,
 	}
 
-	contactsvc.host.SetStreamHandler(SYNC_ID, contactsvc.handler)
+	contactsvc.host.SetStreamHandler(SYNC_ID, contactsvc.syncHandler)
 	contactsvc.host.SetStreamHandler(CHECK_ID, contactsvc.checkApplyHandler)
 
 	if contactsvc.emitters.evtSyncPeerMessage, err = eventBus.Emitter(&myevent.EvtSyncContactMessage{}); err != nil {
@@ -85,7 +85,8 @@ func NewContactProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus,
 	return &contactsvc, nil
 }
 
-func (c *ContactProto) handler(stream network.Stream) {
+func (c *ContactProto) syncHandler(stream network.Stream) {
+	log.Infoln("sync handler")
 
 	remotePeerID := stream.Conn().RemotePeer()
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
@@ -99,6 +100,8 @@ func (c *ContactProto) handler(stream network.Stream) {
 		return
 	}
 
+	log.Debugln("sync handler receive peer msg: ", msg.String())
+
 	// 更新本地
 	ctx := context.Background()
 	contact, err := c.data.GetContact(ctx, remotePeerID)
@@ -108,20 +111,20 @@ func (c *ContactProto) handler(stream network.Stream) {
 		return
 	}
 
-	if contact.Avatar != msg.Avatar {
-		// 触发检查是否需要同步头像
-		if err = c.emitters.evtSyncResource.Emit(myevent.EvtSyncResource{
-			ResourceID: msg.Avatar,
-			PeerIDs:    []peer.ID{remotePeerID},
-		}); err != nil {
-			log.Errorf("emit check avatar evt error: %w", err)
-		}
+	// 触发检查是否需要同步头像
+	if err = c.emitters.evtSyncResource.Emit(myevent.EvtSyncResource{
+		ResourceID: msg.Avatar,
+		PeerIDs:    []peer.ID{remotePeerID},
+	}); err != nil {
+		log.Errorf("emit check avatar evt error: %w", err)
 	}
 
 	contact.Name = msg.Name
 	contact.Avatar = msg.Avatar
 	contact.DepositAddress = msg.DepositAddress
+
 	if contact.State == pb.ContactState_Apply {
+		log.Debugln("set contact state apply -> normal")
 		contact.State = pb.ContactState_Normal
 
 		if err = c.data.SetFormal(ctx, remotePeerID); err != nil {
@@ -144,9 +147,9 @@ func (c *ContactProto) handler(stream network.Stream) {
 			Avatar:         contact.Avatar,
 			DepositAddress: peer.ID(contact.DepositAddress),
 		})
-
 	}
 
+	log.Debugln("update contact %s", contact.String())
 	if err := c.data.UpdateContact(ctx, contact); err != nil {
 		log.Errorf("data update contact error: %v", err)
 		stream.Reset()
@@ -161,13 +164,17 @@ func (c *ContactProto) handler(stream network.Stream) {
 		return
 	}
 
-	wt := pbio.NewDelimitedWriter(stream)
-	if err := wt.WriteMsg(&pb.Contact{
+	accountMsg := pb.Contact{
 		Id:             []byte(account.ID),
 		Name:           account.Name,
 		Avatar:         account.Avatar,
 		DepositAddress: []byte(account.DepositAddress),
-	}); err != nil {
+	}
+
+	log.Debugln("sync handler send peer: ", accountMsg.String())
+
+	wt := pbio.NewDelimitedWriter(stream)
+	if err := wt.WriteMsg(&accountMsg); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
 		stream.Reset()
 		return
@@ -241,7 +248,7 @@ func (c *ContactProto) checkApplyHandler(stream network.Stream) {
 
 }
 
-func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.AccountPeer, isBootSync bool) {
+func (c *ContactProto) syncContact(contactID peer.ID, accountPeer mytype.AccountPeer, isBootSync bool) {
 
 	log.Debugln("sync contact: ", contactID.String(), accountPeer, isBootSync)
 
@@ -263,13 +270,13 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 		Avatar:         accountPeer.Avatar,
 		DepositAddress: []byte(accountPeer.DepositAddress),
 	}
+	log.Debugln("sync contact send peer: ", sendmsg.String())
+
 	if err = wt.WriteMsg(&sendmsg); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
 		stream.Reset()
 		return
 	}
-
-	log.Debugln("sync contact send peer: ", sendmsg.String())
 
 	// 读取对方数据
 	var recvmsg pb.ContactPeer
@@ -278,6 +285,8 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 		stream.Reset()
 		return
 	}
+
+	log.Debugln("sync contact recv peer: ", peer.ID(recvmsg.Id).String())
 
 	// 更新本地数据
 	if err = c.data.UpdateContact(ctx, &pb.Contact{
@@ -290,8 +299,6 @@ func (c *ContactProto) goSyncContact(contactID peer.ID, accountPeer mytype.Accou
 		stream.Reset()
 		return
 	}
-
-	log.Debugln("sync contact recv peer: ", peer.ID(recvmsg.Id).String())
 
 	if isBootSync {
 		// 启动时同步，还要触发同步消息事件
@@ -336,13 +343,14 @@ func (c *ContactProto) goCheckApply(peerID peer.ID, accountPeer mytype.AccountPe
 		Avatar:         accountPeer.Avatar,
 		DepositAddress: []byte(accountPeer.DepositAddress),
 	}
+
+	log.Debugln("check apply send peer: ", sendmsg.String())
+
 	if err = wt.WriteMsg(&sendmsg); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
 		stream.Reset()
 		return
 	}
-
-	log.Debugln("sync contact send peer: ", sendmsg.String())
 
 	// 读取对方数据
 	var recvmsg pb.ContactPeerState
@@ -352,7 +360,11 @@ func (c *ContactProto) goCheckApply(peerID peer.ID, accountPeer mytype.AccountPe
 		return
 	}
 
+	log.Debugln("check apply recv peer: ", recvmsg.String())
+
 	if recvmsg.State == pb.ContactState_Normal {
+		log.Debugln("peer is contact, set state normal")
+
 		// 对方已经同意了，则更新本地数据
 		if err = c.data.UpdateContact(ctx, &pb.Contact{
 			Id:             recvmsg.Id,
@@ -367,12 +379,35 @@ func (c *ContactProto) goCheckApply(peerID peer.ID, accountPeer mytype.AccountPe
 			return
 		}
 
+		// 设置正常好友
+		if err = c.data.SetFormal(ctx, peerID); err != nil {
+			log.Errorf("data.SetFormal error: %w", err)
+			stream.Reset()
+			return
+		}
+
+		// 更新会话
+		sessionID := mytype.ContactSessionID(peerID)
+		if err = c.sessionData.SetSessionID(ctx, sessionID.String()); err != nil {
+			log.Errorf("svc set session error: %w", err)
+			stream.Reset()
+			return
+		}
+
 		// 删除申请记录缓存
 		if err = c.data.DeleteApply(ctx, peerID); err != nil {
 			log.Errorf("data.DeleteApply error: %v", err)
 			stream.Reset()
 			return
 		}
+
+		// 触发新联系人
+		c.emitters.evtContactAdded.Emit(myevent.EvtContactAdded{
+			ID:             peer.ID(recvmsg.Id),
+			Name:           recvmsg.Name,
+			Avatar:         recvmsg.Avatar,
+			DepositAddress: peer.ID(recvmsg.DepositAddress),
+		})
 	}
 }
 
@@ -407,10 +442,16 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 					// 超过7天就算过期了
 					expiredts := time.Now().Unix() - (7 * 24 * 60 * 60)
 					for _, peerID := range peerIDs {
-						if contact, err := c.data.GetContact(ctx, peerID); err != nil {
-							log.Errorf("data.GetContact error: %w", err)
+						log.Debugln("find apply contact ", peerID.String())
 
-						} else if contact.CreateTime > expiredts || contact.State == pb.ContactState_Normal { // 申请过期或者好友关系正常
+						contact, err := c.data.GetContact(ctx, peerID)
+						if err != nil {
+							log.Errorf("data.GetContact error: %v", err)
+							continue
+						}
+
+						if contact.CreateTime < expiredts || contact.State == pb.ContactState_Normal { // 申请过期或者好友关系正常
+							log.Debugln("apply contact expired, should delete")
 							if err = c.data.DeleteApply(ctx, peerID); err != nil {
 								log.Errorf("data.DeleteApply error: %w", err)
 							}
@@ -423,6 +464,8 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 							})
 						}
 					}
+				} else {
+					log.Debugln("no apply contacts")
 				}
 
 				// 交换好友最新信息
@@ -432,7 +475,7 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 
 				} else if len(contactIDs) > 0 {
 					for _, contactID := range contactIDs {
-						go c.goSyncContact(contactID, mytype.AccountPeer{
+						go c.syncContact(contactID, mytype.AccountPeer{
 							ID:             account.ID,
 							Name:           account.Name,
 							Avatar:         account.Avatar,
@@ -442,13 +485,15 @@ func (c *ContactProto) handleSubscribe(ctx context.Context, sub event.Subscripti
 				}
 
 			case myevent.EvtAccountBaseChange:
+				log.Infoln("EvtAccountBaseChange")
+
 				if contactIDs, err := c.data.GetFormalIDs(ctx); err != nil {
 					log.Warnf("get peer ids error: %v", err)
 					continue
 
 				} else if len(contactIDs) > 0 {
 					for _, contactID := range contactIDs {
-						go c.goSyncContact(contactID, ev.AccountPeer, false)
+						go c.syncContact(contactID, ev.AccountPeer, false)
 					}
 				}
 
@@ -526,7 +571,7 @@ func (c *ContactProto) AgreeAddContact(ctx context.Context, peer0 *mytype.Peer) 
 		return fmt.Errorf("get account error: %w", err)
 	}
 
-	go c.goSyncContact(peer0.ID, mytype.AccountPeer{
+	go c.syncContact(peer0.ID, mytype.AccountPeer{
 		ID:             account.ID,
 		Name:           account.Name,
 		Avatar:         account.Avatar,

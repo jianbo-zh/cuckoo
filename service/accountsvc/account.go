@@ -16,7 +16,7 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("accountsvc")
+var log = logging.Logger("cuckoo/accountsvc")
 
 var _ AccountServiceIface = (*AccountSvc)(nil)
 

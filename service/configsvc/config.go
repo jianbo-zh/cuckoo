@@ -16,7 +16,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-var log = logging.Logger("configsvc")
+var log = logging.Logger("cuckoo/configsvc")
 
 var _ ConfigServiceIface = (*ConfigSvc)(nil)
 

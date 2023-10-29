@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("grougadminproto")
+var log = logging.Logger("cuckoo/grougadminproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -98,7 +98,10 @@ func NewAdminProto(lhost myhost.Host, ids ipfsds.Batching, eventBus event.Bus) (
 		return nil, fmt.Errorf("set sync group message emitter error: %v", err)
 	}
 
-	sub, err := eventBus.Subscribe([]any{new(myevent.EvtGroupNetworkSuccess), new(myevent.EvtGroupConnectChange), new(myevent.EvtPullGroupLog)})
+	sub, err := eventBus.Subscribe([]any{
+		new(myevent.EvtHostBootComplete), new(myevent.EvtGroupNetworkSuccess),
+		new(myevent.EvtGroupConnectChange), new(myevent.EvtPullGroupLog),
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("subscription failed. group admin server error: %v", err)
@@ -144,9 +147,11 @@ func (a *AdminProto) logHandler(stream network.Stream) {
 
 // pullHandler 获取消息处理器
 func (a *AdminProto) pullHandler(stream network.Stream) {
+	log.Debug("pullHandler: ")
 
 	defer stream.Close()
 
+	remotePeerID := stream.Conn().RemotePeer()
 	var ctx = context.Background()
 
 	// 接收对方消息摘要
@@ -157,7 +162,31 @@ func (a *AdminProto) pullHandler(stream network.Stream) {
 		return
 	}
 
+	log.Debugln("recv sum msg: ", recvSumMsg.String())
+
 	groupID := recvSumMsg.GroupId
+
+	// 判断是否是群成员
+	agreePeerIDs, err := a.GetAgreePeerIDs(ctx, groupID)
+	if err != nil {
+		log.Errorf("get agree peer ids error: %w", err)
+		stream.Reset()
+		return
+	}
+
+	isAgreePeer := false
+	for _, peerID := range agreePeerIDs {
+		if remotePeerID == peerID {
+			isAgreePeer = true
+			break
+		}
+	}
+
+	if !isAgreePeer {
+		log.Warnln("not accept peer, so refuse pull request")
+		stream.Reset()
+		return
+	}
 
 	// 首先计算消息摘要（头尾md5）
 	logIDs, err := a.data.GetLogIDs(ctx, groupID)
@@ -166,6 +195,8 @@ func (a *AdminProto) pullHandler(stream network.Stream) {
 		stream.Reset()
 		return
 	}
+
+	log.Debugln("data.GetLogIDs len ", len(logIDs))
 
 	var logHash []byte
 	var headID, tailID string
@@ -192,6 +223,9 @@ func (a *AdminProto) pullHandler(stream network.Stream) {
 		Length: int32(logIDNum),
 		Hash:   logHash,
 	}
+
+	log.Debugln("pbio write sendSumMsg: ", sendSumMsg.String())
+
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&sendSumMsg); err != nil {
 		log.Errorf("pbio write msg error: %w", err)
@@ -200,54 +234,64 @@ func (a *AdminProto) pullHandler(stream network.Stream) {
 
 	// 如果本地和远端都一样，则正常退出
 	if string(recvSumMsg.Hash) == string(sendSumMsg.Hash) {
-		log.Debugln("summary hash equal")
+		log.Debugln("summary hash equal, return")
 		return
 	}
 
 	// 不一致，准备接收对方的消息ID列表，然后进行比对
-	var groupLogIDs []string
-	var groupLogIDPack pb.GroupLogIDPack
+	var logIDPack pb.GroupLogIDPack
 	var leftNum int32
+	recvLogIDs := make(map[string]struct{})
 	for {
-		groupLogIDPack.Reset()
-		if err := rd.ReadMsg(&groupLogIDPack); err != nil {
+		logIDPack.Reset()
+		if err := rd.ReadMsg(&logIDPack); err != nil {
 			log.Errorf("pbio read log pack error: %w", err)
 			return
 		}
 
-		if groupLogIDPack.LogId != "" {
-			groupLogIDs = append(groupLogIDs, groupLogIDPack.LogId)
+		log.Debugf("pbio read group log id: %s, left: %d", logIDPack.LogId, logIDPack.LeftNum)
+
+		if logIDPack.LogId != "" {
+			recvLogIDs[logIDPack.LogId] = struct{}{}
 		}
 
-		if groupLogIDPack.LeftNum <= 0 {
+		if logIDPack.LeftNum <= 0 {
 			// 无剩余则退出
 			break
 
-		} else if groupLogIDPack.LeftNum >= leftNum {
+		} else if leftNum != 0 && logIDPack.LeftNum >= leftNum {
 			// 越剩越多则报错
-			log.Errorln("left num more")
+			log.Errorln("left num more get: %d, cur: %d", logIDPack.LeftNum, leftNum)
 			stream.Reset()
 			return
 		}
 
-		leftNum = groupLogIDPack.LeftNum
+		leftNum = logIDPack.LeftNum
 	}
 
-	if len(groupLogIDs) == 0 {
-		log.Debugln("group log ids empty")
+	if len(recvLogIDs) == 0 {
+		log.Debugln("group log ids empty, return")
 		return
 	}
 
+	var sendLogIDs []string
+	for _, logID := range logIDs {
+		if _, exists := recvLogIDs[logID]; !exists {
+			sendLogIDs = append(sendLogIDs, logID)
+		}
+	}
+
 	// 发送日志给对方
-	groupLogs, err := a.data.GetLogsByIDs(groupID, groupLogIDs)
+	sendLogs, err := a.data.GetLogsByIDs(groupID, sendLogIDs)
 	if err != nil {
-		log.Errorf("data.GetLogsByIDs error: %w", err)
+		log.Errorf("data.GetLogsByIDs error: %v", err)
 		stream.Reset()
 		return
 	}
 
-	logNum := len(groupLogs)
-	for i, groupLog := range groupLogs {
+	logNum := len(sendLogs)
+	for i, groupLog := range sendLogs {
+		log.Debugln("pbio write group log pack ", i)
 		if err := wt.WriteMsg(&pb.GroupLogPack{
 			LeftNum: int32(logNum - i - 1),
 			Log:     groupLog,
@@ -327,17 +371,9 @@ func (a *AdminProto) handleSubscribe(ctx context.Context, sub event.Subscription
 					}
 				}
 
-				depositAddress, err := a.data.GetDepositAddress(ctx, evt.GroupID)
-				if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
-					log.Errorf("data get group deposit address error: %v", err)
-
-				} else if depositAddress != peer.ID("") {
-					if err = a.emitters.evtSyncGroupMessage.Emit(myevent.EvtSyncGroupMessage{
-						GroupID:        evt.GroupID,
-						DepositAddress: depositAddress,
-					}); err != nil {
-						log.Errorf("emite sync group message event error: %w", err)
-					}
+			case myevent.EvtHostBootComplete:
+				if evt.IsSucc {
+					go a.handleHostBootCompleteEvent()
 				}
 
 			case myevent.EvtGroupConnectChange:
@@ -373,7 +409,58 @@ func (a *AdminProto) handleSubscribe(ctx context.Context, sub event.Subscription
 	}
 }
 
+func (a *AdminProto) handleHostBootCompleteEvent() {
+	log.Debugln("handleHostBootCompleteEvent: ")
+
+	ctx := context.Background()
+
+	groupIDs, err := a.GetGroupIDs(ctx)
+	if err != nil {
+		log.Errorf("data.GetGroupIDs error: %w", err)
+		return
+	}
+
+	var normalGroupIDs []string
+	for _, groupID := range groupIDs {
+		state, err := a.data.GetState(ctx, groupID)
+		if err != nil {
+			log.Errorf("data.GetState error: %w", err)
+			return
+		}
+
+		switch state {
+		case mytype.GroupStateDisband:
+			creator, err := a.data.GetCreator(ctx, groupID)
+			if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+				log.Errorf("data.GetCreate error: %w", err)
+			}
+			if a.host.ID() == creator {
+				normalGroupIDs = append(normalGroupIDs, groupID)
+			}
+		case mytype.GroupStateNormal:
+			normalGroupIDs = append(normalGroupIDs, groupID)
+		}
+	}
+
+	for _, groupID := range normalGroupIDs {
+		depositAddress, err := a.data.GetDepositAddress(ctx, groupID)
+		if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+			log.Errorf("data get group deposit address error: %v", err)
+
+		} else if depositAddress != peer.ID("") {
+			if err = a.emitters.evtSyncGroupMessage.Emit(myevent.EvtSyncGroupMessage{
+				GroupID:        groupID,
+				DepositAddress: depositAddress,
+			}); err != nil {
+				log.Errorf("emite sync group message event error: %w", err)
+			}
+		}
+	}
+}
+
 func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, resultCh chan<- error) {
+	log.Debugln("handlePullGroupLogEvent: ")
+
 	var resultErr error
 	var ctx = context.Background()
 
@@ -421,6 +508,7 @@ func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, res
 		Hash:    logHash,
 	}
 
+	log.Debugln("pbio send sum msg ", sendSumMsg.String())
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&sendSumMsg); err != nil {
 		resultErr = fmt.Errorf("pbio write msg error: %w", err)
@@ -435,14 +523,16 @@ func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, res
 		return
 	}
 
+	log.Debugln("receive sum msg ", recvSumMsg.String())
+
 	if string(recvSumMsg.Hash) == string(sendSumMsg.Hash) {
-		// 正常退出
-		log.Debugln("summary hash equal")
+		log.Debugln("summary hash equal, return")
 		return
 	}
 
 	// 消息摘要不一致，则发送本地所有消息ID给对方
 	for i := 0; i < logNum; i++ {
+		log.Debugln("pbio write group log id ", i)
 		if err := wt.WriteMsg(&pb.GroupLogIDPack{
 			LogId:   logIDs[i],
 			LeftNum: int32(logNum - i - 1),
@@ -470,8 +560,8 @@ func (a *AdminProto) handlePullGroupLogEvent(groupID string, peerID peer.ID, res
 		if groupLogPack.LeftNum <= 0 {
 			break
 
-		} else if groupLogPack.LeftNum >= leftNum {
-			resultErr = fmt.Errorf("left num more")
+		} else if leftNum != 0 && groupLogPack.LeftNum >= leftNum {
+			resultErr = fmt.Errorf("left num more left: %d, cur: %d", groupLogPack.LeftNum, leftNum)
 			stream.Reset()
 			return
 		}
@@ -538,6 +628,8 @@ func (a *AdminProto) sendPeerMessage(ctx context.Context, peerID peer.ID, msg *p
 }
 
 func (a *AdminProto) emitGroupMemberChange(ctx context.Context, groupID string) error {
+
+	log.Debugln("emitGroupMemberChange: ", groupID)
 
 	if err := a.emitters.evtGroupMemberChange.Emit(myevent.EvtGroupMemberChange{
 		GroupID: groupID,

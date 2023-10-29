@@ -20,7 +20,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-var log = logging.Logger("accountproto")
+var log = logging.Logger("cuckoo/accountproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -99,9 +99,6 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 							DepositAddress: peer.ID(account.DepositAddress),
 						}); err != nil {
 							log.Errorf("emit sync account message error: %w", err)
-
-						} else {
-							log.Debugln("emit sync account message: ", peer.ID(account.DepositAddress).String())
 						}
 
 						// 拉取系统消息
@@ -109,9 +106,6 @@ func (a *AccountProto) subscribeHandler(ctx context.Context, sub event.Subscript
 							DepositAddress: peer.ID(account.DepositAddress),
 						}); err != nil {
 							log.Errorf("emit sync account message error: %w", err)
-
-						} else {
-							log.Debugln("emit sync account message: ", peer.ID(account.DepositAddress).String())
 						}
 					}
 				}

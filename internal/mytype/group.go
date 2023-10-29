@@ -15,6 +15,7 @@ const (
 
 type Group struct {
 	ID             string
+	CreatorID      peer.ID
 	Name           string
 	Avatar         string
 	DepositAddress peer.ID

@@ -78,7 +78,7 @@ func (c *ContactSvc) SendMessage(ctx context.Context, contactID peer.ID, msgType
 		isDeposit, err := c.sendMessage(ctx, contactID, msgID)
 		if err != nil {
 			isSucc = false
-			log.Error("send message error: %v", err)
+			log.Errorf("send message error: %v", err)
 		}
 
 		msg, err := c.msgProto.UpdateMessageState(ctx, contactID, msgID, isDeposit, isSucc)
@@ -116,11 +116,14 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 
 	switch onlineState {
 	case mytype.OnlineStateOnline, mytype.OnlineStateUnknown:
+		log.Debugln("try send online msg")
 		// 在线消息
 		msgData, err := c.msgProto.SendMessage(ctx, contactID, msgID)
 		if err != nil {
 			// 在线消息失败
 			if errors.As(err, &myerror.StreamErr{}) && msgData != nil {
+				log.Debugln("try send online msg failed")
+
 				streamErr := err
 				// 流错误，可能是不在线
 				depositAddr, err := c.checkDepositAddr(ctx, contactID)
@@ -128,10 +131,12 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 					return false, fmt.Errorf("check deposit addr error: %w", err)
 				}
 
+				log.Debugln("contact deposit address: ", depositAddr.String())
 				if depositAddr == peer.ID("") {
 					return false, fmt.Errorf("send message failed: %w", streamErr)
 				}
 
+				log.Debugln("send deposit msg")
 				// 发送寄存信息
 				resultCh := make(chan error, 1)
 				if err := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
@@ -145,6 +150,7 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 				}
 
 				if err := <-resultCh; err != nil {
+					log.Errorf("send deposit msg error: %w", err)
 					// 发送寄存信息失败
 					return false, fmt.Errorf("push deposit msg error: %w", err)
 				}
@@ -159,11 +165,13 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 		return false, nil
 
 	case mytype.OnlineStateOffline:
+		log.Debugln("try send deposit msg")
 		depositAddr, err := c.checkDepositAddr(ctx, contactID)
 		if err != nil {
 			return false, fmt.Errorf("check deposit addr error: %w", err)
 		}
 
+		log.Debugln("contact deposit address: ", depositAddr.String())
 		if depositAddr == peer.ID("") {
 			return false, fmt.Errorf("peer offline")
 		}
@@ -173,6 +181,7 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 			return false, fmt.Errorf("proto.GetMessageEnvelope error: %w", err)
 		}
 
+		log.Debugln("send deposit msg")
 		// 发送寄存信息
 		resultCh := make(chan error, 1)
 		if err := c.emitters.evtPushDepositContactMessage.Emit(myevent.EvtPushDepositContactMessage{
@@ -186,6 +195,7 @@ func (c *ContactSvc) sendMessage(ctx context.Context, contactID peer.ID, msgID s
 		}
 
 		if err := <-resultCh; err != nil {
+			log.Errorf("send deposit msg error: %w", err)
 			// 发送寄存信息失败
 			return false, fmt.Errorf("push deposit msg error: %w", err)
 		}

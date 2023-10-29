@@ -20,7 +20,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-var log = logging.Logger("myhost")
+var log = logging.Logger("cuckoo/myhost")
 
 type Host interface {
 	host.Host

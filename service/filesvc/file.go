@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-var log = logging.Logger("filesvc")
+var log = logging.Logger("cuckoo/filesvc")
 
 var _ FileServiceIface = (*FileService)(nil)
 

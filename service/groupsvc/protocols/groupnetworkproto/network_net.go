@@ -15,6 +15,8 @@ import (
 // initNetwork 初始化网络
 func (n *NetworkProto) initNetwork() error {
 
+	log.Debugln("initNetwork: ")
+
 	ctx := context.Background()
 
 	groupIDs, err := n.GetNormalGroupIDs(ctx)
@@ -38,6 +40,8 @@ func (n *NetworkProto) initNetwork() error {
 
 func (n *NetworkProto) addGroupNetwork(groupID string) error {
 
+	log.Debugln("addGroupNetwork: ", groupID)
+
 	if _, exists := n.network[groupID]; exists {
 		log.Warnln("network exists")
 		return nil
@@ -53,6 +57,8 @@ func (n *NetworkProto) addGroupNetwork(groupID string) error {
 
 func (n *NetworkProto) startNetworking(ctx context.Context, groupID string) {
 
+	log.Debugln("startNetworking: ")
+
 	n.networkMutex.Lock()
 	if _, exists := n.network[groupID]; !exists {
 		n.network[groupID] = &GroupNetwork{
@@ -63,13 +69,14 @@ func (n *NetworkProto) startNetworking(ctx context.Context, groupID string) {
 		if n.network[groupID].State == DoingNetworkState {
 			// 如果正在启动，则不需要再启动组网了
 			n.networkMutex.Unlock()
+			log.Debugln("group network is starting, is not need redo")
 			return
 		}
 		n.network[groupID].State = DoingNetworkState
 	}
 	n.networkMutex.Unlock()
 
-	findPeerIDs, err := n.findOnlinePeers(ctx, groupRendezvous(groupID), 6)
+	findPeerIDs, err := n.findOnlinePeers(ctx, groupRendezvous(groupID), 10)
 	if err != nil {
 		log.Errorf("findOnlinePeers error: %w", err)
 		n.networkMutex.Lock()
@@ -85,10 +92,9 @@ func (n *NetworkProto) startNetworking(ctx context.Context, groupID string) {
 		return
 	}
 
-	var okFindPeerIDs []peer.ID
+	// 更新群组日志
 	pullLogTimes := 0
 	for _, peerID := range findPeerIDs {
-		// 拉取最新日志（找2个）
 		if pullLogTimes < 2 {
 			if err := n.pullGroupLogs(groupID, peerID); err != nil {
 				log.Errorf("pull group logs error: %v", err)
@@ -96,24 +102,49 @@ func (n *NetworkProto) startNetworking(ctx context.Context, groupID string) {
 				pullLogTimes++
 			}
 		}
+	}
 
-		// 更新路由表
+	// 获取最新的成员IDs
+	memberIDs, err := n.logdata.GetMemberIDs(ctx, groupID)
+	if err != nil {
+		log.Errorln("data.GetMemberIDs error: %w", err)
+		return
+	}
+
+	if len(memberIDs) <= 1 {
+		log.Debugln("no other member, group no need network")
+		return
+	}
+
+	// 找出发现的会员
+	var findMemberIDs []peer.ID
+	for _, findPeerID := range findPeerIDs {
+		for _, memberID := range memberIDs {
+			if findPeerID == memberID {
+				findMemberIDs = append(findMemberIDs, findPeerID)
+			}
+		}
+	}
+
+	// 交换路由信息
+	var onlineMemberIDs []peer.ID
+	for _, peerID := range findMemberIDs {
 		if err := n.switchRoutingTable(groupID, peerID); err != nil {
 			log.Errorf("switch routing table error: %v", err)
 			continue
 		}
 
-		okFindPeerIDs = append(okFindPeerIDs, peerID)
+		onlineMemberIDs = append(onlineMemberIDs, peerID)
 	}
 
-	if len(okFindPeerIDs) == 0 {
-		log.Errorf("not found valid online peer")
+	if len(onlineMemberIDs) == 0 {
+		log.Errorf("not found valid online member")
 		return
 	}
 
 	// 开始组网
-	if err := n.doNetworking(groupID, okFindPeerIDs); err != nil {
-		log.Errorf("do networking error: %w", err)
+	if err := n.doNetworking(groupID, onlineMemberIDs); err != nil {
+		log.Errorf("do networking error: %v", err)
 		return
 	}
 }
@@ -126,11 +157,11 @@ func (n *NetworkProto) pullGroupLogs(groupID string, peerID peer.ID) error {
 		PeerID:  peerID,
 		Result:  resultCh,
 	}); err != nil {
-		return fmt.Errorf("emit sync group log error: %w", err)
+		return fmt.Errorf("emit pull group log error: %w", err)
 	}
 
 	if err := <-resultCh; err != nil {
-		return fmt.Errorf("sync group log error: %w", err)
+		return fmt.Errorf("pull group log error: %w", err)
 	}
 
 	return nil
@@ -138,14 +169,19 @@ func (n *NetworkProto) pullGroupLogs(groupID string, peerID peer.ID) error {
 
 func (n *NetworkProto) updateGroupNetwork(groupID GroupID) {
 
+	log.Debugln("updateGroupNetwork: ")
+
 	acptPeerIDs, err := n.logdata.GetAgreePeerIDs(context.Background(), groupID)
 	if err != nil {
 		log.Errorf("data.GetAgreePeerIDs error: %w", err)
 		return
 	}
 
+	log.Debugln("acptPeerIDs: ")
+
 	acptPeerIDsMap := make(map[peer.ID]struct{})
 	for _, peerID := range acptPeerIDs {
+		log.Debugln("acptPeerID: ", peerID.String())
 		acptPeerIDsMap[peerID] = struct{}{}
 	}
 
@@ -154,6 +190,8 @@ func (n *NetworkProto) updateGroupNetwork(groupID GroupID) {
 	n.networkMutex.Lock()
 	if _, exists := n.network[groupID]; exists {
 		for peerID := range n.network[groupID].Conns {
+			log.Debugln("exists connected peerID: ", peerID.String())
+
 			if _, exists = acptPeerIDsMap[peerID]; !exists {
 				disconnectPeerIDs = append(disconnectPeerIDs, peerID)
 			}
@@ -162,6 +200,7 @@ func (n *NetworkProto) updateGroupNetwork(groupID GroupID) {
 	n.networkMutex.Unlock()
 
 	for _, peerID := range disconnectPeerIDs {
+		log.Debugln("disconnectPeerID: ", peerID.String())
 		n.disconnect(groupID, peerID)
 	}
 }
@@ -272,7 +311,7 @@ func (n *NetworkProto) doNetworking(groupID string, findPeerIDs []peer.ID) error
 	}
 
 	// 获取组网节点
-	var connectPeerIDs []peer.ID
+	var connectedPeerIDs []peer.ID
 	connAlgo := NewConnAlgo(hostID, onlinePeerIDs)
 	for _, peerID := range connAlgo.GetClosestPeers() {
 		if err := n.connect(groupID, peerID); err != nil {
@@ -280,11 +319,11 @@ func (n *NetworkProto) doNetworking(groupID string, findPeerIDs []peer.ID) error
 			continue
 		}
 
-		connectPeerIDs = append(connectPeerIDs, peerID)
+		connectedPeerIDs = append(connectedPeerIDs, peerID)
 		log.Infoln("connected peer: ", peerID.String())
 	}
 
-	if len(connectPeerIDs) == 0 {
+	if len(connectedPeerIDs) == 0 {
 		log.Warnln("connect all closest peer failed, try connect found peer")
 
 		for _, peerID := range findPeerIDs {
@@ -293,19 +332,19 @@ func (n *NetworkProto) doNetworking(groupID string, findPeerIDs []peer.ID) error
 				continue
 			}
 
-			connectPeerIDs = append(connectPeerIDs, peerID)
+			connectedPeerIDs = append(connectedPeerIDs, peerID)
 			log.Infoln("connected peer: ", peerID.String())
 		}
 	}
 
-	if len(connectPeerIDs) == 0 {
-		return fmt.Errorf("group network failed")
+	if len(connectedPeerIDs) == 0 {
+		return fmt.Errorf("connect peer failed")
 	}
 
 	log.Infoln("------- group network success")
 	if err := n.emitters.evtGroupNetworkSuccess.Emit(myevent.EvtGroupNetworkSuccess{
 		GroupID: groupID,
-		PeerIDs: connectPeerIDs,
+		PeerIDs: connectedPeerIDs,
 	}); err != nil {
 		log.Errorln("emit group network success error: %w", err)
 	}

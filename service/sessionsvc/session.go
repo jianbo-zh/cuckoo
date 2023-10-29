@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/event"
 )
 
-var log = logging.Logger("sessionsvc")
+var log = logging.Logger("cuckoo/sessionsvc")
 
 var _ SessionServiceIface = (*SessionService)(nil)
 

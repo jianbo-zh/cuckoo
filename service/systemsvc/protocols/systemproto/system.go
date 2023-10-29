@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-msgio/pbio"
 )
 
-var log = logging.Logger("systemproto")
+var log = logging.Logger("cuckoo/systemproto")
 
 var StreamTimeout = 1 * time.Minute
 

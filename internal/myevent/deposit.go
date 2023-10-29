@@ -30,6 +30,7 @@ type EvtPushDepositSystemMessage struct {
 	Result         chan<- error
 }
 
+// EvtPullDepositContactMessage 拉取离线消息
 type EvtPullDepositContactMessage struct {
 	DepositAddress peer.ID
 	MessageHandler func(ctx context.Context, fromPeerID peer.ID, msgID string, msgData []byte) error

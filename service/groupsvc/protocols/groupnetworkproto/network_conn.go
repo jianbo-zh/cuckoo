@@ -16,6 +16,8 @@ import (
 )
 
 func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
+	log.Debugln("network.connect: ")
+
 	n.networkMutex.Lock()
 	if _, exists := n.network[groupID].Conns[peerID]; exists {
 		n.networkMutex.Unlock()
@@ -82,6 +84,7 @@ func (n *NetworkProto) connect(groupID GroupID, peerID peer.ID) error {
 		}
 	}()
 
+	log.Debugln("emit: EvtGroupConnectChange")
 	// 触发连接改变事件
 	if err := n.emitters.evtGroupConnectChange.Emit(myevent.EvtGroupConnectChange{
 		GroupID:     groupID,

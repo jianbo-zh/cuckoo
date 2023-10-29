@@ -111,8 +111,6 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 					MessageHandler: p.SaveDepositMessage,
 				}); err != nil {
 					log.Errorf("emit EvtPullDepositContactMessage error: %w", err)
-				} else {
-					log.Debugln("emit pull offline message")
 				}
 
 			case myevent.EvtSyncContactMessage:
@@ -127,21 +125,21 @@ func (p *PeerMessageProto) subscribeHandler(ctx context.Context, sub event.Subsc
 }
 
 func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
+	log.Debugln("msgIDHandler")
+
 	remotePeerID := stream.Conn().RemotePeer()
 
 	// 开始处理流
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeMessage)
 	defer rd.Close()
 
-	stream.SetDeadline(time.Now().Add(StreamTimeout))
-
+	log.Debugln("pbio read msg")
 	var switchMsg pb.MessageEnvelope
 	if err := rd.ReadMsg(&switchMsg); err != nil {
-		log.Errorf("failed to read CONNECT message from remote peer: %v", err)
+		log.Errorf("failed to read msg from remote peer: %v", err)
 		stream.Reset()
 		return
 	}
-	stream.SetReadDeadline(time.Time{})
 
 	ctx := context.Background()
 	exists, err := p.data.HasMessage(ctx, peer.ID(switchMsg.CoreMessage.FromPeerId), switchMsg.CoreMessage.Id)
@@ -151,6 +149,7 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 		return
 
 	} else if exists {
+		log.Debugln("msg is exists")
 		return
 	}
 
@@ -190,6 +189,7 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 		return
 	}
 
+	log.Debugln("pbio write ack msg")
 	wt := pbio.NewDelimitedWriter(stream)
 	if err := wt.WriteMsg(&pb.ContactMessageAck{Id: switchMsg.Id}); err != nil {
 		log.Errorf("ack msg error: %w", err)
@@ -206,10 +206,6 @@ func (p *PeerMessageProto) msgIDHandler(stream network.Stream) {
 	p.emitters.evtReceiveMessage.Emit(myevent.EvtReceiveContactMessage{
 		MsgID:      coreMsg.Id,
 		FromPeerID: peer.ID(coreMsg.FromPeerId),
-		MsgType:    coreMsg.MsgType,
-		MimeType:   coreMsg.MimeType,
-		Payload:    coreMsg.Payload,
-		Timestamp:  coreMsg.Timestamp,
 	})
 }
 
@@ -251,6 +247,11 @@ func (p *PeerMessageProto) SaveDepositMessage(ctx context.Context, fromPeerID pe
 	if err := p.saveCoreMessage(ctx, peer.ID(coreMsg.FromPeerId), coreMsg, true); err != nil {
 		return fmt.Errorf("saveCoreMessage error: %w", err)
 	}
+
+	p.emitters.evtReceiveMessage.Emit(myevent.EvtReceiveContactMessage{
+		MsgID:      coreMsg.Id,
+		FromPeerID: peer.ID(coreMsg.FromPeerId),
+	})
 
 	return nil
 }
@@ -382,6 +383,8 @@ func (p *PeerMessageProto) getMessageEnvelope(ctx context.Context, contactID pee
 		attachment = result.Data
 	}
 
+	log.Debugf("message attachment %s size: %d", coreMsg.AttachmentId, len(attachment))
+
 	return &pb.MessageEnvelope{
 		Id:          coreMsg.Id,
 		CoreMessage: coreMsg,
@@ -414,26 +417,29 @@ func (p *PeerMessageProto) SendMessage(ctx context.Context, contactID peer.ID, m
 }
 
 func (p *PeerMessageProto) sendMessage(ctx context.Context, peerID peer.ID, msg *pb.MessageEnvelope) error {
+	log.Debugln("sendMessage: ")
 
 	stream, err := p.host.NewStream(network.WithUseTransient(ctx, ""), peerID, MSG_ID)
 	if err != nil {
 		return myerror.WrapStreamError("host new stream error", err)
 	}
 
-	pw := pbio.NewDelimitedWriter(stream)
-	defer pw.Close()
+	defer stream.Close()
 
+	log.Debugf("pbio write msg")
+	pw := pbio.NewDelimitedWriter(stream)
 	if err = pw.WriteMsg(msg); err != nil {
-		stream.Reset()
 		return myerror.WrapStreamError("pbio write msg error", err)
 	}
 
+	log.Debugf("pbio read msg")
 	var msgAck pb.ContactMessageAck
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	if err = rd.ReadMsg(&msgAck); err != nil {
 		return myerror.WrapStreamError("pbio read ack msg error", err)
 
 	} else if msgAck.Id != msg.Id {
+		stream.Reset()
 		return myerror.WrapStreamError("msg ack id error", nil)
 	}
 

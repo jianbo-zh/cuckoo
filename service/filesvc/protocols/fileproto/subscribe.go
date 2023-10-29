@@ -176,7 +176,11 @@ func (f *FileProto) handleCheckAvatarEvent(ctx context.Context, evt myevent.EvtS
 		_, err := os.Stat(filepath.Join(f.conf.ResourceDir, evt.ResourceID))
 		if err != nil && os.IsNotExist(err) {
 			for _, peerID := range evt.PeerIDs {
-				if err = f.DownloadResource(ctx, peerID, evt.ResourceID); err == nil {
+				if err = f.DownloadResource(ctx, peerID, evt.ResourceID); err != nil {
+					log.Errorf("DownloadResource from %s error: %w", peerID.String(), err)
+
+				} else {
+					// success, break
 					break
 				}
 			}

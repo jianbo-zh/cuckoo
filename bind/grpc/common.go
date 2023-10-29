@@ -57,7 +57,7 @@ func (c *CommonSvc) DecodeQRCodeToken(ctx context.Context, request *proto.Decode
 			TokenType:      tokenType,
 			Id:             token.ID,
 			Name:           token.Name,
-			Avatar:         token.Name,
+			Avatar:         token.Avatar,
 			DepositAddress: token.DepositAddr,
 		},
 	}

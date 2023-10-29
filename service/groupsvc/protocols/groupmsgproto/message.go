@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var log = logging.Logger("groupmsgproto")
+var log = logging.Logger("cuckoo/groupmsgproto")
 
 var StreamTimeout = 1 * time.Minute
 
@@ -178,13 +178,8 @@ func (m *MessageProto) messageHandler(stream network.Stream) {
 
 	// 触发接收消息
 	if err = m.emitters.evtReceiveGroupMessage.Emit(myevent.EvtReceiveGroupMessage{
-		MsgID:      coreMsg.Id,
-		GroupID:    coreMsg.GroupId,
-		FromPeerID: peer.ID(coreMsg.Member.Id),
-		MsgType:    coreMsg.MsgType,
-		MimeType:   coreMsg.MimeType,
-		Payload:    coreMsg.Payload,
-		Timestamp:  coreMsg.Timestamp,
+		MsgID:   coreMsg.Id,
+		GroupID: coreMsg.GroupId,
 	}); err != nil {
 		log.Errorln("emit receive group msg error: %w", err)
 	}
@@ -258,10 +253,10 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 					if _, exists := m.groupConns[evt.GroupID][evt.PeerID]; !exists {
 						m.groupConns[evt.GroupID][evt.PeerID] = struct{}{}
 
-						if m.host.ID() > evt.PeerID {
-							// 大方主动发起同步
-							go m.goSync(evt.GroupID, evt.PeerID)
-						}
+						// todo: 暂时不用同步消息
+						// if m.host.ID() > evt.PeerID {
+						// 	go m.syncMessage(evt.GroupID, evt.PeerID)
+						// }
 					}
 					log.Debugln("event connect peer: ", evt.PeerID.String())
 
@@ -269,6 +264,7 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 					log.Debugln("event disconnect peer: ", evt.PeerID.String())
 					delete(m.groupConns[evt.GroupID], evt.PeerID)
 				}
+
 			case myevent.EvtSyncGroupMessage:
 				if err := m.emitters.evtPullDepositGroupMessage.Emit(myevent.EvtPullDepositGroupMessage{
 					GroupID:        evt.GroupID,
@@ -288,6 +284,7 @@ func (m *MessageProto) subscribeHandler(ctx context.Context, sub event.Subscript
 }
 
 func (m *MessageProto) SaveDepositMessage(ctx context.Context, groupID string, msgID string, msgData []byte) error {
+	log.Debugln("SaveDepositMessage: ")
 
 	// 检查本地是否存在
 	exists, err := m.data.HasMessage(ctx, groupID, msgID)
@@ -338,6 +335,14 @@ func (m *MessageProto) SaveDepositMessage(ctx context.Context, groupID string, m
 	if err != nil {
 		log.Errorf("save group message error: %v", err)
 		return fmt.Errorf("save core msg error: %w", err)
+	}
+
+	// 触发接收消息
+	if err = m.emitters.evtReceiveGroupMessage.Emit(myevent.EvtReceiveGroupMessage{
+		MsgID:   coreMsg.Id,
+		GroupID: coreMsg.GroupId,
+	}); err != nil {
+		log.Errorln("emit receive group msg error: %w", err)
 	}
 
 	return nil

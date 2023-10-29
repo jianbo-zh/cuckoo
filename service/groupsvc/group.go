@@ -19,7 +19,7 @@ import (
 	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var log = logging.Logger("groupsvc")
+var log = logging.Logger("cuckoo/groupsvc")
 
 var _ GroupServiceIface = (*GroupService)(nil)
 
@@ -394,7 +394,7 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 		if err != nil {
 			isSucc = false
 			// log error
-			log.Error("send message error: %v", err)
+			log.Errorf("send message error: %v", err)
 		}
 
 		msg, err := g.messageProto.UpdateMessageState(ctx, groupID, msgID, isDeposit, isSucc)
@@ -413,45 +413,56 @@ func (g *GroupService) SendGroupMessage(ctx context.Context, groupID string, msg
 
 func (g *GroupService) sendGroupMessage(ctx context.Context, groupID string, msgID string) (isDeposit bool, err error) {
 
-	if msgData, err1 := g.messageProto.SendGroupMessage(ctx, groupID, msgID); err1 != nil {
-		// 发送失败
-		if len(msgData) > 0 {
-			// 可能对方不在线
-			if account, err2 := g.accountGetter.GetAccount(ctx); err2 != nil {
-				return false, fmt.Errorf("get account error: %w", err2)
+	isOnlineFail := false
+	msgData, err := g.messageProto.SendGroupMessage(ctx, groupID, msgID)
+	if err != nil {
+		isOnlineFail = true
+		log.Errorln("send group online msg error: %v", err)
+	}
 
-			} else if account.AutoDepositMessage {
-				// 开启了自动寄存
-				if group, err3 := g.adminProto.GetGroup(ctx, groupID); err3 != nil {
-					return false, fmt.Errorf("proto.GetGroup error: %w", err3)
+	isOfflineFail := false
+	account, err := g.accountGetter.GetAccount(ctx)
+	if err != nil {
+		isOfflineFail = true
+		log.Errorf("get account error: %v", err)
 
-				} else if group.DepositAddress != peer.ID("") {
-					// 群组设置了自动寄存
-					resultCh := make(chan error, 1)
-					if err4 := g.emitters.evtPushDepositGroupMessage.Emit(myevent.EvtPushDepositGroupMessage{
-						DepositAddress: group.DepositAddress,
-						ToGroupID:      group.ID,
-						MsgID:          msgID,
-						MsgData:        msgData,
-						Result:         resultCh,
-					}); err4 != nil {
-						return false, fmt.Errorf("emit EvtPushDepositGroupMessage error: %w", err4)
-					}
+	} else if account.AutoDepositMessage {
+		// 开启了自动寄存
+		if group, err := g.adminProto.GetGroup(ctx, groupID); err != nil {
+			isOfflineFail = true
+			log.Errorf("proto.GetGroup error: %v", err)
 
-					if err5 := <-resultCh; err5 != nil {
-						// 发送寄存信息失败
-						return false, fmt.Errorf("push deposit msg error: %w", err5)
-					} else {
-						return true, nil
-					}
+		} else if group.DepositAddress == peer.ID("") {
+			isOfflineFail = true
+			log.Debugln("group no deposit address")
+
+		} else {
+			// 群组设置了自动寄存
+			resultCh := make(chan error, 1)
+			if err := g.emitters.evtPushDepositGroupMessage.Emit(myevent.EvtPushDepositGroupMessage{
+				DepositAddress: group.DepositAddress,
+				ToGroupID:      group.ID,
+				MsgID:          msgID,
+				MsgData:        msgData,
+				Result:         resultCh,
+			}); err != nil {
+				isOfflineFail = true
+				log.Errorf("emit EvtPushDepositGroupMessage error: %v", err)
+
+			} else {
+				if err := <-resultCh; err != nil {
+					isOfflineFail = true
+					log.Errorf("push deposit msg error: %v", err)
 				}
 			}
 		}
-
-		return false, fmt.Errorf("proto.SendGroupMessage error: %w", err1)
 	}
 
-	return false, nil
+	if isOnlineFail && isOfflineFail {
+		return false, fmt.Errorf("send group msg failed")
+	}
+
+	return isOnlineFail && !isOfflineFail, nil
 }
 
 // 获取消息消息

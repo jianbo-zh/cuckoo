@@ -273,6 +273,7 @@ func (g *GroupSvc) GetGroup(ctx context.Context, request *proto.GetGroupRequest)
 
 	group := &proto.Group{
 		Id:             grp.ID,
+		CreatorId:      grp.CreatorID.String(),
 		Avatar:         grp.Avatar,
 		Name:           grp.Name,
 		DepositAddress: grp.DepositAddress.String(),
@@ -314,7 +315,7 @@ func (g *GroupSvc) GetGroupDetail(ctx context.Context, request *proto.GetGroupDe
 	}
 
 	group := &proto.GroupDetail{
-		GroupId:        grp.ID,
+		Id:             grp.ID,
 		CreatorId:      grp.CreatorID.String(),
 		Avatar:         grp.Avatar,
 		Name:           grp.Name,

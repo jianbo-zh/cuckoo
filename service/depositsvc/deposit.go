@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 )
 
-var log = logging.Logger("depositsvc")
+var log = logging.Logger("cuckoo/depositsvc")
 
 var _ DepositServiceIface = (*DepositService)(nil)
 
@@ -69,7 +69,6 @@ func (d *DepositService) subscribeHandler(ctx context.Context, sub event.Subscri
 	for {
 		select {
 		case e, ok := <-sub.Out():
-			log.Debugf("get subscribe: %v", ok)
 			if !ok {
 				return
 			}

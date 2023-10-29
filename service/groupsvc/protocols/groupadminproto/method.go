@@ -563,6 +563,8 @@ func (a *AdminProto) ReviewJoinGroup(ctx context.Context, groupID string, member
 // RemoveGroupMember 移除群成员
 func (a *AdminProto) RemoveGroupMember(ctx context.Context, groupID string, removeMemberIDs []peer.ID) error {
 
+	log.Debugln("RemoveGroupMember: ")
+
 	hostID := a.host.ID()
 
 	creator, err := a.data.GetCreator(ctx, groupID)
@@ -635,6 +637,11 @@ func (a *AdminProto) GetGroupIDs(ctx context.Context) ([]string, error) {
 
 // GetGroup 获取群
 func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*mytype.Group, error) {
+	creatorID, err := a.data.GetCreator(ctx, groupID)
+	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
+		return nil, fmt.Errorf("data get creator error: %w", err)
+	}
+
 	name, err := a.data.GetName(ctx, groupID)
 	if err != nil && !errors.Is(err, ipfsds.ErrNotFound) {
 		return nil, fmt.Errorf("data get name error: %w", err)
@@ -657,6 +664,7 @@ func (a *AdminProto) GetGroup(ctx context.Context, groupID string) (*mytype.Grou
 
 	return &mytype.Group{
 		ID:             groupID,
+		CreatorID:      creatorID,
 		Name:           name,
 		Avatar:         avatar,
 		DepositAddress: depositPeerID,

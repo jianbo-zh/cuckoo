@@ -15,7 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-var log = logging.Logger("contactsvc")
+var log = logging.Logger("cuckoo/contactsvc")
 
 var _ ContactServiceIface = (*ContactSvc)(nil)
 

@@ -15,6 +15,8 @@ import (
 
 // switchRouting 交换路由信息
 func (n *NetworkProto) switchRoutingTable(groupID string, peerID peer.ID) error {
+	log.Debugln("switchRoutingTable: ")
+
 	ctx := context.Background()
 	stream, err := n.host.NewStream(network.WithUseTransient(ctx, ""), peerID, ROUTING_ID)
 	if err != nil {

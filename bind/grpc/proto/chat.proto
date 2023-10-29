@@ -934,22 +934,24 @@ enum GroupState {
 message Group {
   // ID
   string id = 1;
+  // 创建者
+  string creatorId = 2;
   // 名称
-  string name = 2;
+  string name = 3;
   // Avatar
-  string avatar = 3;
+  string avatar = 4;
   // 寄存PeerID
-  string depositAddress = 4;
+  string depositAddress = 5;
   // 状态
-  GroupState state = 5;
+  GroupState state = 6;
   // 在线数量
-  string onlineNum = 6;
+  string onlineNum = 7;
 }
 
 // 群详情
 message GroupDetail {
   // ID
-  string groupId = 1;
+  string id = 1;
   // 创建者
   string creatorId = 2;
   // 名称

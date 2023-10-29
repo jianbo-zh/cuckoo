@@ -56,7 +56,6 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 	for {
 		select {
 		case e, ok := <-sub.Out():
-			log.Debugf("get subscribe: %v", ok)
 			if !ok {
 				return
 			}
@@ -71,7 +70,7 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 				go d.handlePullContactMessageEvent(evt)
 
 			case myevent.EvtPullDepositGroupMessage:
-				go d.handlePullGroupMessageEvent(evt)
+				go d.handlePullDepositGroupMessageEvent(evt)
 
 			case myevent.EvtPushDepositSystemMessage:
 				go d.handlePushSystemEvent(evt)
@@ -90,6 +89,7 @@ func (d *DepositClientProto) subscribeHandler(ctx context.Context, sub event.Sub
 }
 
 func (d *DepositClientProto) handlePushContactEvent(evt myevent.EvtPushDepositContactMessage) {
+	log.Debugln("handlePushContactEvent: ")
 	var resultErr error
 
 	defer func() {
@@ -97,7 +97,6 @@ func (d *DepositClientProto) handlePushContactEvent(evt myevent.EvtPushDepositCo
 		close(evt.Result)
 	}()
 
-	log.Debugf("handle push contact msg event: %s", evt.MsgID)
 	err := d.PushContactMessage(evt.DepositAddress, evt.ToPeerID, evt.MsgID, evt.MsgData)
 	if err != nil {
 		resultErr = fmt.Errorf("push contact msg error: %w", err)
@@ -135,7 +134,7 @@ func (d *DepositClientProto) handlePushSystemEvent(evt myevent.EvtPushDepositSys
 }
 
 func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDepositContactMessage) {
-	log.Debugf("receive pull offline event")
+	log.Debugf("handlePullContactMessageEvent: ")
 
 	hostID := d.host.ID()
 
@@ -167,10 +166,12 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 	for {
 		dmsg.Reset()
 		if err = pr.ReadMsg(&dmsg); err != nil {
-			log.Errorf("receive deposit msg error: %v", err)
+			log.Errorf("receive deposit contact msg error: %v", err)
 			stream.Reset()
 			return
 		}
+
+		log.Debugln("receive deposit contact msg ", dmsg.Id)
 
 		if evt.MessageHandler != nil {
 			if err = evt.MessageHandler(context.Background(), peer.ID(dmsg.FromPeerId), dmsg.MsgId, dmsg.MsgData); err != nil {
@@ -180,6 +181,7 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 			}
 		}
 
+		log.Debugln("update contact last id ", dmsg.Id)
 		if err = d.datastore.SetContactLastID(hostID, dmsg.Id); err != nil {
 			log.Errorf("set contact last id error: %v", err)
 			stream.Reset()
@@ -188,8 +190,8 @@ func (d *DepositClientProto) handlePullContactMessageEvent(evt myevent.EvtPullDe
 	}
 }
 
-func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepositGroupMessage) {
-	log.Debugf("receive pull offline event")
+func (d *DepositClientProto) handlePullDepositGroupMessageEvent(evt myevent.EvtPullDepositGroupMessage) {
+	log.Debugf("handlePullDepositGroupMessageEvent: ")
 
 	groupID := evt.GroupID
 	depositAddr := evt.DepositAddress
@@ -243,7 +245,7 @@ func (d *DepositClientProto) handlePullGroupMessageEvent(evt myevent.EvtPullDepo
 }
 
 func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDepositSystemMessage) {
-	log.Debugf("receive pull offline event")
+	log.Debugln("handlePullSystemMessageEvent: ")
 
 	hostID := d.host.ID()
 
@@ -265,6 +267,7 @@ func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDep
 	pr := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	pw := pbio.NewDelimitedWriter(stream)
 
+	log.Debugln("pbio write pull system msg request ", lastDepositID)
 	if err = pw.WriteMsg(&pb.DepositSystemMessagePull{StartId: lastDepositID}); err != nil {
 		log.Errorf("pbio read msg error: %w", err)
 		stream.Reset()
@@ -275,10 +278,12 @@ func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDep
 	for {
 		dmsg.Reset()
 		if err = pr.ReadMsg(&dmsg); err != nil {
-			log.Errorf("receive deposit msg error: %v", err)
+			log.Errorf("receive deposit system msg error: %v", err)
 			stream.Reset()
 			return
 		}
+
+		log.Debugln("pbio read deposit system msg: ", dmsg.MsgId)
 
 		if evt.MessageHandler != nil {
 			if err = evt.MessageHandler(context.Background(), peer.ID(dmsg.FromPeerId), dmsg.MsgId, dmsg.MsgData); err != nil {
@@ -297,6 +302,8 @@ func (d *DepositClientProto) handlePullSystemMessageEvent(evt myevent.EvtPullDep
 }
 
 func (d *DepositClientProto) PushContactMessage(depositAddr peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
+	log.Debugln("PushContactMessage: ")
+
 	hostID := d.host.ID()
 
 	log.Debugf("get deposit service peer: %s", depositAddr.String())
@@ -311,6 +318,7 @@ func (d *DepositClientProto) PushContactMessage(depositAddr peer.ID, toPeerID pe
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
+	log.Debugln("send deposit contact msg ", msgID)
 	if err = wt.WriteMsg(&pb.DepositContactMessage{
 		FromPeerId:  []byte(hostID),
 		ToPeerId:    []byte(toPeerID),
@@ -379,7 +387,7 @@ func (d *DepositClientProto) PushGroupMessage(depositAddr peer.ID, groupID strin
 func (d *DepositClientProto) PushSystemMessage(depositAddr peer.ID, toPeerID peer.ID, msgID string, msgData []byte) error {
 	hostID := d.host.ID()
 
-	log.Debugf("get deposit service peer: %s", depositAddr.String())
+	log.Debugln("deposit PushSystemMessage ", depositAddr.String())
 
 	ctx := context.Background()
 	stream, err := d.host.NewStream(network.WithUseTransient(ctx, ""), depositAddr, PUSH_SYSTEM_MSG_ID)
@@ -391,6 +399,7 @@ func (d *DepositClientProto) PushSystemMessage(depositAddr peer.ID, toPeerID pee
 	rd := pbio.NewDelimitedReader(stream, mytype.PbioReaderMaxSizeNormal)
 	wt := pbio.NewDelimitedWriter(stream)
 
+	log.Debugln("pbio write deposit system msg ")
 	if err = wt.WriteMsg(&pb.DepositSystemMessage{
 		FromPeerId:  []byte(hostID),
 		ToPeerId:    []byte(toPeerID),
@@ -402,6 +411,7 @@ func (d *DepositClientProto) PushSystemMessage(depositAddr peer.ID, toPeerID pee
 		return myerror.WrapStreamError("write msg error", err)
 	}
 
+	log.Debugln("pbio read deposit system msg ack")
 	var msgAck pb.DepositMessageAck
 	if err = rd.ReadMsg(&msgAck); err != nil {
 		stream.Reset()
