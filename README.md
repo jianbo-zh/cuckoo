@@ -1,1 +1,3 @@
-基于ipfs的去中心化聊天grpc服务，golang实现的android和ios的grpc服务
+基于ipfs的去中心化聊天本地grpc服务
+
+实现android、ios和pc应用，调用本地grpc服务就可以实现去中心化聊天业务
