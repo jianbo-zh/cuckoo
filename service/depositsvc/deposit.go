@@ -89,6 +89,8 @@ func (d *DepositService) subscribeHandler(ctx context.Context, sub event.Subscri
 }
 
 func (d *DepositService) handleEnableDepositService(isEnable bool) error {
+	log.Debugln("handleEnableDepositService: ", isEnable)
+
 	var err error
 	if isEnable && d.service == nil {
 		// start service
@@ -97,10 +99,14 @@ func (d *DepositService) handleEnableDepositService(isEnable bool) error {
 			return fmt.Errorf("start deposit service error: %w", err)
 		}
 
+		log.Debugln("start deposit service")
+
 	} else if !isEnable && d.service != nil {
 		// close service
 		d.service.Close()
 		d.service = nil
+
+		log.Debugln("close deposit service")
 	}
 
 	return nil

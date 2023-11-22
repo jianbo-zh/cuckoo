@@ -157,6 +157,8 @@ func (c *ConfigSvc) SetEnableMDNS(isEnable bool) error {
 
 // SetEnableDepositService 设置是否启动寄存服务
 func (c *ConfigSvc) SetEnableDepositService(isEnable bool) error {
+	log.Debugln("SetEnableDepositService: ", isEnable)
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

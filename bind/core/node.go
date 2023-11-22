@@ -150,7 +150,7 @@ func PrintAddr() (string, error) {
 	if node != nil && node.cuckoo != nil {
 		host, err := node.cuckoo.GetHost()
 		if err == nil {
-			fmt.Println(host.ID())
+			addr += host.ID().String() + "\n"
 			for _, v := range host.Addrs() {
 				addr += "\n" + v.String()
 			}

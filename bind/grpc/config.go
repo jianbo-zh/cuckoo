@@ -123,6 +123,18 @@ func (c *ConfigSvc) SetEnableMDNS(ctx context.Context, request *proto.SetEnableM
 }
 
 func (c *ConfigSvc) SetEnableDepositService(ctx context.Context, request *proto.SetEnableDepositServiceRequest) (reply *proto.SetEnableDepositServiceReply, err error) {
+
+	log.Infoln("SetEnableDepositService request: ", request.String())
+	defer func() {
+		if e := recover(); e != nil {
+			log.Panicln("SetEnableDepositService panic: ", e)
+		} else if err != nil {
+			log.Errorln("SetEnableDepositService error: ", err.Error())
+		} else {
+			log.Infoln("SetEnableDepositService reply: ", reply.String())
+		}
+	}()
+
 	configSvc, err := c.getConfigSvc()
 	if err != nil {
 		return nil, fmt.Errorf("get config svc error: %w", err)
